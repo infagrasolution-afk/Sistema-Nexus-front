@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { 
-  Box, Typography, Paper, Grid, TextField, Button, MenuItem, 
-  Card, CardContent
+  Box, Typography, Paper, Grid, TextField, Button, MenuItem
 } from '@mui/material';
 import { 
   CompareArrows as TransferIcon, 
@@ -56,98 +55,161 @@ export default function TransfersPage() {
   };
 
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800 }}>Transferencias de Stock</Typography>
-        <Typography variant="body2" color="text.secondary">Mueve inventario entre tus almacenes y sucursales</Typography>
-      </Box>
-
-      <Grid container spacing={4}>
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Paper sx={{ p: 4, borderRadius: 4 }}>
-            <Typography variant="h6" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <TransferIcon color="primary" /> Nueva Transferencia
-            </Typography>
-            
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <TextField
-                select
-                label="Seleccionar Producto"
-                fullWidth
-                value={productId}
-                onChange={(e) => setProductId(Number(e.target.value))}
-              >
-                {products.map((p: any) => (
-                  <MenuItem key={p.id} value={p.id}>{p.name} (SKU: {p.sku})</MenuItem>
-                ))}
-              </TextField>
-
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <TextField
-                  select
-                  label="Almacén de Origen"
-                  fullWidth
-                  value={fromWarehouse}
-                  onChange={(e) => setFromWarehouse(Number(e.target.value))}
-                >
-                  {warehouses.map((w: any) => (
-                    <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
-                  ))}
-                </TextField>
-
-                <TextField
-                  select
-                  label="Almacén de Destino"
-                  fullWidth
-                  value={toWarehouse}
-                  onChange={(e) => setToWarehouse(Number(e.target.value))}
-                >
-                  {warehouses.map((w: any) => (
-                    <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
-                  ))}
-                </TextField>
-              </Box>
-
-              <TextField
-                label="Cantidad a Mover"
-                type="number"
-                fullWidth
-                value={quantity}
-                onChange={(e) => setQuantity(parseFloat(e.target.value))}
-              />
-
-              <Button 
-                variant="contained" 
-                size="large" 
-                fullWidth 
-                startIcon={<TransferIcon />}
-                onClick={handleTransfer}
-                loading={transferMutation.isPending}
-                disabled={!productId || !fromWarehouse || !toWarehouse || !quantity}
-                sx={{ py: 1.5, borderRadius: 3 }}
-              >
-                Ejecutar Transferencia
-              </Button>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      width: '100%',
+      maxWidth: 1000, 
+      mx: 'auto', 
+      mt: 6,
+      px: 3,
+      pb: 8
+    }}>
+      <Paper elevation={0} sx={{ 
+        p: 4, 
+        width: '100%',
+        borderRadius: '24px', 
+        border: '1px solid', 
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)'
+      }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+            <Box sx={{ 
+              bgcolor: 'primary.50', 
+              p: 2, 
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid',
+              borderColor: 'primary.100'
+            }}>
+              <TransferIcon color="primary" sx={{ fontSize: 32 }} />
             </Box>
-          </Paper>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 7 }}>
-          <Card sx={{ borderRadius: 4, bgcolor: 'primary.50', border: 'none', boxShadow: 'none' }}>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <InventoryIcon color="primary" /> Guía de Transferencias
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-1px' }}>Transferencias de Stock</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
+                Movimientos de inventario entre almacenes y sucursales
               </Typography>
-              <Box component="ul" sx={{ color: 'text.secondary', pl: 2 }}>
-                <li>Asegúrate de tener suficiente stock en el almacén de origen antes de transferir.</li>
-                <li>Las transferencias se registran como dos movimientos: SALIDA del origen y ENTRADA al destino.</li>
-                <li>Usa transferencias para reabastecer el inventario de sucursales desde tu centro de distribución principal.</li>
-                <li>Las transferencias entre diferentes empresas del holding quedarán registradas para auditoría.</li>
+            </Box>
+          </Box>
+        </Box>
+
+        <Grid container spacing={4}>
+          <Grid size={{ xs: 12, md: 7 }}>
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+                Detalles del Movimiento
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <TextField
+                  select
+                  label="Producto a Transferir"
+                  fullWidth
+                  value={productId}
+                  onChange={(e) => setProductId(Number(e.target.value))}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                >
+                  {products.map((p: any) => (
+                    <MenuItem key={p.id} value={p.id}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>{p.name}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.6 }}>SKU: {p.sku}</Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                  {products.length === 0 && <MenuItem disabled>No hay productos disponibles</MenuItem>}
+                </TextField>
+
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      select
+                      label="Almacén de Origen"
+                      fullWidth
+                      value={fromWarehouse}
+                      onChange={(e) => setFromWarehouse(Number(e.target.value))}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                    >
+                      {warehouses.map((w: any) => (
+                        <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField
+                      select
+                      label="Almacén de Destino"
+                      fullWidth
+                      value={toWarehouse}
+                      onChange={(e) => setToWarehouse(Number(e.target.value))}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                    >
+                      {warehouses.map((w: any) => (
+                        <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+                </Grid>
+
+                <TextField
+                  label="Cantidad"
+                  type="number"
+                  fullWidth
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseFloat(e.target.value))}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+
+                <Button 
+                  variant="contained" 
+                  size="large" 
+                  fullWidth 
+                  startIcon={<TransferIcon />}
+                  onClick={handleTransfer}
+                  disabled={!productId || !fromWarehouse || !toWarehouse || !quantity || transferMutation.isPending}
+                  sx={{ 
+                    py: 1.8, 
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    boxShadow: '0 8px 24px rgba(37, 99, 235, 0.25)',
+                    mt: 2
+                  }}
+                >
+                  {transferMutation.isPending ? 'Procesando...' : 'Ejecutar Transferencia'}
+                </Button>
               </Box>
-            </CardContent>
-          </Card>
+            </Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 5 }}>
+            <Paper elevation={0} sx={{ 
+              p: 3, 
+              borderRadius: '20px', 
+              bgcolor: 'primary.50',
+              border: '1px solid',
+              borderColor: 'primary.100',
+              height: '100%'
+            }}>
+              <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
+                <InventoryIcon /> Guía Rápida
+              </Typography>
+              <Box component="ul" sx={{ color: 'text.secondary', pl: 2, '& li': { mb: 1.5, fontWeight: 500, fontSize: '0.9rem' } }}>
+                <li>Verifica existencias antes de mover.</li>
+                <li>La transferencia es inmediata y afecta ambos inventarios.</li>
+                <li>Se genera un registro de auditoría con tu usuario.</li>
+                <li>Usa esta opción para reabastecer sucursales.</li>
+              </Box>
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
+      </Paper>
     </Box>
   );
 }

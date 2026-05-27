@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   Box, Typography, Button, Paper, Dialog, DialogTitle, 
   DialogContent, DialogActions, TextField, Grid, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  IconButton
+  IconButton, Chip
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -10,8 +10,6 @@ import {
   ShoppingCart as ShoppingCartIcon,
   Receipt as ReceiptIcon 
 } from '@mui/icons-material';
-import { DataGrid } from '@mui/x-data-grid';
-import type { GridColDef } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
 
@@ -107,53 +105,91 @@ export default function PurchasesPage() {
     });
   };
 
-  const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 80 },
-    { field: 'reference', headerName: 'Ref/Factura', flex: 1 },
-    { field: 'supplier_id', headerName: 'ID Proveedor', width: 120 },
-    { field: 'status', headerName: 'Estado', width: 120 },
-    { 
-      field: 'total', 
-      headerName: 'Total', 
-      width: 130, 
-      renderCell: (params) => (
-        <Typography sx={{ fontWeight: 700, color: 'primary.main' }}>
-          ${params.value.toFixed(2)}
-        </Typography>
-      )
-    },
-    { field: 'created_at', headerName: 'Fecha', flex: 1, valueFormatter: (params) => new Date(params).toLocaleDateString() },
-  ];
+  // Columns removed as we switched to manual Table for centering and premium look
 
   return (
-    <Box sx={{ p: 1 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: 'text.primary', letterSpacing: '-0.5px' }}>
-            Compras
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Gestiona el reabastecimiento de inventario y las facturas de proveedores
-          </Typography>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      width: '100%',
+      maxWidth: 1000, 
+      mx: 'auto', 
+      mt: 6,
+      px: 3,
+      pb: 8
+    }}>
+      <Paper elevation={0} sx={{ 
+        p: 4, 
+        width: '100%',
+        borderRadius: '24px', 
+        border: '1px solid', 
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)'
+      }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+            <Box sx={{ 
+              bgcolor: 'primary.50', 
+              p: 2, 
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '1px solid',
+              borderColor: 'primary.100'
+            }}>
+              <ShoppingCartIcon color="primary" sx={{ fontSize: 32 }} />
+            </Box>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-1px' }}>Compras</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
+                Gestión de reabastecimiento y facturas de proveedores
+              </Typography>
+            </Box>
+          </Box>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />} 
+            onClick={() => setOpen(true)}
+            sx={{ borderRadius: '12px', px: 4, py: 1.2, fontWeight: 700 }}
+          >
+            Nueva Compra
+          </Button>
         </Box>
-        <Button 
-          variant="contained" 
-          startIcon={<ShoppingCartIcon />} 
-          onClick={() => setOpen(true)}
-          sx={{ borderRadius: '12px', px: 3, py: 1 }}
-        >
-          Nueva Compra
-        </Button>
-      </Box>
 
-      <Paper sx={{ height: 600, width: '100%', borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-        <DataGrid
-          rows={purchases}
-          columns={columns}
-          loading={isLoading}
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-        />
+        <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '16px' }}>
+          <Table>
+            <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700, py: 2.5 }}>ID</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Ref / Factura</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {purchases.map((row: any) => (
+                <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>#{row.id}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{row.reference || 'S/N'}</TableCell>
+                  <TableCell>
+                    <Chip label={row.status} size="small" color="success" sx={{ fontWeight: 700, borderRadius: '6px' }} />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>${row.total.toFixed(2)}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary' }}>{new Date(row.created_at).toLocaleDateString()}</TableCell>
+                </TableRow>
+              ))}
+              {purchases.length === 0 && !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 10, color: 'text.secondary' }}>No hay compras registradas.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
 
       <Dialog 

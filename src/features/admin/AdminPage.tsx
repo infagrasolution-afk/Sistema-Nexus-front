@@ -3,7 +3,7 @@ import {
   Box, Typography, Grid, Paper, Card, CardContent, Button, 
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Chip, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField
+  TextField, FormControl, InputLabel, Select, MenuItem, OutlinedInput, Checkbox, ListItemText, Divider
 } from '@mui/material';
 import { 
   Business as BusinessIcon, 
@@ -22,7 +22,21 @@ import api from '../../api/axiosConfig';
 export default function AdminPage() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [newCompany, setNewCompany] = useState({ name: '', email: '', tax_id: '' });
+  const AVAILABLE_MODULES = [
+    { id: 'sales', label: 'Módulo de Ventas' },
+    { id: 'inventory', label: 'Módulo de Inventario' },
+    { id: 'accounting', label: 'Módulo Contable' },
+    { id: 'users', label: 'Módulo Administrativo' },
+  ];
+
+  const [newCompany, setNewCompany] = useState({ 
+    name: '', 
+    email: '', 
+    tax_id: '', 
+    modules: ['sales', 'inventory', 'accounting', 'users'],
+    admin_username: '',
+    admin_password: ''
+  });
   
   const queryClient = useQueryClient();
 
@@ -49,12 +63,30 @@ export default function AdminPage() {
   });
 
   const createTenantMutation = useMutation({
-    mutationFn: (data: any) => api.post('/admin/tenants', data),
+    mutationFn: (data: any) => {
+      const expirationDate = new Date();
+      expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+      const isoExp = expirationDate.toISOString();
+
+      const modulesJson: Record<string, any> = {};
+      data.modules.forEach((modId: string) => {
+        modulesJson[modId] = { is_active: true, expires_at: isoExp };
+      });
+
+      return api.post('/admin/tenants', { ...data, modules: JSON.stringify(modulesJson) });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['admin-metrics'] });
       setOpen(false);
-      setNewCompany({ name: '', email: '', tax_id: '' });
+      setNewCompany({ 
+        name: '', 
+        email: '', 
+        tax_id: '', 
+        modules: ['sales', 'inventory', 'accounting', 'users'],
+        admin_username: '',
+        admin_password: ''
+      });
     }
   });
 
@@ -212,6 +244,56 @@ export default function AdminPage() {
               value={newCompany.tax_id} 
               onChange={(e) => setNewCompany({...newCompany, tax_id: e.target.value})} 
             />
+            
+            <FormControl fullWidth sx={{ mt: 1 }}>
+              <InputLabel id="modules-label">Módulos Comprados</InputLabel>
+              <Select
+                labelId="modules-label"
+                multiple
+                value={newCompany.modules}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const newModules = typeof value === 'string' ? value.split(',') : value;
+                  // Ensure 'users' is ALWAYS included if any other module is selected
+                  if (newModules.length > 0 && !newModules.includes('users')) {
+                    newModules.push('users');
+                  }
+                  setNewCompany({...newCompany, modules: newModules});
+                }}
+                input={<OutlinedInput label="Módulos Comprados" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => (
+                      <Chip key={value} label={AVAILABLE_MODULES.find(m => m.id === value)?.label || value} size="small" />
+                    ))}
+                  </Box>
+                )}
+              >
+                {AVAILABLE_MODULES.map((mod) => (
+                  <MenuItem key={mod.id} value={mod.id}>
+                    <Checkbox checked={newCompany.modules.indexOf(mod.id) > -1} />
+                    <ListItemText primary={mod.label} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Divider sx={{ my: 1 }}>Datos de Acceso Administrador</Divider>
+
+            <TextField 
+              label="Usuario Administrador" 
+              fullWidth 
+              placeholder="ej: admin_empresa"
+              value={newCompany.admin_username} 
+              onChange={(e) => setNewCompany({...newCompany, admin_username: e.target.value})} 
+            />
+            <TextField 
+              label="Contraseña Inicial" 
+              type="password"
+              fullWidth 
+              value={newCompany.admin_password} 
+              onChange={(e) => setNewCompany({...newCompany, admin_password: e.target.value})} 
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
@@ -219,7 +301,7 @@ export default function AdminPage() {
           <Button 
             variant="contained" 
             onClick={() => createTenantMutation.mutate(newCompany)}
-            disabled={!newCompany.name || !newCompany.email}
+            disabled={!newCompany.name || !newCompany.email || !newCompany.admin_username || !newCompany.admin_password}
             loading={createTenantMutation.isPending}
           >
             {t('Create Company')}

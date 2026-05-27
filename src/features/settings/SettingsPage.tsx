@@ -5,8 +5,7 @@ import {
 } from '@mui/material';
 import { 
   Business as BusinessIcon, 
-  Save as SaveIcon,
-  CloudUpload as UploadIcon
+  Save as SaveIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +18,9 @@ export default function SettingsPage() {
     tax_id: '',
     phone: '',
     address: '',
-    logo_url: ''
+    logo_url: '',
+    primary_color: '#2563eb',
+    secondary_color: '#64748b'
   });
   const [success, setSuccess] = useState(false);
   
@@ -40,7 +41,9 @@ export default function SettingsPage() {
         tax_id: tenant.tax_id || '',
         phone: tenant.phone || '',
         address: tenant.address || '',
-        logo_url: tenant.logo_url || ''
+        logo_url: tenant.logo_url || '',
+        primary_color: tenant.primary_color || '#2563eb',
+        secondary_color: tenant.secondary_color || '#64748b'
       });
     }
   }, [tenant]);
@@ -138,26 +141,46 @@ export default function SettingsPage() {
 
         <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ p: 4, borderRadius: 4, textAlign: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>{t('Company Logo')}</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>{t('Personalización de Marca')}</Typography>
             <Avatar 
               src={formData.logo_url} 
-              sx={{ width: 120, height: 120, mx: 'auto', mb: 3, borderRadius: 2, bgcolor: 'action.hover' }}
+              sx={{ width: 120, height: 120, mx: 'auto', mb: 3, borderRadius: 2, bgcolor: 'action.hover', border: '1px solid', borderColor: 'divider' }}
             >
               {!formData.logo_url && <BusinessIcon sx={{ fontSize: 60, color: 'text.disabled' }} />}
             </Avatar>
+            
             <TextField
-              label={t('Logo URL')}
+              label="URL del Logo"
               fullWidth
               size="small"
               value={formData.logo_url}
               onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-              sx={{ mb: 2 }}
+              sx={{ mb: 3 }}
             />
-            <Button variant="outlined" startIcon={<UploadIcon />} fullWidth sx={{ borderRadius: 2 }}>
-              {t('Upload Logo')}
-            </Button>
+
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 1 }}>Color Primario</Typography>
+                <input 
+                  type="color" 
+                  value={formData.primary_color} 
+                  onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
+                  style={{ width: '100%', height: '40px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                />
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 1 }}>Color Secundario</Typography>
+                <input 
+                  type="color" 
+                  value={formData.secondary_color} 
+                  onChange={(e) => setFormData({ ...formData, secondary_color: e.target.value })}
+                  style={{ width: '100%', height: '40px', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                />
+              </Grid>
+            </Grid>
+
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-              {t('Recommended size: 512x512px. PNG or JPG.')}
+              Los colores y el logo se aplicarán a la interfaz y a todos los documentos impresos.
             </Typography>
           </Paper>
         </Grid>

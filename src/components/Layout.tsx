@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Box, Drawer, AppBar, Toolbar, Typography, List, ListItem, ListItemButton, ListItemIcon, ListItemText, IconButton, Avatar, Button, Menu, MenuItem, Divider } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, IconButton, Avatar, Button, Menu, MenuItem, Divider, ListItemIcon, ListItemText } from '@mui/material';
 import { 
-  Menu as MenuIcon, 
   Dashboard as DashboardIcon, 
   Inventory as InventoryIcon, 
   PointOfSale as SalesIcon, 
@@ -13,7 +12,9 @@ import {
   AdminPanelSettings as AdminIcon,
   Warehouse as WarehouseIcon,
   CompareArrows as TransferIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  AccountBalanceWallet as AccountIcon,
+  Home as HomeIcon
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -21,17 +22,33 @@ import { useTranslation } from 'react-i18next';
 import api from '../api/axiosConfig';
 import { useAppStore } from '../store/useAppStore';
 
-const drawerWidth = 260;
+function Clock() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', fontFamily: 'monospace', fontSize: '1rem' }}>
+      {time.toLocaleTimeString()}
+    </Typography>
+  );
+}
+
+
 
 export default function Layout() {
-  const { sidebarOpen, toggleSidebar, user, setUser } = useAppStore();
-  const { t, i18n } = useTranslation();
+  const { user, setUser } = useAppStore();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleLogout = async () => {
+    setAnchorEl(null);
     try {
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
@@ -40,10 +57,9 @@ export default function Layout() {
     } catch (e) {
       console.error('Logout error', e);
     } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('active_tenant_id');
-      window.location.href = '/login';
+      localStorage.clear(); // Clear everything
+      setUser(null);
+      navigate('/login');
     }
   };
 
@@ -85,28 +101,38 @@ export default function Layout() {
     },
   });
 
-  const menuItems = [
-    { text: t('Dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
-    { text: t('Inventory'), icon: <InventoryIcon />, path: '/inventory' },
-    { text: t('Warehouses'), icon: <WarehouseIcon />, path: '/warehouses' },
-    { text: t('Transfers'), icon: <TransferIcon />, path: '/transfers' },
-    { text: t('Catalog'), icon: <ViewModuleIcon />, path: '/catalog' },
-    { text: t('Suppliers'), icon: <BusinessIcon />, path: '/suppliers' },
-    { text: t('Purchases'), icon: <ShoppingCartIcon />, path: '/purchases' },
-    { text: t('Users'), icon: <PeopleIcon />, path: '/users' },
-    { text: t('Settings'), icon: <SettingsIcon />, path: '/settings' },
-    { text: t('Point of Sale'), icon: <SalesIcon />, path: '/sales' },
+  const allMenuItems = [
+    { id: 'dashboard', text: t('Dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
+    { id: 'inventory', text: t('Inventory'), icon: <InventoryIcon />, path: '/inventory' },
+    { id: 'inventory', text: t('Warehouses'), icon: <WarehouseIcon />, path: '/warehouses' },
+    { id: 'inventory', text: t('Transfers'), icon: <TransferIcon />, path: '/transfers' },
+    { id: 'inventory', text: t('Catalog'), icon: <ViewModuleIcon />, path: '/catalog' },
+    { id: 'purchases', text: t('Suppliers'), icon: <BusinessIcon />, path: '/suppliers' },
+    { id: 'purchases', text: t('Purchases'), icon: <ShoppingCartIcon />, path: '/purchases' },
+    { id: 'users', text: t('Users'), icon: <PeopleIcon />, path: '/users' },
+    { id: 'settings', text: t('Settings'), icon: <SettingsIcon />, path: '/settings' },
+    { id: 'accounting', text: t('Contabilidad'), icon: <AccountIcon />, path: '/accounting' },
+    { id: 'sales', text: t('Point of Sale'), icon: <SalesIcon />, path: '/sales' },
   ];
 
+  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting';
+  
+  // Menu items kept in code for reference or future use if needed, but not rendered in sidebar
+  const menuItems = user?.is_superuser 
+    ? allMenuItems
+    : allMenuItems.filter(item => item.id === 'dashboard' || userModulesStr.includes(item.id));
+
   if (user?.is_superuser || userData?.is_superuser) {
-    menuItems.push({ text: t('Admin SaaS'), icon: <AdminIcon />, path: '/admin' });
+    menuItems.push({ id: 'admin', text: t('Admin SaaS'), icon: <AdminIcon />, path: '/admin' });
   }
 
   const { data: tenantData } = useQuery({
     queryKey: ['my-tenant'],
     queryFn: async () => {
       const response = await api.get('/tenants/me');
-      return response.data;
+      const data = response.data;
+      useAppStore.getState().setTenant(data);
+      return data;
     },
     enabled: !!user
   });
@@ -158,14 +184,49 @@ export default function Layout() {
           </Box>
         )}
         <Toolbar>
-          <IconButton color="inherit" edge="start" onClick={toggleSidebar} sx={{ mr: 2 }}>
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 800, color: 'primary.main', letterSpacing: '-0.5px' }}>
-            NEXUS ERP {tenantData?.parent_id ? `| ${tenantData.name}` : ''}
-          </Typography>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box 
+            onClick={() => navigate('/dashboard')}
+            sx={{ 
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              cursor: 'pointer',
+              mr: 4
+            }}
+          >
+            {tenantData?.logo_url ? (
+              <Box 
+                component="img" 
+                src={tenantData.logo_url} 
+                sx={{ height: 45, width: 'auto', mb: 0.5 }} 
+              />
+            ) : (
+              <Box sx={{ bgcolor: tenantData?.primary_color || 'primary.main', color: 'white', p: 0.5, borderRadius: 1.5, display: 'flex', mb: 0.5 }}>
+                <HomeIcon fontSize="small" />
+              </Box>
+            )}
+            <Typography variant="caption" sx={{ fontWeight: 900, color: tenantData?.primary_color || 'primary.main', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '1px' }}>
+              {tenantData?.name || 'NEXUS ERP'}
+            </Typography>
+          </Box>
+          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <Clock />
+              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled' }}>
+                {new Date().toLocaleDateString()}
+              </Typography>
+            </Box>
+            {location.pathname !== '/dashboard' && (
+              <Button 
+                variant="text" 
+                startIcon={<DashboardIcon />} 
+                onClick={() => navigate('/dashboard')}
+                sx={{ fontWeight: 700, color: 'text.secondary', borderRadius: 2 }}
+              >
+                Volver al Tablero
+              </Button>
+            )}
             {/* Branch Switcher */}
             {branches.length > 0 && (
               <Box sx={{ mr: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -190,69 +251,61 @@ export default function Layout() {
               </Box>
             )}
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{user?.email?.split('@')[0] || 'Usuario'}</Typography>
-              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
-                <Avatar sx={{ bgcolor: 'secondary.main', fontWeight: 'bold', width: 35, height: 35 }}>
-                  {user?.email?.[0].toUpperCase() || 'U'}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
+                <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1 }}>{user?.username || 'Usuario'}</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>{user?.email}</Typography>
+              </Box>
+              <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0, border: '2px solid', borderColor: 'divider' }}>
+                <Avatar sx={{ bgcolor: tenantData?.primary_color || 'primary.main', fontWeight: 'bold', width: 38, height: 38 }}>
+                  {user?.username?.[0].toUpperCase() || user?.email?.[0].toUpperCase() || 'U'}
                 </Avatar>
               </IconButton>
-              
               <Menu
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
                 onClose={() => setAnchorEl(null)}
-                slotProps={{ paper: { sx: { mt: 1, borderRadius: 2, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' } } }}
+                slotProps={{ paper: { sx: { borderRadius: 3, mt: 1.5, minWidth: 180, boxShadow: '0 10px 25px rgba(0,0,0,0.1)' } } }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
-                <MenuItem onClick={() => navigate('/settings')} sx={{ gap: 1 }}>
-                  <SettingsIcon fontSize="small" /> {t('Settings')}
+                <MenuItem onClick={() => { setAnchorEl(null); navigate('/settings'); }}>
+                  <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary="Configuración" />
                 </MenuItem>
+                {user?.is_superuser && (
+                  <MenuItem onClick={() => { setAnchorEl(null); navigate('/admin'); }}>
+                    <ListItemIcon><AdminIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText primary="Panel SaaS" />
+                  </MenuItem>
+                )}
                 <Divider />
-                <MenuItem onClick={handleLogout} sx={{ gap: 1, color: 'error.main' }}>
-                  <LogoutIcon fontSize="small" /> {t('Logout')}
+                <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                  <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
+                  <ListItemText primary="Cerrar Sesión" />
                 </MenuItem>
               </Menu>
             </Box>
           </Box>
         </Toolbar>
       </AppBar>
-      <Drawer
-        variant="persistent"
-        open={sidebarOpen}
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', borderRight: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' },
+      {/* Sidebar removed per user request - Dashboard handles all navigation */}
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          minHeight: '100vh',
+          mt: location.pathname === '/sales' ? 0 : 12, // POS doesn't need top margin from Layout
+          pb: location.pathname === '/sales' ? 0 : 8,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          overflowX: 'hidden',
+          transition: 'all 0.3s ease',
+          bgcolor: location.pathname === '/sales' ? 'background.default' : 'transparent'
         }}
       >
-        <Toolbar />
-        <Box sx={{ overflow: 'auto', mt: 3 }}>
-          <List>
-            {menuItems.map((item) => {
-              const active = location.pathname === item.path;
-              return (
-                <ListItem key={item.text} disablePadding sx={{ px: 2, mb: 1 }}>
-                  <ListItemButton 
-                    onClick={() => navigate(item.path)}
-                    sx={{ 
-                      borderRadius: '10px',
-                      bgcolor: active ? 'primary.50' : 'transparent',
-                      color: active ? 'primary.main' : 'text.secondary',
-                      '&:hover': { bgcolor: active ? 'primary.100' : 'action.hover' }
-                    }}
-                  >
-                    <ListItemIcon sx={{ color: active ? 'primary.main' : 'inherit', minWidth: 40 }}>
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText primary={<Typography sx={{ fontWeight: active ? 600 : 500 }}>{item.text}</Typography>} />
-                  </ListItemButton>
-                </ListItem>
-              );
-            })}
-          </List>
-        </Box>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 4, transition: 'margin 0.2s', ml: sidebarOpen ? 0 : `-${drawerWidth}px`, mt: 8 }}>
         {/* Superadmin impersonation banner */}
         {localStorage.getItem('active_tenant_id') && user?.is_superuser && (
           <Box sx={{ mb: 2, p: 1.5, bgcolor: '#fff3e0', border: '1px solid #ffe0b2', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

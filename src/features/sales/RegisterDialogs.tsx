@@ -13,6 +13,7 @@ interface OpenDialogProps {
   onSuccess: (session: any) => void;
 }
 
+
 export const RegisterOpenDialog: React.FC<OpenDialogProps> = ({ open, onSuccess }) => {
   const [startingCash, setStartingCash] = useState('0');
   const [error, setError] = useState('');
@@ -79,6 +80,9 @@ interface CloseDialogProps {
 export const RegisterCloseDialog: React.FC<CloseDialogProps> = ({ open, onClose, session }) => {
   const [actualCash, setActualCash] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [isAccounted, setIsAccounted] = useState(false);
+  const [showPurchaseAccounting, setShowPurchaseAccounting] = useState(false);
   const { setCashSession } = useAppStore();
   const queryClient = useQueryClient();
 
@@ -88,13 +92,62 @@ export const RegisterCloseDialog: React.FC<CloseDialogProps> = ({ open, onClose,
     onSuccess: () => {
       setCashSession(null);
       queryClient.invalidateQueries({ queryKey: ['cash-session'] });
-      onClose();
-      window.location.reload(); // Refresh to clear states
+      // Muestra el modal de compras después de cerrar
+      setShowPurchaseAccounting(true);
     },
     onError: (err: any) => {
       setError(err.response?.data?.detail || 'Error al cerrar caja');
     }
   });
+
+  const accountSalesMutation = useMutation({
+    mutationFn: () => api.post(`/accounting/account-session/${session?.id}`),
+    onSuccess: (res) => {
+      setIsAccounted(true);
+      setSuccessMsg(res.data.message);
+      setError('');
+    },
+    onError: (err: any) => {
+      setError(err.response?.data?.detail || 'Error al contabilizar ventas');
+    }
+  });
+
+  const accountPurchasesMutation = useMutation({
+    mutationFn: () => api.post(`/accounting/account-purchases`),
+    onSuccess: (res) => {
+      alert(res.data.message);
+      onClose();
+      window.location.reload();
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.detail || 'Error al contabilizar compras');
+      onClose();
+      window.location.reload();
+    }
+  });
+
+  if (showPurchaseAccounting) {
+    return (
+      <Dialog open={open} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 3 } } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: 'primary.main' }}>Contabilizar Compras</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Caja cerrada exitosamente. Existen compras pendientes. ¿Desea contabilizar el módulo de compras ahora?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button variant="outlined" onClick={() => { onClose(); window.location.reload(); }}>Saltar</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => accountPurchasesMutation.mutate()}
+            disabled={accountPurchasesMutation.isPending}
+          >
+            Contabilizar Compras
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 3 } } }}>
@@ -105,18 +158,40 @@ export const RegisterCloseDialog: React.FC<CloseDialogProps> = ({ open, onClose,
           <Typography variant="subtitle2" color="text.secondary">Apertura: {new Date(session?.opening_time).toLocaleString()}</Typography>
         </Box>
         <Divider sx={{ mb: 2 }} />
-        <Typography variant="body2" sx={{ mb: 2 }}>
-          Cuente el efectivo físico en caja e ingrese el monto total:
-        </Typography>
+        
+        {successMsg && <Alert severity="success" sx={{ mb: 2 }}>{successMsg}</Alert>}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <TextField
-          autoFocus
-          label="Efectivo Real en Caja"
-          fullWidth
-          type="number"
-          value={actualCash}
-          onChange={(e) => setActualCash(e.target.value)}
-        />
+        
+        {!isAccounted ? (
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+              Antes de cerrar la caja, debe contabilizar las ventas del día.
+            </Typography>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              fullWidth 
+              onClick={() => accountSalesMutation.mutate()}
+              disabled={accountSalesMutation.isPending}
+            >
+              Contabilizar Ventas
+            </Button>
+          </Box>
+        ) : (
+          <>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              Cuente el efectivo físico en caja e ingrese el monto total:
+            </Typography>
+            <TextField
+              autoFocus
+              label="Efectivo Real en Caja"
+              fullWidth
+              type="number"
+              value={actualCash}
+              onChange={(e) => setActualCash(e.target.value)}
+            />
+          </>
+        )}
       </DialogContent>
       <DialogActions sx={{ p: 3 }}>
         <Button variant="outlined" onClick={onClose}>Cancelar</Button>
@@ -124,7 +199,7 @@ export const RegisterCloseDialog: React.FC<CloseDialogProps> = ({ open, onClose,
           variant="contained" 
           color="error"
           onClick={() => closeMutation.mutate({ actual_cash: parseFloat(actualCash) })}
-          disabled={!actualCash || closeMutation.isPending}
+          disabled={!isAccounted || !actualCash || closeMutation.isPending}
         >
           Finalizar y Cerrar Caja
         </Button>

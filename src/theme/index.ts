@@ -1,123 +1,106 @@
-import { createTheme, type ThemeOptions } from '@mui/material/styles';
+import { createTheme } from '@mui/material';
+import { type ThemeOptions } from '@mui/material/styles';
 
-const themeOptions: ThemeOptions = {
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#60a5fa', // Soft blue
-      light: '#93c5fd',
-      dark: '#3b82f6',
-      contrastText: '#ffffff',
+export const getTheme = (primaryColor: string = '#2563eb') => {
+  const themeOptions: ThemeOptions = {
+    palette: {
+      mode: 'light',
+      primary: {
+        main: primaryColor,
+        contrastText: '#ffffff',
+      },
+      secondary: {
+        main: '#10b981', // Emerald Green
+        light: '#34d399',
+        dark: '#059669',
+        contrastText: '#ffffff',
+      },
+      background: {
+        default: '#f8fafc', 
+        paper: '#ffffff',
+      },
+      text: {
+        primary: '#0f172a', // Navy Dark
+        secondary: '#64748b', 
+      },
+      divider: '#e2e8f0',
+      success: {
+        main: '#10b981',
+      },
+      warning: {
+        main: '#f59e0b',
+      },
+      error: {
+        main: '#ef4444',
+      }
     },
-    secondary: {
-      main: '#94a3b8', // Soft slate
-      light: '#cbd5e1',
-      dark: '#64748b',
-      contrastText: '#ffffff',
+    typography: {
+      fontFamily: '"Outfit", "Inter", "Roboto", sans-serif',
+      h1: { fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a' },
+      h2: { fontWeight: 800, letterSpacing: '-0.02em', color: '#0f172a' },
+      h3: { fontWeight: 800, color: '#0f172a' },
+      h4: { fontWeight: 700, color: '#0f172a' },
+      h5: { fontWeight: 700, color: '#1e293b' },
+      h6: { fontWeight: 600, color: '#1e293b' },
+      button: { textTransform: 'none', fontWeight: 700, letterSpacing: '0.01em' },
     },
-    background: {
-      default: '#f8fafc', // Very subtle off-white blue
-      paper: '#ffffff',
+    shape: {
+      borderRadius: 16,
     },
-    text: {
-      primary: '#334155', // Slate-700
-      secondary: '#64748b', // Slate-500
-    },
-    divider: '#e2e8f0', // Slate-200
-  },
-  typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h1: { fontWeight: 700, letterSpacing: '-0.02em', color: '#1e293b' },
-    h2: { fontWeight: 700, letterSpacing: '-0.01em', color: '#1e293b' },
-    h3: { fontWeight: 600, color: '#1e293b' },
-    h4: { fontWeight: 600, color: '#1e293b' },
-    h5: { fontWeight: 600, color: '#334155' },
-    h6: { fontWeight: 600, color: '#334155' },
-    button: { textTransform: 'none', fontWeight: 600, letterSpacing: '0.02em' },
-  },
-  shape: {
-    borderRadius: 10,
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: '8px',
-          padding: '8px 18px',
-          boxShadow: 'none',
-          '&:hover': {
-            boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.05)',
-            backgroundColor: '#3b82f6',
-            color: '#ffffff'
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: '12px',
+            padding: '10px 24px',
+            boxShadow: 'none',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              transform: 'translateY(-1px)',
+            },
           },
-          transition: 'all 0.2s ease-in-out',
-        },
-        containedPrimary: {
-          backgroundColor: '#60a5fa',
-          color: '#ffffff',
-          '&:hover': {
-            backgroundColor: '#3b82f6',
+          contained: {
+            '&:hover': {
+              boxShadow: `0 10px 15px -3px ${primaryColor}44`,
+            }
           }
         },
-        outlined: {
-          borderColor: '#e2e8f0',
-          color: '#475569',
-          '&:hover': {
-            backgroundColor: '#f1f5f9',
-            borderColor: '#cbd5e1',
-            color: '#334155',
-            boxShadow: 'none'
-          }
-        }
       },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          backgroundImage: 'none',
-          boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)', // Minimal shadow
-          border: '1px solid #e2e8f0',
-        },
-        elevation1: {
-          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)',
-        },
-        elevation2: {
-          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)',
-        }
-      },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
-          border: '1px solid #e2e8f0',
-          transition: 'all 0.2s ease-in-out',
-          '&:hover': {
-            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)',
-            borderColor: '#cbd5e1'
+      MuiPaper: {
+        styleOverrides: {
+          root: {
+            backgroundImage: 'none',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+            border: '1px solid rgba(226, 232, 240, 0.8)',
           },
         },
       },
-    },
-    MuiDrawer: {
-      styleOverrides: {
-        paper: {
-          borderRight: '1px solid #e2e8f0',
-          boxShadow: 'none',
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            borderRadius: '20px',
+            padding: '16px',
+            border: '1px solid rgba(226, 232, 240, 0.8)',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.02)',
+            '&:hover': {
+              borderColor: primaryColor,
+              boxShadow: `0 20px 25px -5px ${primaryColor}15`,
+            },
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(12px)',
+            borderBottom: '1px solid #e2e8f0',
+            boxShadow: 'none',
+            color: '#0f172a',
+          }
         }
       }
     },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
-          boxShadow: 'none',
-        }
-      }
-    }
-  },
+  };
+  return createTheme(themeOptions);
 };
-
-export const theme = createTheme(themeOptions);

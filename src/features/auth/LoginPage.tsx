@@ -7,7 +7,7 @@ import api from '../../api/axiosConfig';
 import { useTranslation } from 'react-i18next';
 
 export default function LoginPage() {
-  const { t } = useTranslation();
+  const { } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

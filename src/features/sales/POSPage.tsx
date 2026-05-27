@@ -3,7 +3,8 @@ import {
   Box, Typography, Grid, Paper, TextField, Button, List, 
   ListItem, ListItemText, Divider, IconButton, MenuItem,
   ToggleButton, ToggleButtonGroup, Tooltip, Dialog, 
-  DialogTitle, DialogContent, DialogActions, Chip 
+  DialogTitle, DialogContent, DialogActions, Chip, CircularProgress,
+  Card, CardContent, InputAdornment, Avatar
 } from '@mui/material';
 import { 
   Search as SearchIcon, 
@@ -14,12 +15,28 @@ import {
   CreditCard as CardIcon,
   AccountBalance as BankIcon,
   History as HistoryIcon,
-  Sync as SyncIcon
+  Sync as SyncIcon,
+  PersonAdd as PersonAddIcon,
+  Pause as PauseIcon,
+  PlayArrow as PlayArrowIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
+
+function Clock() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main', fontFamily: 'monospace', fontSize: '1rem' }}>
+      {time.toLocaleTimeString()}
+    </Typography>
+  );
+}
 import { getComputerUID } from '../../utils/computer';
 import { RegisterOpenDialog, RegisterCloseDialog } from './RegisterDialogs';
 
@@ -35,6 +52,26 @@ export default function POSPage() {
   const [openHistory, setOpenHistory] = useState(false);
   const [openRegisterDialog, setOpenRegisterDialog] = useState(false);
   const [closeRegisterDialog, setCloseRegisterDialog] = useState(false);
+  const [openFiscalDialog, setOpenFiscalDialog] = useState(false);
+  const [openParkedDialog, setOpenParkedDialog] = useState(false);
+  
+  // Fiscal Data State
+  const [fiscalData, setFiscalData] = useState({ tax_id: '', name: '', phone: '', address: '' });
+
+  // High performance rate state to avoid keypress lags
+  const [localRateInput, setLocalRateInput] = useState('1.0');
+
+  useEffect(() => {
+    setLocalRateInput(exchangeRate.toString());
+  }, [exchangeRate]);
+
+  const handleRateSubmit = () => {
+    const val = Number(localRateInput);
+    if (!isNaN(val) && val > 0) {
+      setExchangeRate(val);
+      updateRateMutation.mutate(val);
+    }
+  };
   
   const { user, cashSession, setCashSession } = useAppStore();
   
@@ -46,7 +83,13 @@ export default function POSPage() {
     enabled: openHistory
   });
 
-  const { isLoading: loadingSession } = useQuery({
+  const { data: parkedSales = [], isLoading: loadingParked } = useQuery({
+    queryKey: ['parked-sales'],
+    queryFn: async () => (await api.get('/sales/on-hold')).data,
+    enabled: openParkedDialog
+  });
+
+  const { } = useQuery({
     queryKey: ['cash-session'],
     queryFn: async () => {
       try {
@@ -104,12 +147,34 @@ export default function POSPage() {
 
   const createSaleMutation = useMutation({
     mutationFn: (saleData: any) => api.post('/sales/', saleData),
-    onSuccess: (response) => {
-      alert(t('Sale completed successfully!'));
-      setCart([]);
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      window.open(`${api.defaults.baseURL}/sales/${response.data.id}/pdf`, '_blank');
+    onSuccess: (response, variables) => {
+      if (variables.status === 'ON_HOLD') {
+        alert(t('Venta puesta en espera'));
+        setCart([]);
+      } else {
+        alert(t('Sale completed successfully!'));
+        setCart([]);
+        queryClient.invalidateQueries({ queryKey: ['sales'] });
+        window.open(`${api.defaults.baseURL}/sales/${response.data.id}/invoice`, '_blank');
+      }
     },
+  });
+
+  const completeParkedMutation = useMutation({
+    mutationFn: (saleId: number) => api.put(`/sales/${saleId}/complete`),
+    onSuccess: () => {
+      alert('Venta completada con éxito');
+      setCart([]);
+      queryClient.invalidateQueries({ queryKey: ['parked-sales'] });
+      setOpenParkedDialog(false);
+    }
+  });
+
+  const createCustomerMutation = useMutation({
+    mutationFn: (data: any) => api.post('/sales/customers/fiscal', data),
+    onSuccess: (res) => {
+      return res.data;
+    }
   });
 
   const addToCart = (product: any) => {
@@ -121,7 +186,41 @@ export default function POSPage() {
     }
   };
 
-  const handleCheckout = () => {
+  const handleInitiateCheckout = () => {
+    if (!warehouseId || cart.length === 0) return;
+    setOpenFiscalDialog(true);
+  };
+
+  const handleProcessFiscalSale = async () => {
+    let customerId = 1; // Default
+    if (fiscalData.tax_id && fiscalData.name) {
+      try {
+        const res = await createCustomerMutation.mutateAsync(fiscalData);
+        customerId = res.data.id;
+      } catch (e) {
+        alert("Error procesando datos del cliente");
+        return;
+      }
+    }
+    
+    setOpenFiscalDialog(false);
+    createSaleMutation.mutate({
+      customer_id: customerId,
+      warehouse_id: warehouseId,
+      payment_method: paymentMethod,
+      currency: currency,
+      exchange_rate: currency === 'USD' ? 1 : exchangeRate,
+      cash_session_id: cashSession?.id,
+      status: "COMPLETED",
+      details: cart.map(item => ({
+        product_id: item.id,
+        quantity: item.qty,
+        unit_price: item.price
+      }))
+    });
+  };
+
+  const handleParkSale = () => {
     if (!warehouseId || cart.length === 0) return;
     createSaleMutation.mutate({
       customer_id: 1,
@@ -130,12 +229,22 @@ export default function POSPage() {
       currency: currency,
       exchange_rate: currency === 'USD' ? 1 : exchangeRate,
       cash_session_id: cashSession?.id,
+      status: "ON_HOLD",
       details: cart.map(item => ({
         product_id: item.id,
         quantity: item.qty,
         unit_price: item.price
       }))
     });
+  };
+
+  const loadParkedSale = (sale: any) => {
+    // In a real app we might just set the sale ID and call complete endpoint later
+    // but here we just copy the items to the cart and will complete the sale using the put endpoint
+    // To keep it simple, we will just call the complete endpoint directly and clear the cart
+    if (confirm("¿Cobrar esta venta en espera por " + sale.total + "?")) {
+      completeParkedMutation.mutate(sale.id);
+    }
   };
 
   const filteredProducts = products.filter((p: any) => 
@@ -151,70 +260,166 @@ export default function POSPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>{t('Point of Sale')}</Typography>
-          {cashSession && (
-            <Typography variant="subtitle2" color="primary.main" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {cashSession.register.name} | Usuario: {user?.email?.split('@')[0]}
-            </Typography>
-          )}
-        </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {/* Exchange Rate Edit */}
-          <Paper sx={{ px: 2, py: 1, bgcolor: 'primary.50', border: '1px solid', borderColor: 'primary.100', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Grid container spacing={3} sx={{ mb: 4, alignItems: 'center' }}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {useAppStore.getState().tenant?.logo_url ? (
+              <Box component="img" src={useAppStore.getState().tenant?.logo_url} sx={{ height: 50, width: 'auto', borderRadius: 1 }} />
+            ) : (
+              <Box sx={{ bgcolor: 'primary.main', color: 'white', p: 1.5, borderRadius: '12px', display: 'flex' }}>
+                <PaymentIcon fontSize="large" />
+              </Box>
+            )}
             <Box>
-              <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700, display: 'block' }}>
-                {loadingRate ? 'Cargando BCV...' : 'Tasa Oficial BCV'}
+              <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', lineHeight: 1.1, letterSpacing: '-1.5px' }}>
+                {useAppStore.getState().tenant?.name || t('Point of Sale')}
               </Typography>
-              <TextField 
-                variant="standard" 
-                size="small" 
-                value={exchangeRate}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setExchangeRate(val);
-                  updateRateMutation.mutate(val);
-                }}
-                sx={{ width: 80, '& .MuiInput-input': { fontWeight: 800, color: 'primary.dark' } }}
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 0.5 }}>
+                <Clock />
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                  • {cashSession?.register.name} • Cajero: {user?.username || user?.email?.split('@')[0]}
+                </Typography>
+              </Box>
             </Box>
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              <Tooltip title="Sincronizar con BCV">
-                <span>
-                  <IconButton size="small" color="primary" onClick={fetchBCVRate} disabled={loadingRate}>
-                    <SyncIcon fontSize="small" sx={{ animation: loadingRate ? 'spin 2s linear infinite' : 'none' }} />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Ver Historial">
-                <span>
-                  <IconButton size="small" color="primary" onClick={() => setOpenHistory(true)}>
-                    <HistoryIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Box>
-          </Paper>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <WarehouseIcon color="action" fontSize="small" />
-            <TextField
-              select
-              size="small"
-              label={t('Inventory')}
-              value={warehouseId}
-              onChange={(e) => setWarehouseId(Number(e.target.value))}
-              sx={{ width: 200 }}
-            >
-              {warehouses.map((w: any) => (
-                <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
-              ))}
-            </TextField>
           </Box>
-        </Box>
-      </Box>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 5 }}>
+          {/* Centered Premium Exchange Rate Widget */}
+          <Card 
+            variant="outlined" 
+            sx={{ 
+              px: 2.5, 
+              py: 1, 
+              bgcolor: 'background.paper', 
+              border: '1.5px solid', 
+              borderColor: 'primary.200', 
+              borderRadius: '16px', 
+              boxShadow: '0 4px 20px rgba(37, 99, 235, 0.06)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              gap: 2,
+              mx: 'auto',
+              width: '100%',
+              maxWidth: 480
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Avatar sx={{ bgcolor: 'primary.50', color: 'primary.main', width: 38, height: 38 }}>
+                <BankIcon fontSize="small" />
+              </Avatar>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', lineHeight: 1 }}>
+                  Tasa Oficial BCV
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 900, color: 'text.primary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  {exchangeRate.toFixed(2)} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#6b7280' }}>VES</span>
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Divider orientation="vertical" flexItem />
+            
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}>
+              <TextField 
+                size="small" 
+                label="Editar"
+                value={localRateInput}
+                onChange={(e) => setLocalRateInput(e.target.value)}
+                onBlur={handleRateSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleRateSubmit();
+                  }
+                }}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton size="small" color="primary" onClick={handleRateSubmit}>
+                          <PaymentIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }
+                }}
+                sx={{ 
+                  width: 100, 
+                  '& .MuiOutlinedInput-root': { 
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    height: '34px'
+                  },
+                  '& .MuiInputLabel-root': {
+                    fontSize: '0.8rem',
+                    transform: 'translate(14px, 8px) scale(1)'
+                  },
+                  '& .MuiInputLabel-shrink': {
+                    transform: 'translate(14px, -6px) scale(0.75)'
+                  }
+                }}
+              />
+              <Tooltip title="Sincronizar con BCV">
+                <IconButton 
+                  size="small"
+                  color="primary" 
+                  onClick={fetchBCVRate} 
+                  disabled={loadingRate}
+                  sx={{ bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' }, width: 34, height: 34 }}
+                >
+                  <SyncIcon fontSize="small" sx={{ animation: loadingRate ? 'spin 2s linear infinite' : 'none' }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Historial de Tasas">
+                <IconButton 
+                  size="small"
+                  color="secondary" 
+                  onClick={() => setOpenHistory(true)}
+                  sx={{ bgcolor: 'secondary.50', '&:hover': { bgcolor: 'secondary.100' }, width: 34, height: 34 }}
+                >
+                  <HistoryIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', maxWidth: 180 }}>
+              <WarehouseIcon color="action" fontSize="small" />
+              <TextField
+                select
+                size="small"
+                fullWidth
+                label={t('Inventory')}
+                value={warehouseId}
+                onChange={(e) => setWarehouseId(Number(e.target.value))}
+                slotProps={{
+                  select: {
+                    sx: { borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem', height: '34px' }
+                  }
+                }}
+              >
+                {warehouses.map((w: any) => (
+                  <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>
+                ))}
+              </TextField>
+            </Box>
+            <Tooltip title="Ventas en Espera">
+              <IconButton 
+                color="secondary" 
+                onClick={() => setOpenParkedDialog(true)}
+                sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '10px', p: '6px' }}
+              >
+                <PlayArrowIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Grid>
+      </Grid>
       
       <Grid container spacing={4}>
         <Grid size={{ xs: 12, md: 8 }}>
@@ -228,18 +433,77 @@ export default function POSPage() {
             />
           </Paper>
 
-          <Grid container spacing={2}>
+          <Grid container spacing={2.5}>
             {filteredProducts.map((prod: any) => (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={prod.id}>
-                <Paper 
+                <Card 
                   elevation={0} 
-                  sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', cursor: 'pointer', '&:hover': { borderColor: 'primary.main', bgcolor: 'primary.50' } }}
-                  onClick={() => addToCart(prod)}
+                  sx={{ 
+                    borderRadius: '16px', 
+                    border: '1.5px solid', 
+                    borderColor: 'divider', 
+                    cursor: prod.stock > 0 ? 'pointer' : 'not-allowed', 
+                    position: 'relative',
+                    overflow: 'hidden',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    opacity: prod.stock > 0 ? 1 : 0.65,
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                    '&:hover': prod.stock > 0 ? { 
+                      borderColor: 'primary.main', 
+                      boxShadow: '0 8px 24px rgba(37, 99, 235, 0.12)',
+                      transform: 'translateY(-4px)'
+                    } : {}
+                  }}
+                  onClick={() => {
+                    if (prod.stock > 0) {
+                      addToCart(prod);
+                    }
+                  }}
                 >
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{prod.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">${prod.price.toFixed(2)}</Typography>
-                  <Typography variant="caption" color="text.disabled">SKU: {prod.sku}</Typography>
-                </Paper>
+                  <Box sx={{ 
+                    height: '75px', 
+                    background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', 
+                    color: 'white', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    px: 2,
+                    position: 'relative'
+                  }}>
+                    <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: 'white', width: 36, height: 36, fontWeight: 800, fontSize: '0.9rem' }}>
+                      {prod.name.substring(0, 2).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ ml: 1.5, overflow: 'hidden' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.85rem' }}>
+                        {prod.name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ opacity: 0.8, display: 'block', fontSize: '0.75rem' }}>
+                        SKU: {prod.sku}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
+                  <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Chip 
+                        size="small"
+                        label={prod.stock <= 0 ? 'Agotado' : (prod.stock <= prod.min_stock ? `Bajo Stock (${prod.stock})` : `En Stock (${prod.stock})`)} 
+                        color={prod.stock <= 0 ? 'error' : (prod.stock <= prod.min_stock ? 'warning' : 'success')} 
+                        sx={{ fontWeight: 700, borderRadius: '6px', fontSize: '0.75rem', height: '22px' }}
+                      />
+                    </Box>
+                    
+                    <Box sx={{ mt: 'auto' }}>
+                      <Typography variant="h6" color="primary.main" sx={{ fontWeight: 850, lineHeight: 1.1, fontSize: '1.15rem' }}>
+                        ${prod.price.toFixed(2)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                        ≈ {(prod.price * exchangeRate).toFixed(2)} VES
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
               </Grid>
             ))}
           </Grid>
@@ -254,16 +518,52 @@ export default function POSPage() {
             <List sx={{ flexGrow: 1, overflow: 'auto', p: 0 }}>
               {cart.map((item, idx) => (
                 <Box key={idx}>
-                  <ListItem secondaryAction={
-                    <IconButton edge="end" color="error" onClick={() => setCart(cart.filter((_, i) => i !== idx))}>
-                      <DeleteIcon />
-                    </IconButton>
-                  }>
+                  <ListItem 
+                    secondaryAction={
+                      <IconButton edge="end" color="error" size="small" onClick={() => setCart(cart.filter((_, i) => i !== idx))}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    }
+                    sx={{ py: 1.5 }}
+                  >
                     <ListItemText 
-                      primary={<Typography sx={{ fontWeight: 500 }}>{item.name}</Typography>} 
-                      secondary={`${item.qty} x $${item.price.toFixed(2)}`} 
+                      primary={<Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>{item.name}</Typography>} 
+                      secondary={
+                        <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center', mt: 0.5 }}>
+                          <Button 
+                            variant="outlined" 
+                            size="small" 
+                            sx={{ minWidth: 24, height: 24, p: 0, borderRadius: '4px', border: '1px solid' }}
+                            onClick={() => {
+                              if (item.qty > 1) {
+                                  setCart(cart.map((c, i) => i === idx ? { ...c, qty: c.qty - 1 } : c));
+                              } else {
+                                  setCart(cart.filter((_, i) => i !== idx));
+                              }
+                            }}
+                          >
+                            -
+                          </Button>
+                          <Typography variant="body2" sx={{ fontWeight: 700, px: 0.5 }}>{item.qty}</Typography>
+                          <Button 
+                            variant="outlined" 
+                            size="small" 
+                            sx={{ minWidth: 24, height: 24, p: 0, borderRadius: '4px', border: '1px solid' }}
+                            onClick={() => {
+                              setCart(cart.map((c, i) => i === idx ? { ...c, qty: c.qty + 1 } : c));
+                            }}
+                          >
+                            +
+                          </Button>
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            x ${item.price.toFixed(2)}
+                          </Typography>
+                        </Box>
+                      } 
                     />
-                    <Typography sx={{ fontWeight: 600 }}>${(item.price * item.qty).toFixed(2)}</Typography>
+                    <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', mr: 2 }}>
+                      ${(item.price * item.qty).toFixed(2)}
+                    </Typography>
                   </ListItem>
                   <Divider />
                 </Box>
@@ -336,13 +636,29 @@ export default function POSPage() {
                 fullWidth 
                 size="large" 
                 startIcon={<PaymentIcon />} 
-                onClick={handleCheckout}
+                onClick={handleInitiateCheckout}
                 disabled={cart.length === 0 || !warehouseId}
-                loading={createSaleMutation.isPending}
-                sx={{ py: 2, fontSize: '1.2rem', borderRadius: '12px', boxShadow: '0 8px 16px rgba(96, 165, 250, 0.2)' }}
+                loading={createSaleMutation.isPending && !openFiscalDialog}
+                sx={{ py: 1.5, fontSize: '1.2rem', borderRadius: '12px', boxShadow: '0 8px 16px rgba(96, 165, 250, 0.2)' }}
               >
                 {t('Complete Sale')}
               </Button>
+
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid size={12}>
+                  <Button 
+                    variant="outlined" 
+                    color="warning" 
+                    fullWidth 
+                    startIcon={<PauseIcon />}
+                    onClick={handleParkSale}
+                    disabled={cart.length === 0}
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    Poner en Espera
+                  </Button>
+                </Grid>
+              </Grid>
 
               <Button 
                 variant="outlined" 
@@ -393,6 +709,87 @@ export default function POSPage() {
           <Button onClick={() => setOpenHistory(false)} fullWidth variant="outlined" sx={{ borderRadius: 3 }}>
             {t('Close')}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Fiscal Data Dialog */}
+      <Dialog open={openFiscalDialog} onClose={() => setOpenFiscalDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PersonAddIcon color="primary" /> Datos de Cliente (Factura Fiscal)
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Ingrese los datos del cliente. Si el RIF ya existe, los datos se actualizarán. Puede dejar los campos en blanco para consumidor final.
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField 
+                label="RIF / CI (tax_id)" 
+                fullWidth 
+                value={fiscalData.tax_id}
+                onChange={e => setFiscalData({...fiscalData, tax_id: e.target.value})}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField 
+                label="Nombre / Razón Social" 
+                fullWidth 
+                value={fiscalData.name}
+                onChange={e => setFiscalData({...fiscalData, name: e.target.value})}
+              />
+            </Grid>
+            <Grid size={12}>
+              <TextField 
+                label="Dirección" 
+                fullWidth 
+                value={fiscalData.address}
+                onChange={e => setFiscalData({...fiscalData, address: e.target.value})}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField 
+                label="Teléfono" 
+                fullWidth 
+                value={fiscalData.phone}
+                onChange={e => setFiscalData({...fiscalData, phone: e.target.value})}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpenFiscalDialog(false)} color="inherit">Omitir y Facturar</Button>
+          <Button onClick={handleProcessFiscalSale} variant="contained" color="primary" disabled={createCustomerMutation.isPending || createSaleMutation.isPending}>
+            Confirmar y Facturar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Parked Sales Dialog */}
+      <Dialog open={openParkedDialog} onClose={() => setOpenParkedDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PauseIcon color="warning" /> Ventas en Espera
+        </DialogTitle>
+        <DialogContent dividers>
+          {loadingParked ? <CircularProgress /> : parkedSales.length === 0 ? <Typography>No hay ventas en espera.</Typography> : (
+            <List>
+              {parkedSales.map((sale: any) => (
+                <Box key={sale.id}>
+                  <ListItem secondaryAction={
+                    <Button variant="contained" size="small" onClick={() => loadParkedSale(sale)}>Cobrar</Button>
+                  }>
+                    <ListItemText 
+                      primary={`Venta #${sale.id} - ${new Date(sale.created_at).toLocaleTimeString()}`}
+                      secondary={`Subtotal: $${sale.subtotal} | Total: $${sale.total}`}
+                    />
+                  </ListItem>
+                  <Divider />
+                </Box>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenParkedDialog(false)}>Cerrar</Button>
         </DialogActions>
       </Dialog>
 
