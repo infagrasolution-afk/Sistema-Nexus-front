@@ -2,7 +2,6 @@ services:
   - type: web
     name: erp-frontend
     env: static
-    plan: free
     buildCommand: "npm install && npm run build"
     staticPublishPath: dist
     envVars:
