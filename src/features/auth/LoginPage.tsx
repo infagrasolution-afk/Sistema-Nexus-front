@@ -264,10 +264,24 @@ export default function LoginPage() {
               textAlign: 'center', 
               fontWeight: 600, 
               letterSpacing: '0.5px', 
-              textTransform: 'uppercase' 
+              textTransform: 'uppercase',
+              mb: 1
             }}
           >
             Multi-Empresa • Licencia Activa
+          </Typography>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              display: 'block', 
+              textAlign: 'center', 
+              fontWeight: 700, 
+              fontSize: '0.75rem',
+              color: 'primary.main',
+              letterSpacing: '0.5px'
+            }}
+          >
+            Elaborado por Infagrasolution
           </Typography>
         </Box>
       </Paper>

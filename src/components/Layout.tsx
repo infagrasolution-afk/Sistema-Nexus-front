@@ -324,6 +324,15 @@ export default function Layout() {
           </Box>
         )}
         <Outlet />
+        
+        {/* Footer Info */}
+        {location.pathname !== '/sales' && (
+          <Box sx={{ mt: 'auto', pt: 6, pb: 4, textAlign: 'center', width: '100%' }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.disabled', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+              NEXUS ERP v2.0 • Elaborado por <strong>Infagrasolution</strong>
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* Floating WhatsApp Support Button */}
