@@ -12,8 +12,10 @@ import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function UsersPage() {
+  const { user } = useAppStore();
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [username, setUsername] = useState('');
@@ -107,9 +109,23 @@ export default function UsersPage() {
       return;
     }
 
-    const selectedModules = roleId === 'admin'
-      ? 'sales,inventory,purchases,accounting,users,settings,reports,treasury'
-      : 'sales,inventory';
+    // Current user's modules (defines what the tenant is licensed for)
+    const activeModules = user?.modules ? user.modules.split(',').map((m: string) => m.trim()) : [];
+
+    let selectedModulesList: string[] = [];
+    if (roleId === 'admin') {
+      // Admin gets all active modules contracted by the tenant
+      selectedModulesList = activeModules;
+    } else {
+      // Basic user gets only basic operational modules that the tenant has contracted
+      const basicDefaults = ['sales', 'inventory', 'purchases', 'treasury'];
+      selectedModulesList = activeModules.filter(m => basicDefaults.includes(m));
+      // If the list is empty, fall back to whatever they have
+      if (selectedModulesList.length === 0 && activeModules.length > 0) {
+        selectedModulesList = [activeModules[0]];
+      }
+    }
+    const selectedModules = selectedModulesList.join(',');
 
     const payload: any = {
       username,
