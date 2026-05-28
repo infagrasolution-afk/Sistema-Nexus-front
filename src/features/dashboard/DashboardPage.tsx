@@ -64,6 +64,7 @@ const ALL_MODULES = [
     color: '#64748b', // Slate
     reqId: 'users', // Use users as base requirement
     subModules: [
+      { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
       { id: 'purchases', title: 'Compras y Proveedores', path: '/purchases', icon: ShoppingCart },
       { id: 'treasury', title: 'Tesorería y Caja', path: '/cash', icon: AccountBalanceWallet },
       { id: 'users', title: 'Usuarios y Permisos', path: '/users', icon: People },
