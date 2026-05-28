@@ -89,7 +89,7 @@ export default function UsersPage() {
     setUsername('');
     setEmail('');
     setPassword('');
-    setRoleId('');
+    setRoleId('basic');
     setModules('sales,inventory');
     setErrorMsg('');
     setOpen(true);
@@ -100,7 +100,8 @@ export default function UsersPage() {
     setUsername(user.username);
     setEmail(user.email || '');
     setPassword(''); // No mostrar hashed_password por seguridad
-    setRoleId(user.role_id || '');
+    const isUserAdmin = user.modules?.includes('users');
+    setRoleId(isUserAdmin ? 'admin' : 'basic');
     setModules(user.modules || '');
     setErrorMsg('');
     setOpen(true);
@@ -119,11 +120,15 @@ export default function UsersPage() {
       return;
     }
 
+    const selectedModules = roleId === 'admin'
+      ? 'sales,inventory,purchases,accounting,users,settings,reports,treasury'
+      : 'sales,inventory';
+
     const payload: any = {
       username,
       email: email || null,
-      modules: modules || null,
-      role_id: roleId ? Number(roleId) : null,
+      modules: selectedModules,
+      role_id: null,
     };
 
     if (password) {
@@ -148,18 +153,16 @@ export default function UsersPage() {
     )},
     { field: 'email', headerName: 'Correo', flex: 1.2 },
     { field: 'role', headerName: 'Rol / Permisos', flex: 1.2, renderCell: (params) => {
-      const roleName = params.value?.name;
-      return roleName ? (
+      const isUserAdmin = params.row.modules?.includes('users');
+      return (
         <Chip 
           icon={<SecurityIcon fontSize="small" />} 
-          label={roleName} 
-          color="primary" 
-          variant="outlined" 
+          label={isUserAdmin ? "Administrador" : "Usuario Básico"} 
+          color={isUserAdmin ? "primary" : "default"} 
+          variant={isUserAdmin ? "filled" : "outlined"} 
           size="small" 
           sx={{ fontWeight: 700 }}
         />
-      ) : (
-        <Typography variant="caption" color="text.disabled">Sin Rol asignado</Typography>
       );
     }},
     { field: 'modules', headerName: 'Módulos', flex: 1, renderCell: (params) => (
@@ -314,32 +317,18 @@ export default function UsersPage() {
               />
             </Grid>
             
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 12 }}>
               <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}>
-                <InputLabel>Rol Asignado</InputLabel>
+                <InputLabel>Rol del Usuario</InputLabel>
                 <Select
                   value={roleId}
-                  label="Rol Asignado"
+                  label="Rol del Usuario"
                   onChange={(e) => setRoleId(e.target.value)}
                 >
-                  <MenuItem value=""><em>Ninguno (Sin permisos especiales)</em></MenuItem>
-                  {roles.map((r: any) => (
-                    <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
-                  ))}
+                  <MenuItem value="basic">Usuario Básico (Ventas e Inventario solamente)</MenuItem>
+                  <MenuItem value="admin">Administrador (Acceso total a todos los módulos contratados)</MenuItem>
                 </Select>
               </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Módulos Permitidos (separados por coma)"
-                fullWidth
-                placeholder="sales,inventory,purchases"
-                value={modules}
-                onChange={(e) => setModules(e.target.value)}
-                helperText="Ej: sales,inventory,purchases,treasury,accounting"
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
-              />
             </Grid>
           </Grid>
 

@@ -35,11 +35,12 @@ const ALL_MODULES = [
     icon: Inventory, 
     color: '#10b981', // Emerald Green
     reqId: 'inventory',
-    subModules: [
       { id: 'catalog', title: 'Catálogo de Productos', path: '/catalog', icon: ViewModule },
       { id: 'warehouses', title: 'Almacenes y Ubicaciones', path: '/warehouses', icon: Warehouse },
       { id: 'movements', title: 'Movimientos de Stock', path: '/inventory', icon: CompareArrows },
       { id: 'adjustments', title: 'Ajustes de Inventario', path: '/inventory/adjustments', icon: Assessment },
+      { id: 'charges', title: 'Cargos de Inventario', path: '/inventory/charges', icon: CompareArrows },
+      { id: 'discharges', title: 'Descargos de Inventario', path: '/inventory/discharges', icon: CompareArrows },
       { id: 'transfers', title: 'Transferencias', path: '/transfers', icon: CompareArrows },
       { id: 'dispatch_notes', title: 'Notas de Despacho', path: '/inventory/dispatch-notes', icon: LocalShipping },
     ]
@@ -77,7 +78,7 @@ const ALL_MODULES = [
 export default function DashboardPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAppStore();
+  const { user, tenant } = useAppStore();
   const [openPosModal, setOpenPosModal] = useState(false);
 
   const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting,users,settings,reports,treasury';
@@ -127,7 +128,7 @@ export default function DashboardPage() {
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>
-          {t('Welcome back')}, {user?.username || 'Usuario'}
+          Bienvenido a {tenant?.name || 'NEXUS ERP'}, {user?.username || 'Usuario'}
         </Typography>
         <Typography variant="h5" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
           Potencia tu negocio con NEXUS ERP

@@ -35,8 +35,20 @@ export default function AdminPage() {
     tax_id: '', 
     modules: ['sales', 'inventory', 'accounting', 'users'],
     admin_username: '',
-    admin_password: ''
+    admin_password: '',
+    logo_url: ''
   });
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewCompany((prev) => ({ ...prev, logo_url: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
   
   const queryClient = useQueryClient();
 
@@ -85,7 +97,8 @@ export default function AdminPage() {
         tax_id: '', 
         modules: ['sales', 'inventory', 'accounting', 'users'],
         admin_username: '',
-        admin_password: ''
+        admin_password: '',
+        logo_url: ''
       });
     }
   });
@@ -244,6 +257,29 @@ export default function AdminPage() {
               value={newCompany.tax_id} 
               onChange={(e) => setNewCompany({...newCompany, tax_id: e.target.value})} 
             />
+
+            <Button
+              variant="outlined"
+              component="label"
+              sx={{ mt: 1, borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+            >
+              Subir Logo de la Empresa
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleLogoChange}
+              />
+            </Button>
+            {newCompany.logo_url && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                <img 
+                  src={newCompany.logo_url} 
+                  alt="Logo Preview" 
+                  style={{ maxHeight: 60, borderRadius: '8px', objectFit: 'contain' }} 
+                />
+              </Box>
+            )}
             
             <FormControl fullWidth sx={{ mt: 1 }}>
               <InputLabel id="modules-label">Módulos Comprados</InputLabel>

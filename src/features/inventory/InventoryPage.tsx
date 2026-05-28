@@ -23,7 +23,8 @@ const defaultFormData = {
   max_stock: 0,
   unit_of_measure: 'unit',
   track_batches: false,
-  track_expiry: false
+  track_expiry: false,
+  image_url: ''
 };
 
 export default function InventoryPage() {
@@ -127,7 +128,8 @@ export default function InventoryPage() {
       max_stock: product.max_stock || 0,
       unit_of_measure: product.unit_of_measure || 'unit',
       track_batches: product.track_batches || false,
-      track_expiry: product.track_expiry || false
+      track_expiry: product.track_expiry || false,
+      image_url: product.image_url || ''
     });
     setSelectedProductId(product.id);
     setDialogOpen(true);
@@ -137,6 +139,20 @@ export default function InventoryPage() {
     setDialogOpen(false);
     setFormData(defaultFormData);
     setSelectedProductId(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          image_url: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -508,6 +524,31 @@ export default function InventoryPage() {
                   <MenuItem value="gal">GAL - Galón</MenuItem>
                   <MenuItem value="blt">BLT - Bulto</MenuItem>
                 </TextField>
+              </Grid>
+              <Grid size={12}>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  sx={{ borderRadius: '8px', textTransform: 'none', height: '40px' }}
+                >
+                  {formData.image_url ? 'Cambiar Imagen del Producto' : 'Subir Imagen del Producto'}
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                </Button>
+                {formData.image_url && (
+                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                    <img 
+                      src={formData.image_url} 
+                      alt="Preview" 
+                      style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px', objectFit: 'contain', border: '1px solid #ddd' }} 
+                    />
+                  </Box>
+                )}
               </Grid>
             </Grid>
           </DialogContent>
