@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, AppBar, Toolbar, Typography, IconButton, Avatar, Button, Menu, MenuItem, Divider, ListItemIcon, ListItemText } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, IconButton, Avatar, Button, Menu, MenuItem, Divider, ListItemIcon, ListItemText, Tooltip } from '@mui/material';
 import { 
   Dashboard as DashboardIcon, 
   Inventory as InventoryIcon, 
@@ -325,6 +325,49 @@ export default function Layout() {
         )}
         <Outlet />
       </Box>
+
+      {/* Floating WhatsApp Support Button */}
+      {user && (
+        <Tooltip title="Soporte Técnico" arrow placement="left">
+          <IconButton
+            href={`https://wa.me/584120161906?text=Hola%20NEXUS%20ERP%2C%20necesito%20soporte%20t%C3%A9cnico%20para%20mi%20empresa.%20Mi%20usuario%20es%20${user.username || 'invitado'}.`}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              position: 'fixed',
+              bottom: 24,
+              right: 24,
+              bgcolor: '#25D366',
+              color: 'white',
+              boxShadow: '0 8px 30px rgba(37, 211, 102, 0.4)',
+              width: 60,
+              height: 60,
+              zIndex: 9999,
+              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              '&:hover': {
+                bgcolor: '#128C7E',
+                transform: 'scale(1.1) rotate(10deg)',
+                boxShadow: '0 12px 40px rgba(37, 211, 102, 0.6)',
+              },
+              animation: 'pulseWhatsApp 2s infinite',
+              '@keyframes pulseWhatsApp': {
+                '0%': { boxShadow: '0 0 0 0 rgba(37, 211, 102, 0.7)' },
+                '70%': { boxShadow: '0 0 0 15px rgba(37, 211, 102, 0)' },
+                '100%': { boxShadow: '0 0 0 0 rgba(37, 211, 102, 0)' }
+              }
+            }}
+          >
+            <svg 
+              viewBox="0 0 24 24" 
+              width="32" 
+              height="32" 
+              fill="currentColor"
+            >
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.734-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.592 1.981 14.119.957 11.487.957c-5.43 0-9.85 4.37-9.855 9.801-.001 1.71.472 3.376 1.367 4.832L2.012 21.6l6.635-1.746zM17.421 15c-.342-.17-.2.022-1.129-.513-.304-.16-.507-.24-.761-.62-.254-.38-.761-1.58-.888-1.823-.127-.242-.253-.483-.443-.683-.19-.2-.38-.242-.57-.242-.19 0-.38.042-.57.242s-.76 1.012-.76 1.378c0 .367-.127.76-.38 1.012-.253.253-.761.507-1.14.761-.989.47-1.745.06-2.584-.338-.838-.398-1.56-.913-2.18-1.547-.62-.634-1.077-1.29-1.393-1.956-.316-.665-.253-1.076.064-1.393.317-.316.633-.76.95-1.14.19-.228.254-.38.38-.633.127-.253.063-.507-.032-.76-.095-.253-.76-1.836-.887-2.14-.127-.304-.253-.38-.443-.38-.19-.001-.38-.001-.57-.001-.19 0-.507.063-.761.316-.254.254-1.014 1.013-1.014 2.47 0 1.457 1.014 2.872 1.14 3.062.127.19 1.996 3.036 4.832 4.262.675.292 1.202.467 1.613.597.678.215 1.295.185 1.782.113.543-.08 1.67-.683 1.905-1.342.235-.658.235-1.223.165-1.342-.07-.119-.253-.2-.57-.37z"/>
+            </svg>
+          </IconButton>
+        </Tooltip>
+      )}
     </Box>
   );
 }

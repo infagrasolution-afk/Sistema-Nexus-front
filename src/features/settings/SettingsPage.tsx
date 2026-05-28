@@ -10,6 +10,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import api from '../../api/axiosConfig';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -50,8 +51,10 @@ export default function SettingsPage() {
 
   const updateMutation = useMutation({
     mutationFn: (updatedData: any) => api.put('/tenants/me', updatedData),
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['tenant-me'] });
+      queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
+      useAppStore.getState().setTenant(response.data); // Update store instantly!
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     },
