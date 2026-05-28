@@ -73,7 +73,7 @@ export default function AdminPage() {
         modulesJson[modId] = { is_active: true, expires_at: isoExp };
       });
 
-      return api.post('/admin/tenants', { ...data, modules: JSON.stringify(modulesJson) });
+      return api.post('/admin/tenants', { ...data, modules: modulesJson });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
