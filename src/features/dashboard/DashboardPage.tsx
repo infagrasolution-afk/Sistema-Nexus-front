@@ -35,6 +35,7 @@ const ALL_MODULES = [
     icon: Inventory, 
     color: '#10b981', // Emerald Green
     reqId: 'inventory',
+    subModules: [
       { id: 'catalog', title: 'Catálogo de Productos', path: '/catalog', icon: ViewModule },
       { id: 'warehouses', title: 'Almacenes y Ubicaciones', path: '/warehouses', icon: Warehouse },
       { id: 'movements', title: 'Movimientos de Stock', path: '/inventory', icon: CompareArrows },
