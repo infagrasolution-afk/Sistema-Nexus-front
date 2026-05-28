@@ -68,9 +68,11 @@ const ALL_MODULES = [
       { id: 'users', title: 'Usuarios y Permisos', path: '/users', icon: People },
       { id: 'reports', title: 'Reportes y Estadísticas', path: '/reports', icon: Assessment },
       { id: 'settings', title: 'Configuración General', path: '/settings', icon: Settings },
+      { id: 'manual', title: 'Manual de Usuario', path: '/manual', icon: Description },
     ]
   },
 ];
+
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -105,13 +107,16 @@ export default function DashboardPage() {
 
   return (
     <Box sx={{ 
+      width: '100%',
       maxWidth: 1400, 
       mx: 'auto', 
       mt: 2, 
       minHeight: '80vh',
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      px: { xs: 3, sm: 4, md: 6 },
+      py: 3
     }}>
       <Box sx={{ textAlign: 'center', mb: 8 }}>
         <Typography variant="h2" sx={{ 

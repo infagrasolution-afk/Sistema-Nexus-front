@@ -30,8 +30,10 @@ import DispatchNotesPage from './features/inventory/DispatchNotesPage';
 import CashPage from './features/treasury/CashPage';
 import ChargesPage from './features/inventory/ChargesPage';
 import DischargesPage from './features/inventory/DischargesPage';
+import ManualPage from './features/dashboard/ManualPage';
 
 const queryClient = new QueryClient();
+
 
 const ProtectedRoute = () => {
   const token = localStorage.getItem('token');
@@ -79,7 +81,9 @@ function App() {
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/ar" element={<AccountsReceivablePage />} />
               <Route path="/ap" element={<AccountsPayablePage />} />
+              <Route path="/manual" element={<ManualPage />} />
             </Route>
+
             
             {/* Catch-all route to redirect to login */}
             <Route path="*" element={<Navigate to="/login" replace />} />

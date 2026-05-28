@@ -259,7 +259,7 @@ export default function POSPage() {
   const totalLocal = totalUSD * exchangeRate;
 
   return (
-    <Box>
+    <Box sx={{ width: '100%', px: { xs: 2.5, sm: 4, md: 6 }, py: { xs: 2, md: 3 } }}>
       <Grid container spacing={3} sx={{ mb: 4, alignItems: 'center' }}>
         <Grid size={{ xs: 12, md: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
