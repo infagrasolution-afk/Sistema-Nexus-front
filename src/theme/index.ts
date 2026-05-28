@@ -1,12 +1,13 @@
 import { createTheme } from '@mui/material';
 import { type ThemeOptions } from '@mui/material/styles';
 
-export const getTheme = (primaryColor: string = '#2563eb') => {
+export const getTheme = (primaryColor?: string | null) => {
+  const safeColor = primaryColor || '#2563eb';
   const themeOptions: ThemeOptions = {
     palette: {
       mode: 'light',
       primary: {
-        main: primaryColor,
+        main: safeColor,
         contrastText: '#ffffff',
       },
       secondary: {
@@ -61,7 +62,7 @@ export const getTheme = (primaryColor: string = '#2563eb') => {
           },
           contained: {
             '&:hover': {
-              boxShadow: `0 10px 15px -3px ${primaryColor}44`,
+              boxShadow: `0 10px 15px -3px ${safeColor}44`,
             }
           }
         },
@@ -83,8 +84,8 @@ export const getTheme = (primaryColor: string = '#2563eb') => {
             border: '1px solid rgba(226, 232, 240, 0.8)',
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.02)',
             '&:hover': {
-              borderColor: primaryColor,
-              boxShadow: `0 20px 25px -5px ${primaryColor}15`,
+              borderColor: safeColor,
+              boxShadow: `0 20px 25px -5px ${safeColor}15`,
             },
           },
         },
