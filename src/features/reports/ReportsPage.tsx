@@ -4,7 +4,7 @@ import {
   List, ListItem, ListItemButton, ListItemIcon, ListItemText,
   Breadcrumbs, Link, Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, InputAdornment, Divider, CircularProgress, Chip
+  TextField, InputAdornment, Divider, CircularProgress, Chip, IconButton
 } from '@mui/material';
 import { 
   Description, 
@@ -12,12 +12,11 @@ import {
   Search as SearchIcon,
   Download as DownloadIcon,
   Close as CloseIcon,
-  TrendingUp as ProfitIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import useAppStore from '../../store/useAppStore';
+import { useAppStore } from '../../store/useAppStore';
 import api from '../../api/axiosConfig';
 
 const REPORT_CATEGORIES = [

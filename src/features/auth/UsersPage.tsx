@@ -16,12 +16,10 @@ import api from '../../api/axiosConfig';
 export default function UsersPage() {
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState<string | number>('');
-  const [modules, setModules] = useState('sales,inventory');
   
   const [errorMsg, setErrorMsg] = useState('');
   const queryClient = useQueryClient();
@@ -31,15 +29,6 @@ export default function UsersPage() {
     queryKey: ['users'],
     queryFn: async () => {
       const response = await api.get('/users/');
-      return response.data;
-    },
-  });
-
-  // 2. Obtener roles disponibles para asignar
-  const { data: roles = [] } = useQuery({
-    queryKey: ['available-roles'],
-    queryFn: async () => {
-      const response = await api.get('/users/roles');
       return response.data;
     },
   });
@@ -90,7 +79,6 @@ export default function UsersPage() {
     setEmail('');
     setPassword('');
     setRoleId('basic');
-    setModules('sales,inventory');
     setErrorMsg('');
     setOpen(true);
   };
@@ -102,7 +90,6 @@ export default function UsersPage() {
     setPassword(''); // No mostrar hashed_password por seguridad
     const isUserAdmin = user.modules?.includes('users');
     setRoleId(isUserAdmin ? 'admin' : 'basic');
-    setModules(user.modules || '');
     setErrorMsg('');
     setOpen(true);
   };

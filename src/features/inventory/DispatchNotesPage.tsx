@@ -382,7 +382,7 @@ export default function DispatchNotesPage() {
                   fullWidth
                   label="Almacén de Origen (Envía stock)"
                   value={sourceWarehouseId}
-                  onChange={(e) => setSourceWarehouseId(e.target.value as number)}
+                  onChange={(e) => setSourceWarehouseId(Number(e.target.value))}
                   size="small"
                   required
                 >
@@ -398,7 +398,7 @@ export default function DispatchNotesPage() {
                   fullWidth
                   label="Almacén de Destino (Recibe stock)"
                   value={destinationWarehouseId}
-                  onChange={(e) => setDestinationWarehouseId(e.target.value as number)}
+                  onChange={(e) => setDestinationWarehouseId(Number(e.target.value))}
                   size="small"
                   required
                 >

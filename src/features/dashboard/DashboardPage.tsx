@@ -9,7 +9,6 @@ import {
   Assessment, Timeline, LocalShipping, RequestQuote, Receipt, Description,
   AccountBalanceWallet
 } from '@mui/icons-material';
-import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
@@ -77,7 +76,6 @@ const ALL_MODULES = [
 
 
 export default function DashboardPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, tenant } = useAppStore();
   const [openPosModal, setOpenPosModal] = useState(false);
