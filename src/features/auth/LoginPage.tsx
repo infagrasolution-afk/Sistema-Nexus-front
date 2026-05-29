@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button, Avatar, Alert } from '@mui/material';
-import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
+import { Box, Paper, Typography, TextField, Button, Alert } from '@mui/material';
+
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
 import api from '../../api/axiosConfig';
@@ -116,72 +116,118 @@ export default function LoginPage() {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        backgroundImage: 'linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(20, 30, 55, 0.85) 100%), url(/login_bg.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        background: 'radial-gradient(circle at center, #0f1e36 0%, #030712 100%)',
+        position: 'relative',
+        overflow: 'hidden',
         p: 2
       }}
     >
+      {/* Cybernetic glowing background effects to match the reference image */}
+      <Box sx={{
+        position: 'absolute',
+        width: '600px',
+        height: '600px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(0,0,0,0) 70%)',
+        top: '15%',
+        left: '10%',
+        filter: 'blur(80px)',
+        zIndex: 0,
+        pointerEvents: 'none'
+      }} />
+      <Box sx={{
+        position: 'absolute',
+        width: '700px',
+        height: '700px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(0,0,0,0) 70%)',
+        bottom: '10%',
+        right: '5%',
+        filter: 'blur(100px)',
+        zIndex: 0,
+        pointerEvents: 'none'
+      }} />
+
+      {/* Cyber grid line rays */}
+      <Box sx={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundImage: 'radial-gradient(rgba(56, 189, 248, 0.08) 1.5px, transparent 1.5px)',
+        backgroundSize: '32px 32px',
+        opacity: 0.7,
+        zIndex: 0,
+        pointerEvents: 'none'
+      }} />
+
       <Paper 
         elevation={0} 
         sx={{ 
           p: { xs: 4, sm: 6 }, 
           width: '100%', 
           maxWidth: 450, 
-          borderRadius: '32px', 
+          borderRadius: '28px', 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
-          backgroundColor: 'rgba(255, 255, 255, 0.82)', 
-          backdropFilter: 'blur(25px) saturate(200%)', 
-          border: '1px solid rgba(255, 255, 255, 0.45)', 
-          boxShadow: '0 50px 100px -20px rgba(0,0,0,0.35), 0 30px 60px -30px rgba(0,0,0,0.4)',
+          backgroundColor: 'rgba(15, 23, 42, 0.65)', 
+          backdropFilter: 'blur(35px) saturate(210%)', 
+          border: '1px solid rgba(56, 189, 248, 0.25)', 
+          boxShadow: '0 0 60px rgba(14, 165, 233, 0.25), 0 30px 60px -15px rgba(0,0,0,0.8)',
           position: 'relative',
           overflow: 'hidden',
+          zIndex: 1,
           '&:before': {
             content: '""',
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            height: '6px',
-            background: 'linear-gradient(90deg, #2563eb 0%, #10b981 100%)',
+            height: '4px',
+            background: 'linear-gradient(90deg, #38bdf8 0%, #2563eb 100%)',
           }
         }}
       >
-        <Avatar 
+        {/* Infagrasolution Logo on top of the card */}
+        <Box 
+          component="img" 
+          src="/logo_infagrasolution.png" 
           sx={{ 
-            m: 1, 
-            bgcolor: 'primary.main', 
-            width: 60, 
-            height: 60,
-            boxShadow: '0 10px 20px -5px rgba(37, 99, 235, 0.4)',
-            border: '2px solid rgba(255,255,255,0.8)'
-          }}
-        >
-          <LockOutlinedIcon fontSize="large" sx={{ color: 'white' }} />
-        </Avatar>
+            width: 80, 
+            height: 80, 
+            mb: 2.5, 
+            borderRadius: '18px',
+            filter: 'drop-shadow(0 0 15px rgba(56, 189, 248, 0.6))',
+            border: '2px solid rgba(255, 255, 255, 0.15)',
+            p: 0.5,
+            bgcolor: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+          }} 
+        />
+        
         <Typography 
-          variant="h3" 
+          variant="h4" 
           sx={{ 
-            fontWeight: 900, 
-            mt: 1.5, 
+            fontWeight: 800, 
+            mt: 0.5, 
             mb: 0.5,
-            letterSpacing: '-1.5px',
-            background: 'linear-gradient(135deg, #0f172a 0%, #2563eb 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.5px',
+            color: '#ffffff',
+            textAlign: 'center'
           }}
         >
-          NEXUS ERP
+          Member Login
         </Typography>
         <Typography 
           variant="body2" 
-          color="text.secondary" 
-          sx={{ fontWeight: 600, mb: 4, letterSpacing: '0.2px', opacity: 0.8 }}
+          sx={{ 
+            fontWeight: 600, 
+            mb: 4, 
+            letterSpacing: '0.5px', 
+            color: 'rgba(56, 189, 248, 0.85)',
+            textAlign: 'center'
+          }}
         >
-          Sistema de Gestión Inteligente • Venezuela
+          NEXUS ERP • SISTEMA DE GESTIÓN
         </Typography>
         
         {renderError()}
@@ -196,17 +242,39 @@ export default function LoginPage() {
             autoFocus
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            slotProps={{
+              inputLabel: {
+                shrink: true
+              }
+            }}
+            placeholder="Introduce tu usuario"
             sx={{ 
               '& .MuiOutlinedInput-root': { 
                 borderRadius: '16px',
-                backgroundColor: 'rgba(255,255,255,0.5)',
-                '&:hover': {
-                  backgroundColor: 'rgba(255,255,255,0.8)',
+                color: '#ffffff',
+                backgroundColor: 'rgba(3, 7, 18, 0.55)',
+                '& fieldset': {
+                  borderColor: 'rgba(56, 189, 248, 0.3)',
                 },
-                '&.Mui-focused': {
-                  backgroundColor: '#ffffff',
+                '&:hover fieldset': {
+                  borderColor: 'rgba(56, 189, 248, 0.7)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#38bdf8',
+                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)'
                 }
-              } 
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontWeight: 700,
+                '&.Mui-focused': {
+                  color: '#38bdf8',
+                }
+              },
+              '& .MuiInputBase-input::placeholder': {
+                color: 'rgba(255, 255, 255, 0.35)',
+                opacity: 1
+              }
             }}
           />
           <TextField
@@ -218,17 +286,39 @@ export default function LoginPage() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            slotProps={{
+              inputLabel: {
+                shrink: true
+              }
+            }}
+            placeholder="••••••••"
             sx={{ 
               '& .MuiOutlinedInput-root': { 
                 borderRadius: '16px',
-                backgroundColor: 'rgba(255,255,255,0.5)',
-                '&:hover': {
-                  backgroundColor: 'rgba(255,255,255,0.8)',
+                color: '#ffffff',
+                backgroundColor: 'rgba(3, 7, 18, 0.55)',
+                '& fieldset': {
+                  borderColor: 'rgba(56, 189, 248, 0.3)',
                 },
-                '&.Mui-focused': {
-                  backgroundColor: '#ffffff',
+                '&:hover fieldset': {
+                  borderColor: 'rgba(56, 189, 248, 0.7)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#38bdf8',
+                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)'
                 }
-              } 
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontWeight: 700,
+                '&.Mui-focused': {
+                  color: '#38bdf8',
+                }
+              },
+              '& .MuiInputBase-input::placeholder': {
+                color: 'rgba(255, 255, 255, 0.35)',
+                opacity: 1
+              }
             }}
           />
           <Button
@@ -246,25 +336,28 @@ export default function LoginPage() {
               textTransform: 'none', 
               fontSize: '1.05rem',
               letterSpacing: '0.5px',
-              boxShadow: '0 12px 24px -6px rgba(37, 99, 235, 0.4)',
+              background: 'linear-gradient(135deg, #38bdf8 0%, #2563eb 100%)',
+              color: '#ffffff',
+              boxShadow: '0 0 25px rgba(56, 189, 248, 0.35), 0 8px 24px rgba(37, 99, 235, 0.4)',
               transition: 'all 0.3s ease',
               '&:hover': {
                 transform: 'translateY(-2px)',
-                boxShadow: '0 16px 32px -8px rgba(37, 99, 235, 0.5)',
+                boxShadow: '0 0 35px rgba(56, 189, 248, 0.55), 0 12px 32px rgba(37, 99, 235, 0.5)',
               }
             }}
           >
-            {loading ? 'Iniciando sesión...' : 'Ingresar al ERP'}
+            {loading ? 'Iniciando sesión...' : 'Log In'}
           </Button>
+          
           <Typography 
             variant="caption" 
-            color="text.disabled" 
             sx={{ 
               display: 'block', 
               textAlign: 'center', 
               fontWeight: 600, 
-              letterSpacing: '0.5px', 
+              letterSpacing: '1px', 
               textTransform: 'uppercase',
+              color: 'rgba(255, 255, 255, 0.4)',
               mb: 1
             }}
           >
@@ -275,10 +368,11 @@ export default function LoginPage() {
             sx={{ 
               display: 'block', 
               textAlign: 'center', 
-              fontWeight: 700, 
-              fontSize: '0.75rem',
-              color: 'primary.main',
-              letterSpacing: '0.5px'
+              fontWeight: 800, 
+              fontSize: '0.78rem',
+              color: '#38bdf8',
+              letterSpacing: '0.5px',
+              textShadow: '0 0 8px rgba(56, 189, 248, 0.5)'
             }}
           >
             Elaborado por Infagrasolution
