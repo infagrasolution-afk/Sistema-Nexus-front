@@ -119,18 +119,32 @@ export default function DashboardPage() {
       px: { xs: 3, sm: 4, md: 6 },
       py: 3
     }}>
-      <Box sx={{ textAlign: 'center', mb: 8 }}>
-        <Typography variant="h2" sx={{ 
-          fontWeight: 900, 
-          mb: 1.5, 
-          letterSpacing: '-2px',
-          background: 'linear-gradient(135deg, #0f172a 0%, #2563eb 100%)',
+      <Box sx={{ textAlign: 'center', mb: 6 }}>
+        <Typography 
+          variant="overline" 
+          sx={{ 
+            fontWeight: 800, 
+            letterSpacing: '1.5px', 
+            color: 'primary.main', 
+            opacity: 0.9,
+            display: 'block',
+            mb: 1
+          }}
+        >
+          Panel de Control
+        </Typography>
+        <Typography sx={{ 
+          fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.5rem' },
+          fontWeight: 800, 
+          mb: 1, 
+          letterSpacing: '-0.75px',
+          background: 'linear-gradient(135deg, #1e293b 0%, #3b82f6 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         }}>
           Bienvenido a {tenant?.name || 'NEXUS ERP'}, {user?.username || 'Usuario'}
         </Typography>
-        <Typography variant="h5" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
+        <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.75 }}>
           Potencia tu negocio con NEXUS ERP
         </Typography>
       </Box>
