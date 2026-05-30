@@ -1,11 +1,11 @@
 import { createTheme } from '@mui/material';
 import { type ThemeOptions } from '@mui/material/styles';
 
-export const getTheme = (primaryColor?: string | null) => {
+export const getTheme = (primaryColor?: string | null, mode: 'light' | 'dark' = 'light') => {
   const safeColor = primaryColor || '#2563eb';
   const themeOptions: ThemeOptions = {
     palette: {
-      mode: 'light',
+      mode: mode,
       primary: {
         main: safeColor,
         contrastText: '#ffffff',
@@ -17,14 +17,14 @@ export const getTheme = (primaryColor?: string | null) => {
         contrastText: '#ffffff',
       },
       background: {
-        default: '#f8fafc', 
-        paper: '#ffffff',
+        default: mode === 'dark' ? '#0f172a' : '#f8fafc', 
+        paper: mode === 'dark' ? '#1e293b' : '#ffffff',
       },
       text: {
-        primary: '#0f172a', // Navy Dark
-        secondary: '#64748b', 
+        primary: mode === 'dark' ? '#f8fafc' : '#0f172a', // Navy Dark / Light
+        secondary: mode === 'dark' ? '#94a3b8' : '#64748b', 
       },
-      divider: '#e2e8f0',
+      divider: mode === 'dark' ? '#334155' : '#e2e8f0',
       success: {
         main: '#10b981',
       },
@@ -37,12 +37,12 @@ export const getTheme = (primaryColor?: string | null) => {
     },
     typography: {
       fontFamily: '"Outfit", "Inter", "Roboto", sans-serif',
-      h1: { fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a' },
-      h2: { fontWeight: 800, letterSpacing: '-0.02em', color: '#0f172a' },
-      h3: { fontWeight: 800, color: '#0f172a' },
-      h4: { fontWeight: 700, color: '#0f172a' },
-      h5: { fontWeight: 700, color: '#1e293b' },
-      h6: { fontWeight: 600, color: '#1e293b' },
+      h1: { fontWeight: 900, letterSpacing: '-0.04em', color: mode === 'dark' ? '#f8fafc' : '#0f172a' },
+      h2: { fontWeight: 800, letterSpacing: '-0.02em', color: mode === 'dark' ? '#f8fafc' : '#0f172a' },
+      h3: { fontWeight: 800, color: mode === 'dark' ? '#f8fafc' : '#0f172a' },
+      h4: { fontWeight: 700, color: mode === 'dark' ? '#f8fafc' : '#0f172a' },
+      h5: { fontWeight: 700, color: mode === 'dark' ? '#e2e8f0' : '#1e293b' },
+      h6: { fontWeight: 600, color: mode === 'dark' ? '#e2e8f0' : '#1e293b' },
       button: { textTransform: 'none', fontWeight: 700, letterSpacing: '0.01em' },
     },
     shape: {
@@ -72,7 +72,7 @@ export const getTheme = (primaryColor?: string | null) => {
           root: {
             backgroundImage: 'none',
             boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
+            border: mode === 'dark' ? '1px solid rgba(51, 65, 85, 0.8)' : '1px solid rgba(226, 232, 240, 0.8)',
           },
         },
       },
@@ -81,7 +81,7 @@ export const getTheme = (primaryColor?: string | null) => {
           root: {
             borderRadius: '20px',
             padding: '16px',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
+            border: mode === 'dark' ? '1px solid rgba(51, 65, 85, 0.8)' : '1px solid rgba(226, 232, 240, 0.8)',
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.02)',
             '&:hover': {
               borderColor: safeColor,
@@ -93,11 +93,11 @@ export const getTheme = (primaryColor?: string | null) => {
       MuiAppBar: {
         styleOverrides: {
           root: {
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.8)',
             backdropFilter: 'blur(12px)',
-            borderBottom: '1px solid #e2e8f0',
+            borderBottom: mode === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0',
             boxShadow: 'none',
-            color: '#0f172a',
+            color: mode === 'dark' ? '#f8fafc' : '#0f172a',
           }
         }
       }

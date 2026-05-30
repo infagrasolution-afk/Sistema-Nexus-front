@@ -9,7 +9,8 @@ import {
   Add as AddIcon, 
   QrCode as QrIcon,
   Print as PrintIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Search as SearchIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +23,7 @@ export default function WarehousesPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<any>(null);
   const [newWarehouse, setNewWarehouse] = useState({ name: '', address: '' });
   const [newBin, setNewBin] = useState({ code: '', zone: '', description: '' });
+  const [searchQuery, setSearchQuery] = useState('');
   
   const queryClient = useQueryClient();
 
@@ -80,6 +82,17 @@ export default function WarehousesPage() {
     }
   };
 
+  const filteredWarehouses = warehouses.filter((wh: any) => {
+    const query = searchQuery.toLowerCase();
+    const nameMatch = wh.name?.toLowerCase().includes(query);
+    const addressMatch = wh.address?.toLowerCase().includes(query);
+    const binMatch = wh.bins?.some((bin: any) => 
+      bin.code?.toLowerCase().includes(query) || 
+      bin.zone?.toLowerCase().includes(query)
+    );
+    return nameMatch || addressMatch || binMatch;
+  });
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
@@ -97,8 +110,27 @@ export default function WarehousesPage() {
         </Button>
       </Box>
 
+      {/* Smart search input */}
+      <Box sx={{ mb: 4 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Buscar almacén, dirección, zona o código de ubicación (bin)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <SearchIcon color="action" sx={{ mr: 1 }} />
+              )
+            }
+          }}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '16px', bgcolor: 'background.paper' } }}
+        />
+      </Box>
+
       <Grid container spacing={3}>
-        {warehouses.map((wh: any) => (
+        {filteredWarehouses.map((wh: any) => (
           <Grid size={{ xs: 12, md: 6 }} key={wh.id}>
             <Paper sx={{ p: 3, borderRadius: 4, height: '100%', border: '1px solid', borderColor: 'divider' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
@@ -123,11 +155,25 @@ export default function WarehousesPage() {
               <Divider sx={{ my: 2 }} />
               
               <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 600 }}>
-                {t('Bin Locations')} ({wh.bins?.length || 0})
+                {t('Bin Locations')} ({wh.bins?.filter((bin: any) => {
+                  const query = searchQuery.toLowerCase();
+                  return !query || 
+                    wh.name?.toLowerCase().includes(query) ||
+                    wh.address?.toLowerCase().includes(query) ||
+                    bin.code?.toLowerCase().includes(query) || 
+                    bin.zone?.toLowerCase().includes(query);
+                }).length || 0})
               </Typography>
               
               <List dense>
-                {wh.bins?.map((bin: any) => (
+                {wh.bins?.filter((bin: any) => {
+                  const query = searchQuery.toLowerCase();
+                  return !query || 
+                    wh.name?.toLowerCase().includes(query) ||
+                    wh.address?.toLowerCase().includes(query) ||
+                    bin.code?.toLowerCase().includes(query) || 
+                    bin.zone?.toLowerCase().includes(query);
+                }).map((bin: any) => (
                   <ListItem 
                     key={bin.id} 
                     sx={{ bgcolor: 'action.hover', mb: 1, borderRadius: 2 }}

@@ -23,6 +23,24 @@ export default function ManualBillingPage() {
   const [openBudgetDialog, setOpenBudgetDialog] = useState(false);
   const [budgetId, setBudgetId] = useState('');
 
+  // New local states for discounts, currency, and payment methods
+  const [paymentMethod, setPaymentMethod] = useState('credit');
+  const [currency, setCurrency] = useState('USD');
+  const [globalDiscount, setGlobalDiscount] = useState(0);
+  const [exchangeRate, setExchangeRate] = useState(36.5);
+
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await api.get('/inventory/exchange-rate');
+        setExchangeRate(res.data.rate);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchRate();
+  }, []);
+
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
     queryFn: async () => (await api.get('/inventory/products')).data,
@@ -60,7 +78,7 @@ export default function ManualBillingPage() {
     if (exists) {
       setItems(items.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
     } else {
-      setItems([...items, { product_id: product.id, name: product.name, quantity: 1, unit_price: product.price }]);
+      setItems([...items, { product_id: product.id, name: product.name, quantity: 1, unit_price: product.price, discount: 0 }]);
     }
   };
 
@@ -77,7 +95,8 @@ export default function ManualBillingPage() {
         product_id: i.product_id,
         name: products.find((p:any) => p.id === i.product_id)?.name || 'Producto',
         quantity: i.quantity,
-        unit_price: i.unit_price
+        unit_price: i.unit_price,
+        discount: 0
       })));
       setOpenBudgetDialog(false);
     } catch (error) {
@@ -93,22 +112,41 @@ export default function ManualBillingPage() {
     createSaleMutation.mutate({
       customer_id: customerId,
       warehouse_id: warehouseId,
-      payment_method: "credit", // Por defecto a crédito en facturación manual
-      currency: "USD",
-      exchange_rate: 1.0,
+      payment_method: paymentMethod,
+      currency: currency,
+      exchange_rate: currency === 'USD' ? 1.0 : exchangeRate,
       cash_session_id: null,
       status: "COMPLETED",
       details: items.map(i => ({
         product_id: i.product_id,
         quantity: i.quantity,
-        unit_price: i.unit_price
+        unit_price: i.unit_price * (1 - (i.discount || 0) / 100) * (1 - globalDiscount / 100)
       }))
     });
   };
 
-  const subtotal = items.reduce((acc, item) => acc + (item.quantity * item.unit_price), 0);
+  // Sum of items after per-product discounts
+  const subtotalBeforeGlobalDiscount = items.reduce(
+    (acc, item) => acc + (item.quantity * item.unit_price * (1 - (item.discount || 0) / 100)), 
+    0
+  );
+
+  const globalDiscountAmount = subtotalBeforeGlobalDiscount * (globalDiscount / 100);
+
+  // Base Imponible (Subtotal after all discounts)
+  const subtotal = Math.max(0, subtotalBeforeGlobalDiscount - globalDiscountAmount);
+
+  // IVA 16%
   const tax = subtotal * 0.16;
-  const total = subtotal + tax;
+
+  // IGTF 3% - Applies dynamically when payment is in USD
+  const igtf = currency === 'USD' ? (subtotal + tax) * 0.03 : 0;
+
+  // Total invoice sum in USD
+  const total = subtotal + tax + igtf;
+  
+  // Total in VES (Bolívares)
+  const totalLocal = total * exchangeRate;
 
   return (
     <Box sx={{ 
@@ -228,6 +266,7 @@ export default function ManualBillingPage() {
                       <TableCell sx={{ fontWeight: 700, py: 2 }}>Producto</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700 }}>Cant.</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>Precio</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>Desc %</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>Subtotal</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700 }}>Acción</TableCell>
                     </TableRow>
@@ -235,7 +274,7 @@ export default function ManualBillingPage() {
                   <TableBody>
                     {items.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                        <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
                           <Typography color="text.disabled" variant="body2">No hay productos en la lista</Typography>
                         </TableCell>
                       </TableRow>
@@ -279,7 +318,32 @@ export default function ManualBillingPage() {
                             sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                           />
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }}>${(item.quantity * item.unit_price).toFixed(2)}</TableCell>
+                        <TableCell align="center">
+                          <TextField 
+                            type="number" 
+                            size="small" 
+                            value={item.discount || 0}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[index].discount = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                              setItems(newItems);
+                            }}
+                            slotProps={{ 
+                              htmlInput: { 
+                                min: 0, max: 100, style: { textAlign: 'center', width: '35px', padding: '4px', fontSize: '0.875rem' } 
+                              } 
+                            }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+                          />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                          {item.discount > 0 && (
+                            <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.secondary', display: 'block' }}>
+                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            </Typography>
+                          )}
+                          ${(item.quantity * item.unit_price * (1 - (item.discount || 0) / 100)).toFixed(2)}
+                        </TableCell>
                         <TableCell align="center">
                           <IconButton size="small" color="error" onClick={() => setItems(items.filter((_, i) => i !== index))}>
                             <DeleteIcon fontSize="small" />
@@ -297,25 +361,109 @@ export default function ManualBillingPage() {
             <Paper elevation={0} sx={{ 
               p: 3, 
               borderRadius: '20px', 
-              bgcolor: 'grey.50',
+              bgcolor: 'background.paper',
               border: '1px solid',
-              borderColor: 'grey.200',
+              borderColor: 'divider',
               position: 'sticky', 
               top: 100 
             }}>
               <Typography variant="h6" sx={{ mb: 3, fontWeight: 800 }}>Resumen de Pago</Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Subtotal</Typography>
+              
+              {/* Payment Method Select */}
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Método de Pago"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                >
+                  <MenuItem value="cash">Efectivo</MenuItem>
+                  <MenuItem value="card">Tarjeta</MenuItem>
+                  <MenuItem value="transfer">Transferencia</MenuItem>
+                  <MenuItem value="credit">Crédito</MenuItem>
+                </TextField>
+              </Box>
+
+              {/* Currency Select */}
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Moneda de Pago"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                >
+                  <MenuItem value="USD">Divisas (USD)</MenuItem>
+                  <MenuItem value="LOCAL">Bolívares (VES)</MenuItem>
+                </TextField>
+              </Box>
+
+              {/* Global Discount input */}
+              <Box sx={{ mb: 3 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Descuento Global (%)"
+                  type="number"
+                  value={globalDiscount || 0}
+                  onChange={(e) => setGlobalDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
+              </Box>
+
+              <Divider sx={{ mb: 2.5 }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Subtotal Bruto:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  ${items.reduce((acc, item) => acc + (item.quantity * item.unit_price), 0).toFixed(2)}
+                </Typography>
+              </Box>
+
+              {(globalDiscountAmount > 0 || (subtotalBeforeGlobalDiscount < items.reduce((acc, item) => acc + (item.quantity * item.unit_price), 0))) && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2" color="error.main">Descuentos:</Typography>
+                  <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
+                    -${(items.reduce((acc, item) => acc + (item.quantity * item.unit_price), 0) - subtotal).toFixed(2)}
+                  </Typography>
+                </Box>
+              )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">Base Imponible:</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>${subtotal.toFixed(2)}</Typography>
               </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2.5 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Impuestos (16%)</Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>${tax.toFixed(2)}</Typography>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="body2" color="text.secondary">IVA (16%):</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>${tax.toFixed(2)}</Typography>
               </Box>
-              <Divider sx={{ mb: 2.5 }} />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-                <Typography variant="h5" sx={{ fontWeight: 900 }}>Total</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main' }}>${total.toFixed(2)}</Typography>
+
+              {igtf > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                  <Typography variant="body2" color="warning.dark" sx={{ fontWeight: 600 }}>IGTF (3% Divisas):</Typography>
+                  <Typography variant="body2" color="warning.dark" sx={{ fontWeight: 700 }}>${igtf.toFixed(2)}</Typography>
+                </Box>
+              )}
+
+              <Divider sx={{ my: 2.5 }} />
+              
+              <Box sx={{ textAlign: 'right', mb: 3 }}>
+                <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', letterSpacing: '-1.5px' }}>
+                  {currency === 'USD' ? `$${total.toFixed(2)}` : `${totalLocal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES`}
+                </Typography>
+                {currency === 'LOCAL' ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>Total Ref: ${total.toFixed(2)}</Typography>
+                ) : (
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    Equivalente: {totalLocal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES
+                  </Typography>
+                )}
               </Box>
 
               <Button 

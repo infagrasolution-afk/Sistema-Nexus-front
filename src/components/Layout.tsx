@@ -14,7 +14,9 @@ import {
   CompareArrows as TransferIcon,
   Logout as LogoutIcon,
   AccountBalanceWallet as AccountIcon,
-  Home as HomeIcon
+  Home as HomeIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -40,7 +42,7 @@ function Clock() {
 
 
 export default function Layout() {
-  const { user, setUser } = useAppStore();
+  const { user, setUser, themeMode, setThemeMode } = useAppStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -279,6 +281,15 @@ export default function Layout() {
             )}
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {/* Theme Mode Toggle */}
+              <IconButton 
+                onClick={() => setThemeMode(themeMode === 'light' ? 'dark' : 'light')} 
+                color="inherit"
+                sx={{ mr: 1, p: 1 }}
+              >
+                {themeMode === 'dark' ? <LightModeIcon sx={{ color: 'warning.light' }} /> : <DarkModeIcon sx={{ color: 'text.secondary' }} />}
+              </IconButton>
+
               <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
                 <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1 }}>{user?.username || 'Usuario'}</Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>{user?.email}</Typography>

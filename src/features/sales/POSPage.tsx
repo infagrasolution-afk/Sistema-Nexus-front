@@ -42,7 +42,8 @@ import { RegisterOpenDialog, RegisterCloseDialog } from './RegisterDialogs';
 
 export default function POSPage() {
   const { t } = useTranslation();
-  const [cart, setCart] = useState<{id: number, name: string, price: number, qty: number}[]>([]);
+  const [cart, setCart] = useState<{id: number, name: string, price: number, qty: number, discount: number}[]>([]);
+  const [globalDiscount, setGlobalDiscount] = useState(0); // global discount %
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -182,7 +183,7 @@ export default function POSPage() {
     if (existing) {
       setCart(cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
     } else {
-      setCart([...cart, { id: product.id, name: product.name, price: product.price, qty: 1 }]);
+      setCart([...cart, { id: product.id, name: product.name, price: product.price, qty: 1, discount: 0 }]);
     }
   };
 
@@ -215,7 +216,7 @@ export default function POSPage() {
       details: cart.map(item => ({
         product_id: item.id,
         quantity: item.qty,
-        unit_price: item.price
+        unit_price: item.price * (1 - (item.discount || 0) / 100) * (1 - globalDiscount / 100)
       }))
     });
   };
@@ -233,7 +234,7 @@ export default function POSPage() {
       details: cart.map(item => ({
         product_id: item.id,
         quantity: item.qty,
-        unit_price: item.price
+        unit_price: item.price * (1 - (item.discount || 0) / 100) * (1 - globalDiscount / 100)
       }))
     });
   };
@@ -252,10 +253,28 @@ export default function POSPage() {
     p.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const subtotalUSD = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+  // Sum of items after per-product discounts
+  const subtotalBeforeGlobalDiscountUSD = cart.reduce(
+    (acc, item) => acc + (item.price * item.qty * (1 - (item.discount || 0) / 100)), 
+    0
+  );
+
+  // Global discount amount
+  const globalDiscountAmountUSD = subtotalBeforeGlobalDiscountUSD * (globalDiscount / 100);
+
+  // Subtotal after all discounts (Base Imponible)
+  const subtotalUSD = Math.max(0, subtotalBeforeGlobalDiscountUSD - globalDiscountAmountUSD);
+
+  // IVA (16%)
   const taxUSD = subtotalUSD * 0.16;
-  const totalUSD = subtotalUSD + taxUSD;
+
+  // IGTF (3%) - Applies dynamically when payment is in foreign currency (USD)
+  const igtfUSD = currency === 'USD' ? (subtotalUSD + taxUSD) * 0.03 : 0;
+
+  // Total invoice sum in USD
+  const totalUSD = subtotalUSD + taxUSD + igtfUSD;
   
+  // Total in VES (Bolívares)
   const totalLocal = totalUSD * exchangeRate;
 
   return (
@@ -558,12 +577,33 @@ export default function POSPage() {
                           <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                             x ${item.price.toFixed(2)}
                           </Typography>
+                          
+                          <TextField
+                            size="small"
+                            variant="standard"
+                            label="Desc %"
+                            type="number"
+                            value={item.discount || 0}
+                            onChange={(e) => {
+                              const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                              setCart(cart.map((c, i) => i === idx ? { ...c, discount: val } : c));
+                            }}
+                            slotProps={{ htmlInput: { min: 0, max: 100, style: { fontSize: '0.75rem', width: '35px', textAlign: 'center' } } }}
+                            sx={{ ml: 2, transform: 'translateY(-4px)' }}
+                          />
                         </Box>
                       } 
                     />
-                    <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', mr: 2 }}>
-                      ${(item.price * item.qty).toFixed(2)}
-                    </Typography>
+                    <Box sx={{ textAlign: 'right', mr: 2 }}>
+                      {item.discount > 0 && (
+                        <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.secondary', display: 'block' }}>
+                          ${(item.price * item.qty).toFixed(2)}
+                        </Typography>
+                      )}
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.95rem' }}>
+                        ${(item.price * item.qty * (1 - item.discount / 100)).toFixed(2)}
+                      </Typography>
+                    </Box>
                   </ListItem>
                   <Divider />
                 </Box>
@@ -615,18 +655,65 @@ export default function POSPage() {
                 </ToggleButtonGroup>
               </Box>
 
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography color="text.secondary">{t('Subtotal')}</Typography>
-                <Typography sx={{ fontWeight: 500 }}>${subtotalUSD.toFixed(2)}</Typography>
+              {/* Global Discount input */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, mt: 1 }}>
+                <Typography variant="body2" color="text.secondary">Descuento Global (%)</Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  value={globalDiscount || 0}
+                  onChange={(e) => setGlobalDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  slotProps={{ htmlInput: { min: 0, max: 100, style: { fontSize: '0.85rem', width: '60px', textAlign: 'right' } } }}
+                />
               </Box>
-              <Divider sx={{ mb: 2 }} />
-              
-              <Box sx={{ textAlign: 'right', mb: 3 }}>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>
-                  {currency === 'USD' ? `$${totalUSD.toFixed(2)}` : `${totalLocal.toLocaleString()} VES`}
+
+              <Divider sx={{ my: 1.5 }} />
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">Subtotal Bruto:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  ${cart.reduce((acc, item) => acc + (item.price * item.qty), 0).toFixed(2)}
                 </Typography>
-                {currency === 'LOCAL' && (
-                  <Typography variant="caption" color="text.secondary">Total USD: ${totalUSD.toFixed(2)}</Typography>
+              </Box>
+
+              {(globalDiscountAmountUSD > 0 || (subtotalBeforeGlobalDiscountUSD < cart.reduce((acc, item) => acc + (item.price * item.qty), 0))) && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2" color="error.main">Descuentos:</Typography>
+                  <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
+                    -${(cart.reduce((acc, item) => acc + (item.price * item.qty), 0) - subtotalUSD).toFixed(2)}
+                  </Typography>
+                </Box>
+              )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">Base Imponible:</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>${subtotalUSD.toFixed(2)}</Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="body2" color="text.secondary">IVA (16%):</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>${taxUSD.toFixed(2)}</Typography>
+              </Box>
+
+              {igtfUSD > 0 && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2" color="warning.dark" sx={{ fontWeight: 600 }}>IGTF (3% Divisas):</Typography>
+                  <Typography variant="body2" color="warning.dark" sx={{ fontWeight: 700 }}>${igtfUSD.toFixed(2)}</Typography>
+                </Box>
+              )}
+
+              <Divider sx={{ my: 1.5 }} />
+              
+              <Box sx={{ textAlign: 'right', mb: 2 }}>
+                <Typography variant="h4" sx={{ fontWeight: 900, color: 'primary.main', letterSpacing: '-1px' }}>
+                  {currency === 'USD' ? `$${totalUSD.toFixed(2)}` : `${totalLocal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES`}
+                </Typography>
+                {currency === 'LOCAL' ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>Total Ref: ${totalUSD.toFixed(2)}</Typography>
+                ) : (
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    Equivalente: {totalLocal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES
+                  </Typography>
                 )}
               </Box>
 

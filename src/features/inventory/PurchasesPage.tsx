@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   Box, Typography, Button, Paper, Dialog, DialogTitle, 
   DialogContent, DialogActions, TextField, Grid, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  IconButton, Chip
+  IconButton, Chip, Autocomplete
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -205,17 +205,20 @@ export default function PurchasesPage() {
         <DialogContent dividers>
           <Grid container spacing={3} sx={{ mb: 4, mt: 0.5 }}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                select
-                label="Seleccionar Proveedor"
-                fullWidth
-                value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-              >
-                {suppliers.map((s: any) => (
-                  <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-                ))}
-              </TextField>
+              <Autocomplete
+                options={suppliers}
+                getOptionLabel={(option: any) => `${option.rif || ''} - ${option.name || ''}`}
+                value={suppliers.find((s: any) => s.id === Number(supplierId)) || null}
+                onChange={(_, newValue) => setSupplierId(newValue ? newValue.id.toString() : '')}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    label="Seleccionar Proveedor" 
+                    fullWidth 
+                  />
+                )}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
@@ -256,18 +259,21 @@ export default function PurchasesPage() {
                 {items.map((item, index) => (
                   <TableRow key={index}>
                     <TableCell sx={{ minWidth: 200 }}>
-                      <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        variant="standard"
-                        value={item.product_id}
-                        onChange={(e) => updateItem(index, 'product_id', e.target.value)}
-                      >
-                        {products.map((p: any) => (
-                          <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                        ))}
-                      </TextField>
+                      <Autocomplete
+                        options={products}
+                        getOptionLabel={(option: any) => `${option.sku || ''} - ${option.name || ''}`}
+                        value={products.find((p: any) => p.id === item.product_id) || null}
+                        onChange={(_, newValue) => updateItem(index, 'product_id', newValue ? newValue.id : 0)}
+                        renderInput={(params) => (
+                          <TextField 
+                            {...params} 
+                            variant="standard" 
+                            size="small" 
+                            placeholder="Buscar producto..." 
+                            fullWidth 
+                          />
+                        )}
+                      />
                     </TableCell>
                     <TableCell align="right">
                       <TextField

@@ -43,7 +43,8 @@ const ProtectedRoute = () => {
 
 function App() {
   const tenant = useAppStore((state: any) => state.tenant);
-  const theme = getTheme(tenant?.primary_color);
+  const themeMode = useAppStore((state: any) => state.themeMode);
+  const theme = getTheme(tenant?.primary_color, themeMode);
 
   return (
     <QueryClientProvider client={queryClient}>

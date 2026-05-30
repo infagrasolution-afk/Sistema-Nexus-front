@@ -4,14 +4,14 @@ import {
   Box, Typography, Card, CardContent, Tabs, Tab, Table, TableBody, TableCell, 
   TableContainer, TableHead, TableRow, Chip, Grid, Button, Paper, Dialog,
   DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Divider,
-  Snackbar, Alert, CircularProgress, IconButton, CardHeader
+  Snackbar, Alert, CircularProgress, IconButton, CardHeader, Autocomplete
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
 import { 
   Add as AddIcon, ReceiptLong as ReceiptIcon, AccountBalanceWallet as AccountIcon,
   Delete as DeleteIcon, LibraryAdd as LibraryAddIcon, CheckCircleOutlined as CheckedIcon,
-  ErrorOutlined as ErrorIcon, AccountTree as ChartIcon
+  ErrorOutlined as ErrorIcon, AccountTree as ChartIcon, Search as SearchIcon
 } from '@mui/icons-material';
 
 interface TabPanelProps {
@@ -71,6 +71,10 @@ export default function AccountingPage() {
   // Form State
   const [accountForm, setAccountForm] = useState(defaultAccountForm);
   const [journalForm, setJournalForm] = useState(defaultJournalForm);
+
+  // Search State
+  const [accountSearchQuery, setAccountSearchQuery] = useState('');
+  const [journalSearchQuery, setJournalSearchQuery] = useState('');
 
   // Notification Toast State
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
@@ -311,52 +315,86 @@ export default function AccountingPage() {
                 <CircularProgress />
               </Box>
             ) : (
-              <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '12px', overflow: 'hidden' }}>
-                <Table>
-                  <TableHead sx={{ bgcolor: 'grey.50' }}>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700, py: 2 }}>Código</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Nombre de Cuenta</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Tipo de Cuenta</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, pr: 4 }}>Saldo Actual (VES/USD Equivalente)</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {accounts.map((acc: any) => (
-                      <TableRow key={acc.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell sx={{ fontWeight: 800, color: 'primary.main', fontFamily: 'monospace', fontSize: '1rem' }}>
-                          {acc.code}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{acc.name}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={acc.type} 
-                            color={getTypeColor(acc.type) as any} 
-                            size="small" 
-                            sx={{ fontWeight: 700, borderRadius: '6px' }} 
-                          />
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 800, fontSize: '1.05rem', color: acc.balance < 0 ? 'error.main' : 'success.main', pr: 4 }}>
-                          ${Math.abs(acc.balance).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          <Typography variant="caption" sx={{ ml: 0.5, fontWeight: 700, color: 'text.secondary' }}>
-                            {acc.type === 'Activo' || acc.type === 'Gasto' 
-                              ? (acc.balance >= 0 ? 'DB' : 'CR') 
-                              : (acc.balance >= 0 ? 'CR' : 'DB')
-                            }
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {accounts.length === 0 && (
+              <Box>
+                {/* Search Bar */}
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    placeholder="Buscar cuenta por código, nombre o tipo..."
+                    value={accountSearchQuery}
+                    onChange={(e) => setAccountSearchQuery(e.target.value)}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <SearchIcon color="action" sx={{ mr: 1 }} />
+                        )
+                      }
+                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'background.paper' } }}
+                  />
+                </Box>
+
+                <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '12px', overflow: 'hidden' }}>
+                  <Table>
+                    <TableHead sx={{ bgcolor: 'grey.50' }}>
                       <TableRow>
-                        <TableCell colSpan={4} align="center" sx={{ py: 10, color: 'text.secondary' }}>
-                          No hay cuentas registradas en este inquilino.
-                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, py: 2 }}>Código</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Nombre de Cuenta</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Tipo de Cuenta</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, pr: 4 }}>Saldo Actual (VES/USD Equivalente)</TableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {accounts.filter((acc: any) => {
+                        const q = accountSearchQuery.toLowerCase();
+                        return !q || 
+                          acc.code?.toLowerCase().includes(q) || 
+                          acc.name?.toLowerCase().includes(q) || 
+                          acc.type?.toLowerCase().includes(q);
+                      }).map((acc: any) => (
+                        <TableRow key={acc.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell sx={{ fontWeight: 800, color: 'primary.main', fontFamily: 'monospace', fontSize: '1rem' }}>
+                            {acc.code}
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>{acc.name}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={acc.type} 
+                              color={getTypeColor(acc.type) as any} 
+                              size="small" 
+                              sx={{ fontWeight: 700, borderRadius: '6px' }} 
+                            />
+                          </TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 800, fontSize: '1.05rem', color: acc.balance < 0 ? 'error.main' : 'success.main', pr: 4 }}>
+                            ${Math.abs(acc.balance).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <Typography variant="caption" sx={{ ml: 0.5, fontWeight: 700, color: 'text.secondary' }}>
+                              {acc.type === 'Activo' || acc.type === 'Gasto' 
+                                ? (acc.balance >= 0 ? 'DB' : 'CR') 
+                                : (acc.balance >= 0 ? 'CR' : 'DB')
+                              }
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {accounts.filter((acc: any) => {
+                        const q = accountSearchQuery.toLowerCase();
+                        return !q || 
+                          acc.code?.toLowerCase().includes(q) || 
+                          acc.name?.toLowerCase().includes(q) || 
+                          acc.type?.toLowerCase().includes(q);
+                      }).length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={4} align="center" sx={{ py: 10, color: 'text.secondary' }}>
+                            No se encontraron cuentas contables.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
             )}
           </CustomTabPanel>
 
@@ -366,71 +404,115 @@ export default function AccountingPage() {
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                 <CircularProgress />
               </Box>
-            ) : journalEntries.length === 0 ? (
-              <Box sx={{ py: 10, textAlign: 'center', color: 'text.secondary', border: '1px dashed', borderColor: 'divider', borderRadius: '16px' }}>
-                <ReceiptIcon sx={{ fontSize: 70, opacity: 0.2, mb: 1.5 }} />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>No hay asientos de diario registrados</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Comienza registrando un asiento manual o realiza ventas/compras para generarlos automáticamente
-                </Typography>
-              </Box>
             ) : (
-              <Grid container spacing={3}>
-                {journalEntries.map((entry: any) => (
-                  <Grid size={{ xs: 12 }} key={entry.id}>
-                    <Card variant="outlined" sx={{ borderRadius: '16px', border: '1px solid', borderColor: 'grey.200', bgcolor: 'grey.50' }}>
-                      <CardHeader
-                        title={
-                          <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                            {entry.description}
-                          </Typography>
-                        }
-                        subheader={
-                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                            Fecha: {new Date(entry.date).toLocaleString('es-VE')} • REF: {entry.reference || `ASIENTO-${entry.id}`}
-                          </Typography>
-                        }
-                        action={
-                          <Chip label="Validado y Mayorizado" size="small" color="success" sx={{ fontWeight: 700, borderRadius: '6px' }} />
-                        }
-                        sx={{ borderBottom: '1px solid', borderColor: 'grey.100', px: 3, py: 2 }}
-                      />
-                      <CardContent sx={{ p: 0 }}>
-                        <TableContainer sx={{ bgcolor: 'background.paper' }}>
-                          <Table size="small">
-                            <TableHead sx={{ bgcolor: 'grey.50' }}>
-                              <TableRow>
-                                <TableCell sx={{ fontWeight: 700, py: 1.5, pl: 3 }}>Código de Cuenta</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>Descripción de Cuenta</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700 }}>Débito ($)</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700, pr: 3 }}>Crédito ($)</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {entry.details.map((detail: any) => (
-                                <TableRow key={detail.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                                  <TableCell sx={{ pl: 3, fontFamily: 'monospace', fontWeight: 700, color: 'primary.main' }}>
-                                    {detail.account.code}
-                                  </TableCell>
-                                  <TableCell sx={{ fontWeight: 600, pl: detail.credit > 0 ? 4 : 1 }}>
-                                    {detail.account.name}
-                                  </TableCell>
-                                  <TableCell align="right" sx={{ fontWeight: 800, color: detail.debit > 0 ? 'text.primary' : 'grey.300' }}>
-                                    {detail.debit > 0 ? `$${detail.debit.toFixed(2)}` : '-'}
-                                  </TableCell>
-                                  <TableCell align="right" sx={{ fontWeight: 800, pr: 3, color: detail.credit > 0 ? 'text.primary' : 'grey.300' }}>
-                                    {detail.credit > 0 ? `$${detail.credit.toFixed(2)}` : '-'}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      </CardContent>
-                    </Card>
+              <Box>
+                {/* Search Bar */}
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    placeholder="Buscar asientos por descripción, referencia, código de cuenta o nombre..."
+                    value={journalSearchQuery}
+                    onChange={(e) => setJournalSearchQuery(e.target.value)}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <SearchIcon color="action" sx={{ mr: 1 }} />
+                        )
+                      }
+                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'background.paper' } }}
+                  />
+                </Box>
+
+                {journalEntries.filter((entry: any) => {
+                  const q = journalSearchQuery.toLowerCase();
+                  if (!q) return true;
+                  const refMatch = entry.reference?.toLowerCase().includes(q);
+                  const descMatch = entry.description?.toLowerCase().includes(q);
+                  const detailMatch = entry.details?.some((d: any) => 
+                    d.account?.code?.toLowerCase().includes(q) || 
+                    d.account?.name?.toLowerCase().includes(q)
+                  );
+                  return refMatch || descMatch || detailMatch;
+                }).length === 0 ? (
+                  <Box sx={{ py: 10, textAlign: 'center', color: 'text.secondary', border: '1px dashed', borderColor: 'divider', borderRadius: '16px' }}>
+                    <ReceiptIcon sx={{ fontSize: 70, opacity: 0.2, mb: 1.5 }} />
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>No hay asientos de diario que coincidan con la búsqueda</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Pruebe con otros términos o cree un asiento nuevo
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Grid container spacing={3}>
+                    {journalEntries.filter((entry: any) => {
+                      const q = journalSearchQuery.toLowerCase();
+                      if (!q) return true;
+                      const refMatch = entry.reference?.toLowerCase().includes(q);
+                      const descMatch = entry.description?.toLowerCase().includes(q);
+                      const detailMatch = entry.details?.some((d: any) => 
+                        d.account?.code?.toLowerCase().includes(q) || 
+                        d.account?.name?.toLowerCase().includes(q)
+                      );
+                      return refMatch || descMatch || detailMatch;
+                    }).map((entry: any) => (
+                      <Grid size={{ xs: 12 }} key={entry.id}>
+                        <Card variant="outlined" sx={{ borderRadius: '16px', border: '1px solid', borderColor: 'grey.200', bgcolor: 'grey.50' }}>
+                          <CardHeader
+                            title={
+                              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                                {entry.description}
+                              </Typography>
+                            }
+                            subheader={
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Fecha: {new Date(entry.date).toLocaleString('es-VE')} • REF: {entry.reference || `ASIENTO-${entry.id}`}
+                              </Typography>
+                            }
+                            action={
+                              <Chip label="Validado y Mayorizado" size="small" color="success" sx={{ fontWeight: 700, borderRadius: '6px' }} />
+                            }
+                            sx={{ borderBottom: '1px solid', borderColor: 'grey.100', px: 3, py: 2 }}
+                          />
+                          <CardContent sx={{ p: 0 }}>
+                            <TableContainer sx={{ bgcolor: 'background.paper' }}>
+                              <Table size="small">
+                                <TableHead sx={{ bgcolor: 'grey.50' }}>
+                                  <TableRow>
+                                    <TableCell sx={{ fontWeight: 700, py: 1.5, pl: 3 }}>Código de Cuenta</TableCell>
+                                    <TableCell sx={{ fontWeight: 700 }}>Descripción de Cuenta</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Débito ($)</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 700, pr: 3 }}>Crédito ($)</TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {entry.details.map((detail: any) => (
+                                    <TableRow key={detail.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                                      <TableCell sx={{ pl: 3, fontFamily: 'monospace', fontWeight: 700, color: 'primary.main' }}>
+                                        {detail.account.code}
+                                      </TableCell>
+                                      <TableCell sx={{ fontWeight: 600, pl: detail.credit > 0 ? 4 : 1 }}>
+                                        {detail.account.name}
+                                      </TableCell>
+                                      <TableCell align="right" sx={{ fontWeight: 800, color: detail.debit > 0 ? 'text.primary' : 'grey.300' }}>
+                                        {detail.debit > 0 ? `$${detail.debit.toFixed(2)}` : '-'}
+                                      </TableCell>
+                                      <TableCell align="right" sx={{ fontWeight: 800, pr: 3, color: detail.credit > 0 ? 'text.primary' : 'grey.300' }}>
+                                        {detail.credit > 0 ? `$${detail.credit.toFixed(2)}` : '-'}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
                   </Grid>
-                ))}
-              </Grid>
+                )}
+              </Box>
             )}
           </CustomTabPanel>
         </Box>
@@ -546,21 +628,21 @@ export default function AccountingPage() {
             {journalForm.details.map((detail, index) => (
               <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Box sx={{ flexGrow: 1, minWidth: 280 }}>
-                  <TextField
-                    select
-                    fullWidth
-                    size="small"
-                    required
-                    label="Cuenta Contable"
-                    value={detail.account_id}
-                    onChange={(e) => handleLineChange(index, 'account_id', e.target.value)}
-                  >
-                    {accounts.map((acc: any) => (
-                      <MenuItem key={acc.id} value={acc.id}>
-                        {acc.code} - {acc.name} ({acc.type})
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  <Autocomplete
+                    options={accounts}
+                    getOptionLabel={(option: any) => `${option.code || ''} - ${option.name || ''} (${option.type || ''})`}
+                    value={accounts.find((acc: any) => acc.id === Number(detail.account_id)) || null}
+                    onChange={(_, newValue) => handleLineChange(index, 'account_id', newValue ? newValue.id.toString() : '')}
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        size="small" 
+                        required 
+                        label="Cuenta Contable" 
+                        fullWidth 
+                      />
+                    )}
+                  />
                 </Box>
                 <Box sx={{ width: 140 }}>
                   <TextField
