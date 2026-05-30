@@ -337,7 +337,7 @@ export default function Layout() {
         sx={{ 
           flexGrow: 1, 
           minHeight: '100vh',
-          mt: location.pathname === '/sales' ? 0 : 12, // POS doesn't need top margin from Layout
+          mt: 12, // Always push pages down below the fixed top AppBar
           pb: location.pathname === '/sales' ? 0 : 8,
           width: '100%',
           display: 'flex',

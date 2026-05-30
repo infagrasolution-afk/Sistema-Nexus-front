@@ -133,15 +133,17 @@ export default function DashboardPage() {
         >
           Panel de Control
         </Typography>
-        <Typography sx={{ 
+        <Typography sx={(theme) => ({ 
           fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.5rem' },
           fontWeight: 800, 
           mb: 1, 
           letterSpacing: '-0.75px',
-          background: 'linear-gradient(135deg, #1e293b 0%, #3b82f6 100%)',
+          background: theme.palette.mode === 'dark' 
+            ? 'linear-gradient(135deg, #ffffff 0%, #93c5fd 100%)' 
+            : 'linear-gradient(135deg, #1e293b 0%, #3b82f6 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-        }}>
+        })}>
           Bienvenido a {tenant?.name || 'NEXUS ERP'}, {user?.username || 'Usuario'}
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.75 }}>
@@ -184,17 +186,17 @@ export default function DashboardPage() {
               <Paper
                 onClick={() => !isGrouped && handleModuleClick(mod)}
                 elevation={0}
-                sx={{
+                sx={(theme) => ({
                   p: 4,
                   borderRadius: '24px',
                   border: '1px solid',
-                  borderColor: 'divider',
+                  borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'divider',
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
                   cursor: isGrouped ? 'default' : 'pointer',
                   transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.7)',
                   backdropFilter: 'blur(10px)',
                   position: 'relative',
                   overflow: 'hidden',
@@ -207,10 +209,10 @@ export default function DashboardPage() {
                   },
                   '&:hover': {
                     transform: isGrouped ? 'none' : 'translateY(-10px)',
-                    boxShadow: isGrouped ? 'none' : `0 30px 60px -12px rgba(0,0,0,0.1), 0 18px 36px -18px ${mod.color}44`,
+                    boxShadow: isGrouped ? 'none' : `0 30px 60px -12px rgba(0,0,0,0.25), 0 18px 36px -18px ${mod.color}44`,
                     borderColor: isGrouped ? 'divider' : mod.color,
                   }
-                }}
+                })}
               >
                 {/* Header Section */}
                 <Box sx={{ 
@@ -254,23 +256,23 @@ export default function DashboardPage() {
                             variant="outlined"
                             onClick={(e) => { e.stopPropagation(); handleModuleClick(sub); }}
                             startIcon={<SubIcon sx={{ color: mod.color }} />}
-                            sx={{ 
+                            sx={(theme) => ({ 
                               justifyContent: 'flex-start', 
                               borderRadius: '14px', 
-                              borderColor: 'rgba(0,0,0,0.05)',
+                              borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
                               py: 1.8,
                               px: 2.5,
                               fontWeight: 700,
                               fontSize: '0.9rem',
                               color: 'text.primary',
-                              bgcolor: 'rgba(0,0,0,0.02)',
+                              bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                               '&:hover': { 
                                 borderColor: mod.color, 
-                                bgcolor: `${mod.color}05`, 
+                                bgcolor: `${mod.color}15`, 
                                 color: mod.color,
                                 transform: 'translateX(4px)',
                               }
-                            }}
+                            })}
                           >
                             {sub.title}
                           </Button>
