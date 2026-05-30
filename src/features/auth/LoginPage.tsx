@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Button, Alert, InputAdornment } from '@mui/material';
-import { MailOutline, LockOutlined, ArrowForward } from '@mui/icons-material';
+import { MailOutlined, LockOutlined, ArrowForward } from '@mui/icons-material';
 
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
@@ -202,7 +202,7 @@ export default function LoginPage() {
               input: {
                 startAdornment: (
                   <InputAdornment position="start" sx={{ mr: 2 }}>
-                    <MailOutline sx={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: '1.25rem' }} />
+                    <MailOutlined sx={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: '1.25rem' }} />
                   </InputAdornment>
                 ),
                 disableUnderline: true,
