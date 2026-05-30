@@ -162,14 +162,9 @@ export default function LoginPage() {
               ERP
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', gap: 3 }}>
-            <Typography sx={{ color: '#ffffff', fontWeight: 800, fontSize: '0.88rem', pb: 0.5, borderBottom: '2px solid #ffffff', cursor: 'pointer' }}>
-              Login
-            </Typography>
-            <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500, fontSize: '0.88rem', cursor: 'not-allowed' }}>
-              Sign up
-            </Typography>
-          </Box>
+          <Typography sx={{ color: '#ffffff', fontWeight: 800, fontSize: '0.88rem', pb: 0.5, borderBottom: '2px solid #ffffff' }}>
+            Acceso
+          </Typography>
         </Box>
         
         {/* Main Content Form */}
