@@ -17,8 +17,8 @@ export const getTheme = (primaryColor?: string | null, mode: 'light' | 'dark' = 
         contrastText: '#ffffff',
       },
       background: {
-        default: mode === 'dark' ? '#0f172a' : '#f8fafc', 
-        paper: mode === 'dark' ? '#1e293b' : '#ffffff',
+        default: mode === 'dark' ? '#0f172a' : '#f1f5f9', // Soft light slate gray background instead of harsh white
+        paper: mode === 'dark' ? '#1e293b' : '#f8fafc', // Soft off-white paper elements
       },
       text: {
         primary: mode === 'dark' ? '#f8fafc' : '#0f172a', // Navy Dark / Light
@@ -93,7 +93,7 @@ export const getTheme = (primaryColor?: string | null, mode: 'light' | 'dark' = 
       MuiAppBar: {
         styleOverrides: {
           root: {
-            backgroundColor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: mode === 'dark' ? 'rgba(15, 23, 42, 0.8)' : 'rgba(248, 250, 252, 0.8)',
             backdropFilter: 'blur(12px)',
             borderBottom: mode === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0',
             boxShadow: 'none',
