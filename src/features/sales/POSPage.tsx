@@ -296,7 +296,7 @@ export default function POSPage() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 0.5 }}>
                 <Clock />
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                  • {cashSession?.register.name} • Cajero: {user?.username || user?.email?.split('@')[0]}
+                  • {cashSession?.register?.name || 'Sin Caja Abierta'} • Cajero: {user?.username || user?.email?.split('@')[0]}
                 </Typography>
               </Box>
             </Box>

@@ -27,7 +27,17 @@ export const RegisterOpenDialog: React.FC<OpenDialogProps> = ({ open, onSuccess 
       onSuccess(res.data);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Error al abrir caja');
+      const detail = err.response?.data?.detail;
+      if (typeof detail === 'string') {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        const msgs = detail.map((d: any) => `${d.loc.join('.')}: ${d.msg}`).join(', ');
+        setError(msgs || 'Error de validación en el servidor');
+      } else if (detail && typeof detail === 'object') {
+        setError(detail.message || JSON.stringify(detail));
+      } else {
+        setError('Error al abrir caja');
+      }
     }
   });
 
@@ -96,7 +106,17 @@ export const RegisterCloseDialog: React.FC<CloseDialogProps> = ({ open, onClose,
       setShowPurchaseAccounting(true);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Error al cerrar caja');
+      const detail = err.response?.data?.detail;
+      if (typeof detail === 'string') {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        const msgs = detail.map((d: any) => `${d.loc.join('.')}: ${d.msg}`).join(', ');
+        setError(msgs || 'Error de validación al cerrar caja');
+      } else if (detail && typeof detail === 'object') {
+        setError(detail.message || JSON.stringify(detail));
+      } else {
+        setError('Error al cerrar caja');
+      }
     }
   });
 
@@ -108,7 +128,17 @@ export const RegisterCloseDialog: React.FC<CloseDialogProps> = ({ open, onClose,
       setError('');
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Error al contabilizar ventas');
+      const detail = err.response?.data?.detail;
+      if (typeof detail === 'string') {
+        setError(detail);
+      } else if (Array.isArray(detail)) {
+        const msgs = detail.map((d: any) => `${d.loc.join('.')}: ${d.msg}`).join(', ');
+        setError(msgs || 'Error de validación al contabilizar');
+      } else if (detail && typeof detail === 'object') {
+        setError(detail.message || JSON.stringify(detail));
+      } else {
+        setError('Error al contabilizar ventas');
+      }
     }
   });
 
