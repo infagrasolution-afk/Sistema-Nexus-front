@@ -20,7 +20,7 @@ export const RegisterOpenDialog: React.FC<OpenDialogProps> = ({ open, onSuccess 
   const { setCashSession } = useAppStore();
 
   const openMutation = useMutation({
-    mutationFn: (data: { starting_cash: number, computer_uid: string }) => 
+    mutationFn: (data: { starting_cash: number, computer_uid: string, register_id?: number }) => 
       api.post('/cash/session/open', data),
     onSuccess: (res) => {
       setCashSession(res.data);
@@ -31,8 +31,14 @@ export const RegisterOpenDialog: React.FC<OpenDialogProps> = ({ open, onSuccess 
       if (typeof detail === 'string') {
         setError(detail);
       } else if (Array.isArray(detail)) {
-        const msgs = detail.map((d: any) => `${d.loc.join('.')}: ${d.msg}`).join(', ');
-        setError(msgs || 'Error de validación en el servidor');
+        const friendlyMsgs = detail.map((d: any) => {
+          const field = d.loc[d.loc.length - 1];
+          if (field === 'register_id') return 'Por favor, asigne o configure una caja registradora en el sistema.';
+          if (field === 'starting_cash') return 'El monto inicial en efectivo es obligatorio y debe ser numérico.';
+          if (d.msg === 'Field required') return 'Campo obligatorio requerido.';
+          return d.msg;
+        });
+        setError(friendlyMsgs.join(', ') || 'Error de validación en el servidor');
       } else if (detail && typeof detail === 'object') {
         setError(detail.message || JSON.stringify(detail));
       } else {
@@ -43,8 +49,9 @@ export const RegisterOpenDialog: React.FC<OpenDialogProps> = ({ open, onSuccess 
 
   const handleOpen = () => {
     openMutation.mutate({
-      starting_cash: parseFloat(startingCash),
-      computer_uid: getComputerUID()
+      starting_cash: parseFloat(startingCash) || 0,
+      computer_uid: getComputerUID(),
+      register_id: 1 // Default to 1 for backwards compatibility with legacy server validation
     });
   };
 
