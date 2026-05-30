@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button, Alert } from '@mui/material';
+import { Box, Paper, Typography, TextField, Button, Alert, InputAdornment } from '@mui/material';
+import { MailOutline, LockOutlined, ArrowForward } from '@mui/icons-material';
 
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
@@ -116,265 +117,212 @@ export default function LoginPage() {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        background: 'radial-gradient(circle at center, #0f1e36 0%, #030712 100%)',
-        position: 'relative',
-        overflow: 'hidden',
+        background: 'radial-gradient(circle at center, #1e293b 0%, #0f172a 100%)',
         p: 2
       }}
     >
-      {/* Cybernetic glowing background effects to match the reference image */}
-      <Box sx={{
-        position: 'absolute',
-        width: '600px',
-        height: '600px',
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(0,0,0,0) 70%)',
-        top: '15%',
-        left: '10%',
-        filter: 'blur(80px)',
-        zIndex: 0,
-        pointerEvents: 'none'
-      }} />
-      <Box sx={{
-        position: 'absolute',
-        width: '700px',
-        height: '700px',
-        borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(0,0,0,0) 70%)',
-        bottom: '10%',
-        right: '5%',
-        filter: 'blur(100px)',
-        zIndex: 0,
-        pointerEvents: 'none'
-      }} />
-
-      {/* Cyber grid line rays */}
-      <Box sx={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundImage: 'radial-gradient(rgba(56, 189, 248, 0.08) 1.5px, transparent 1.5px)',
-        backgroundSize: '32px 32px',
-        opacity: 0.7,
-        zIndex: 0,
-        pointerEvents: 'none'
-      }} />
-
       <Paper 
-        elevation={0} 
+        elevation={24} 
         sx={{ 
-          p: { xs: 4, sm: 6 }, 
           width: '100%', 
-          maxWidth: 450, 
-          borderRadius: '28px', 
+          maxWidth: 680, 
+          minHeight: 500,
+          borderRadius: '16px', 
           display: 'flex', 
           flexDirection: 'column', 
-          alignItems: 'center', 
-          backgroundColor: 'rgba(15, 23, 42, 0.65)', 
-          backdropFilter: 'blur(35px) saturate(210%)', 
-          border: '1px solid rgba(56, 189, 248, 0.25)', 
-          boxShadow: '0 0 60px rgba(14, 165, 233, 0.25), 0 30px 60px -15px rgba(0,0,0,0.8)',
+          backgroundImage: 'url("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80")', 
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           position: 'relative',
           overflow: 'hidden',
-          zIndex: 1,
+          boxShadow: '0 30px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0,0,0,0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          p: { xs: 4, sm: 6 },
+          pb: { xs: 12, sm: 12 }, // extra space for absolute footer
           '&:before': {
             content: '""',
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            height: '4px',
-            background: 'linear-gradient(90deg, #38bdf8 0%, #2563eb 100%)',
+            bottom: 0,
+            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.15) 0%, rgba(15, 23, 42, 0.4) 100%)',
+            zIndex: 1,
+            pointerEvents: 'none'
           }
         }}
       >
-        {/* Infagrasolution Logo on top of the card */}
+        {/* Top Header inside Card */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 2, mb: 6 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ color: '#ffffff', fontWeight: 300, fontSize: '1.4rem', letterSpacing: '1px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+              NEXUS
+            </Typography>
+            <Typography sx={{ color: '#ffffff', fontWeight: 900, fontSize: '1.4rem', letterSpacing: '1px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+              ERP
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 3 }}>
+            <Typography sx={{ color: '#ffffff', fontWeight: 800, fontSize: '0.88rem', pb: 0.5, borderBottom: '2px solid #ffffff', cursor: 'pointer' }}>
+              Login
+            </Typography>
+            <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500, fontSize: '0.88rem', cursor: 'not-allowed' }}>
+              Sign up
+            </Typography>
+          </Box>
+        </Box>
+        
+        {/* Main Content Form */}
         <Box 
-          component="img" 
-          src="/logo_infagrasolution.png" 
+          component="form" 
+          onSubmit={handleLogin} 
           sx={{ 
-            width: 80, 
-            height: 80, 
-            mb: 2.5, 
-            borderRadius: '18px',
-            filter: 'drop-shadow(0 0 15px rgba(56, 189, 248, 0.6))',
-            border: '2px solid rgba(255, 255, 255, 0.15)',
-            p: 0.5,
-            bgcolor: 'rgba(255, 255, 255, 0.95)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-          }} 
-        />
-        
-        <Typography 
-          variant="h4" 
-          sx={{ 
-            fontWeight: 800, 
-            mt: 0.5, 
-            mb: 0.5,
-            letterSpacing: '-0.5px',
-            color: '#ffffff',
-            textAlign: 'center'
+            width: '100%', 
+            maxWidth: 320, 
+            mx: 'auto', 
+            my: 'auto', 
+            zIndex: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
           }}
         >
-          Member Login
-        </Typography>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            fontWeight: 600, 
-            mb: 4, 
-            letterSpacing: '0.5px', 
-            color: 'rgba(56, 189, 248, 0.85)',
-            textAlign: 'center'
-          }}
-        >
-          NEXUS ERP • SISTEMA DE GESTIÓN
-        </Typography>
-        
-        {renderError()}
-        
-        <Box component="form" onSubmit={handleLogin} sx={{ mt: 1, width: '100%' }}>
+          {renderError()}
+          
           <TextField
-            margin="normal"
+            variant="standard"
             required
             fullWidth
-            label="Usuario"
+            placeholder="nealgao@163.com"
             autoComplete="username"
             autoFocus
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             slotProps={{
-              inputLabel: {
-                shrink: true
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start" sx={{ mr: 2 }}>
+                    <MailOutline sx={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: '1.25rem' }} />
+                  </InputAdornment>
+                ),
+                disableUnderline: true,
               }
             }}
-            placeholder="Introduce tu usuario"
             sx={{ 
-              '& .MuiOutlinedInput-root': { 
-                borderRadius: '16px',
+              width: '100%',
+              mb: 4,
+              borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+              pb: 1,
+              transition: 'border-color 0.3s ease',
+              '&:hover': {
+                borderBottomColor: 'rgba(255, 255, 255, 0.8)',
+              },
+              '&.Mui-focused': {
+                borderBottomColor: '#ffffff',
+              },
+              '& input': {
                 color: '#ffffff',
-                backgroundColor: 'rgba(3, 7, 18, 0.55)',
-                '& fieldset': {
-                  borderColor: 'rgba(56, 189, 248, 0.3)',
-                },
-                '&:hover fieldset': {
-                  borderColor: 'rgba(56, 189, 248, 0.7)',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#38bdf8',
-                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)'
+                fontSize: '1rem',
+                fontWeight: 500,
+                py: 0.5,
+                '&::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.55)',
+                  opacity: 1
                 }
-              },
-              '& .MuiInputLabel-root': {
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontWeight: 700,
-                '&.Mui-focused': {
-                  color: '#38bdf8',
-                }
-              },
-              '& .MuiInputBase-input::placeholder': {
-                color: 'rgba(255, 255, 255, 0.35)',
-                opacity: 1
               }
             }}
           />
+
           <TextField
-            margin="normal"
+            variant="standard"
             required
             fullWidth
-            label="Contraseña"
             type="password"
+            placeholder="*********"
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             slotProps={{
-              inputLabel: {
-                shrink: true
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start" sx={{ mr: 2 }}>
+                    <LockOutlined sx={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: '1.25rem' }} />
+                  </InputAdornment>
+                ),
+                disableUnderline: true,
               }
             }}
-            placeholder="••••••••"
             sx={{ 
-              '& .MuiOutlinedInput-root': { 
-                borderRadius: '16px',
+              width: '100%',
+              mb: 5,
+              borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+              pb: 1,
+              transition: 'border-color 0.3s ease',
+              '&:hover': {
+                borderBottomColor: 'rgba(255, 255, 255, 0.8)',
+              },
+              '&.Mui-focused': {
+                borderBottomColor: '#ffffff',
+              },
+              '& input': {
                 color: '#ffffff',
-                backgroundColor: 'rgba(3, 7, 18, 0.55)',
-                '& fieldset': {
-                  borderColor: 'rgba(56, 189, 248, 0.3)',
-                },
-                '&:hover fieldset': {
-                  borderColor: 'rgba(56, 189, 248, 0.7)',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#38bdf8',
-                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)'
+                fontSize: '1rem',
+                fontWeight: 500,
+                py: 0.5,
+                '&::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.55)',
+                  opacity: 1
                 }
-              },
-              '& .MuiInputLabel-root': {
-                color: 'rgba(255, 255, 255, 0.8)',
-                fontWeight: 700,
-                '&.Mui-focused': {
-                  color: '#38bdf8',
-                }
-              },
-              '& .MuiInputBase-input::placeholder': {
-                color: 'rgba(255, 255, 255, 0.35)',
-                opacity: 1
               }
             }}
           />
+
           <Button
             type="submit"
-            fullWidth
-            variant="contained"
-            size="large"
             disabled={loading}
+            endIcon={<ArrowForward sx={{ color: '#ffffff', fontSize: '1.1rem', ml: 1 }} />}
             sx={{ 
-              mt: 4, 
-              mb: 3, 
-              py: 1.8, 
-              borderRadius: '18px', 
-              fontWeight: 800, 
+              width: '100%',
+              height: '46px',
+              borderRadius: '24px', 
+              fontWeight: 600, 
               textTransform: 'none', 
-              fontSize: '1.05rem',
-              letterSpacing: '0.5px',
-              background: 'linear-gradient(135deg, #38bdf8 0%, #2563eb 100%)',
+              fontSize: '0.95rem',
+              background: 'rgba(20, 35, 55, 0.75)',
               color: '#ffffff',
-              boxShadow: '0 0 25px rgba(56, 189, 248, 0.35), 0 8px 24px rgba(37, 99, 235, 0.4)',
-              transition: 'all 0.3s ease',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 0 35px rgba(56, 189, 248, 0.55), 0 12px 32px rgba(37, 99, 235, 0.5)',
+                background: 'rgba(20, 35, 55, 0.95)',
+                transform: 'translateY(-1px)',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)',
+                borderColor: 'rgba(255, 255, 255, 0.3)',
               }
             }}
           >
-            {loading ? 'Iniciando sesión...' : 'Log In'}
+            {loading ? 'Entrando...' : 'Entrar'}
           </Button>
-          
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              display: 'block', 
-              textAlign: 'center', 
-              fontWeight: 600, 
-              letterSpacing: '1px', 
-              textTransform: 'uppercase',
-              color: 'rgba(255, 255, 255, 0.4)',
-              mb: 1
-            }}
-          >
-            Multi-Empresa • Licencia Activa
+        </Box>
+
+        {/* Floating absolute dark footer overlay */}
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 0, 
+            left: 0, 
+            right: 0, 
+            bgcolor: 'rgba(10, 18, 30, 0.65)', 
+            py: 2.2, 
+            textAlign: 'center',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            zIndex: 2
+          }}
+        >
+          <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500, fontSize: '0.74rem', letterSpacing: '0.5px' }}>
+            SISTEMA NEXUS ERP • Licencia Activa
           </Typography>
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              display: 'block', 
-              textAlign: 'center', 
-              fontWeight: 800, 
-              fontSize: '0.78rem',
-              color: '#38bdf8',
-              letterSpacing: '0.5px',
-              textShadow: '0 0 8px rgba(56, 189, 248, 0.5)'
-            }}
-          >
+          <Typography sx={{ color: 'rgba(255, 255, 255, 0.25)', fontWeight: 400, fontSize: '0.68rem', mt: 0.25 }}>
             Elaborado por Infagrasolution
           </Typography>
         </Box>
