@@ -60,6 +60,7 @@ export default function Layout() {
       console.error('Logout error', e);
     } finally {
       localStorage.clear(); // Clear everything
+      sessionStorage.removeItem('session_active');
       setUser(null);
       navigate('/login');
     }
@@ -75,13 +76,16 @@ export default function Layout() {
           return;
         }
 
+        const sessionActive = sessionStorage.getItem('session_active') === 'true';
         const navs = window.performance.getEntriesByType('navigation');
         const isReload = navs.length > 0 && (navs[0] as any).type === 'reload';
         const isLegacyReload = window.performance && window.performance.navigation && window.performance.navigation.type === 1;
         
-        if (isReload || isLegacyReload) {
+        if (sessionActive && (isReload || isLegacyReload)) {
           console.log("Page reload detected. Logging out for security.");
           await handleLogout();
+        } else {
+          sessionStorage.setItem('session_active', 'true');
         }
       } catch (e) {
         console.error("Error checking reload", e);
