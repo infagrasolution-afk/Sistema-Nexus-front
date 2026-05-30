@@ -63,6 +63,32 @@ export default function Layout() {
     }
   };
 
+  // Check for page reload on initial mount for extreme security
+  useEffect(() => {
+    const checkReload = async () => {
+      try {
+        const isSwitchingBranch = sessionStorage.getItem('switching_branch') === 'true';
+        if (isSwitchingBranch) {
+          sessionStorage.removeItem('switching_branch');
+          return;
+        }
+
+        const navs = window.performance.getEntriesByType('navigation');
+        const isReload = navs.length > 0 && (navs[0] as any).type === 'reload';
+        const isLegacyReload = window.performance && window.performance.navigation && window.performance.navigation.type === 1;
+        
+        if (isReload || isLegacyReload) {
+          console.log("Page reload detected. Logging out for security.");
+          await handleLogout();
+        }
+      } catch (e) {
+        console.error("Error checking reload", e);
+      }
+    };
+    
+    checkReload();
+  }, []);
+
   const { data: userData } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
@@ -108,10 +134,10 @@ export default function Layout() {
     enabled: !!user
   });
 
-  // Inactivity monitor (dynamic from tenant settings, defaults to 15 minutes)
+  // Inactivity monitor (dynamic from tenant settings, defaults to 5 minutes)
   useEffect(() => {
     let timeoutId: any;
-    const timeoutMinutes = tenantData?.settings?.session_timeout || 15;
+    const timeoutMinutes = tenantData?.settings?.session_timeout || 5;
     const INACTIVITY_LIMIT = timeoutMinutes * 60 * 1000;
 
     const resetTimer = () => {
@@ -165,6 +191,7 @@ export default function Layout() {
   });
 
   const handleBranchChange = (branchId: string) => {
+    sessionStorage.setItem('switching_branch', 'true');
     if (branchId === 'main') {
       localStorage.removeItem('active_tenant_id');
     } else {

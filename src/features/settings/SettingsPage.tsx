@@ -23,7 +23,7 @@ export default function SettingsPage() {
     logo_url: '',
     primary_color: '#2563eb',
     secondary_color: '#64748b',
-    settings: {} as any
+    settings: { session_timeout: 5 } as any
   });
   const [success, setSuccess] = useState(false);
   
@@ -209,7 +209,7 @@ export default function SettingsPage() {
               <Select
                 labelId="session-timeout-label"
                 label="Tiempo de Sesión"
-                value={formData.settings?.session_timeout || 15}
+                value={formData.settings?.session_timeout || 5}
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   setFormData({
@@ -221,7 +221,8 @@ export default function SettingsPage() {
                   });
                 }}
               >
-                <MenuItem value={15}>15 Minutos (Por defecto)</MenuItem>
+                <MenuItem value={5}>5 Minutos (Por defecto)</MenuItem>
+                <MenuItem value={15}>15 Minutos</MenuItem>
                 <MenuItem value={30}>30 Minutos</MenuItem>
                 <MenuItem value={60}>1 Hora</MenuItem>
                 <MenuItem value={120}>2 Horas</MenuItem>
