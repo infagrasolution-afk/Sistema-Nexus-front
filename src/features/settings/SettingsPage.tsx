@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { 
   Box, Typography, Paper, Grid, TextField, Button, 
-  Avatar, Divider, Alert, CircularProgress 
+  Avatar, Divider, Alert, CircularProgress, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import { 
   Business as BusinessIcon, 
-  Save as SaveIcon
+  Save as SaveIcon,
+  Security as SecurityIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -21,12 +22,13 @@ export default function SettingsPage() {
     address: '',
     logo_url: '',
     primary_color: '#2563eb',
-    secondary_color: '#64748b'
+    secondary_color: '#64748b',
+    settings: {} as any
   });
   const [success, setSuccess] = useState(false);
   
   const queryClient = useQueryClient();
-
+ 
   const { data: tenant, isLoading } = useQuery({
     queryKey: ['tenant-me'],
     queryFn: async () => {
@@ -34,7 +36,7 @@ export default function SettingsPage() {
       return response.data;
     },
   });
-
+ 
   useEffect(() => {
     if (tenant) {
       setFormData({
@@ -44,7 +46,8 @@ export default function SettingsPage() {
         address: tenant.address || '',
         logo_url: tenant.logo_url || '',
         primary_color: tenant.primary_color || '#2563eb',
-        secondary_color: tenant.secondary_color || '#64748b'
+        secondary_color: tenant.secondary_color || '#64748b',
+        settings: tenant.settings || {}
       });
     }
   }, [tenant]);
@@ -143,7 +146,8 @@ export default function SettingsPage() {
         </Grid>
 
         <Grid size={{ xs: 12, md: 4 }}>
-          <Paper sx={{ p: 4, borderRadius: 4, textAlign: 'center' }}>
+          {/* Card 1: Personalización de Marca */}
+          <Paper sx={{ p: 4, borderRadius: 4, textAlign: 'center', mb: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>{t('Personalización de Marca')}</Typography>
             <Avatar 
               src={formData.logo_url} 
@@ -184,6 +188,51 @@ export default function SettingsPage() {
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
               Los colores y el logo se aplicarán a la interfaz y a todos los documentos impresos.
+            </Typography>
+          </Paper>
+
+          {/* Card 2: Seguridad y Sesión */}
+          <Paper sx={{ p: 4, borderRadius: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+              <Avatar sx={{ bgcolor: 'error.main', width: 40, height: 40 }}>
+                <SecurityIcon sx={{ fontSize: 20 }} />
+              </Avatar>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>Seguridad y Sesión</Typography>
+            </Box>
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+              Administra el tiempo límite de inactividad antes de que la sesión se cierre automáticamente.
+            </Typography>
+
+            <FormControl fullWidth size="small">
+              <InputLabel id="session-timeout-label">Tiempo de Sesión</InputLabel>
+              <Select
+                labelId="session-timeout-label"
+                label="Tiempo de Sesión"
+                value={formData.settings?.session_timeout || 15}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setFormData({
+                    ...formData,
+                    settings: {
+                      ...formData.settings,
+                      session_timeout: val
+                    }
+                  });
+                }}
+              >
+                <MenuItem value={15}>15 Minutos (Por defecto)</MenuItem>
+                <MenuItem value={30}>30 Minutos</MenuItem>
+                <MenuItem value={60}>1 Hora</MenuItem>
+                <MenuItem value={120}>2 Horas</MenuItem>
+                <MenuItem value={240}>4 Horas</MenuItem>
+                <MenuItem value={480}>8 Horas (Día Completo)</MenuItem>
+                <MenuItem value={1440}>24 Horas (1 Día)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+              Mantener las sesiones abiertas por más tiempo ayuda a evitar cierres e interrupciones constantes.
             </Typography>
           </Paper>
         </Grid>

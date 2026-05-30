@@ -63,35 +63,6 @@ export default function Layout() {
     }
   };
 
-  // Inactivity monitor (15 minutes)
-  useEffect(() => {
-    let timeoutId: any;
-    const INACTIVITY_LIMIT = 15 * 60 * 1000;
-
-    const resetTimer = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        handleLogout();
-      }, INACTIVITY_LIMIT);
-    };
-
-    window.addEventListener('mousemove', resetTimer);
-    window.addEventListener('keypress', resetTimer);
-    window.addEventListener('click', resetTimer);
-    window.addEventListener('scroll', resetTimer);
-
-    resetTimer(); // Initialize timer
-
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('mousemove', resetTimer);
-      window.removeEventListener('keypress', resetTimer);
-      window.removeEventListener('click', resetTimer);
-      window.removeEventListener('scroll', resetTimer);
-    };
-  }, []);
-
-
   const { data: userData } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
@@ -136,6 +107,35 @@ export default function Layout() {
     },
     enabled: !!user
   });
+
+  // Inactivity monitor (dynamic from tenant settings, defaults to 15 minutes)
+  useEffect(() => {
+    let timeoutId: any;
+    const timeoutMinutes = tenantData?.settings?.session_timeout || 15;
+    const INACTIVITY_LIMIT = timeoutMinutes * 60 * 1000;
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        handleLogout();
+      }, INACTIVITY_LIMIT);
+    };
+
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keypress', resetTimer);
+    window.addEventListener('click', resetTimer);
+    window.addEventListener('scroll', resetTimer);
+
+    resetTimer(); // Initialize timer
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keypress', resetTimer);
+      window.removeEventListener('click', resetTimer);
+      window.removeEventListener('scroll', resetTimer);
+    };
+  }, [tenantData?.settings?.session_timeout]);
 
   const getLicenseWarning = () => {
     if (!tenantData?.subscription_end) return null;
