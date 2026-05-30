@@ -178,13 +178,19 @@ export default function LoginPage() {
           onSubmit={handleLogin} 
           sx={{ 
             width: '100%', 
-            maxWidth: 320, 
+            maxWidth: 360, 
             mx: 'auto', 
             my: 'auto', 
             zIndex: 2,
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center'
+            alignItems: 'center',
+            backgroundColor: 'rgba(15, 23, 42, 0.55)', // Elegant glassmorphic backdrop for excellent readability
+            backdropFilter: 'blur(16px)',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            p: { xs: 3, sm: 4 },
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)'
           }}
         >
           {renderError()}
@@ -285,18 +291,18 @@ export default function LoginPage() {
               width: '100%',
               height: '46px',
               borderRadius: '24px', 
-              fontWeight: 600, 
+              fontWeight: 700, 
               textTransform: 'none', 
-              fontSize: '0.95rem',
-              background: 'rgba(20, 35, 55, 0.75)',
+              fontSize: '0.98rem',
+              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.8) 0%, rgba(29, 78, 216, 0.8) 100%)', // Bright blue sapphire gradient for high contrast
               color: '#ffffff',
               border: '1px solid rgba(255, 255, 255, 0.15)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+              boxShadow: '0 8px 32px rgba(37, 99, 235, 0.25)',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
-                background: 'rgba(20, 35, 55, 0.95)',
+                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(29, 78, 216, 0.95) 100%)',
                 transform: 'translateY(-1px)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)',
+                boxShadow: '0 12px 40px rgba(37, 99, 235, 0.4)',
                 borderColor: 'rgba(255, 255, 255, 0.3)',
               }
             }}
