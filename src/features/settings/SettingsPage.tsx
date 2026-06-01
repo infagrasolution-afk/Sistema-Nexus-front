@@ -7,7 +7,9 @@ import {
   Business as BusinessIcon, 
   Save as SaveIcon,
   Security as SecurityIcon,
-  Help as HelpIcon
+  Help as HelpIcon,
+  Print as PrintIcon,
+  FileDownload as DownloadIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +18,37 @@ import { useAppStore } from '../../store/useAppStore';
 
 export default function SettingsPage() {
   const { t } = useTranslation();
+  const [agentStatus, setAgentStatus] = useState<'connected' | 'disconnected' | 'checking'>('disconnected');
+
+  useEffect(() => {
+    let intervalId: any;
+    
+    const checkStatus = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const response = await fetch('http://localhost:8080/status', { 
+          method: 'GET',
+          signal: controller.signal,
+          mode: 'cors'
+        });
+        clearTimeout(timeoutId);
+        if (response.ok) {
+          setAgentStatus('connected');
+        } else {
+          setAgentStatus('disconnected');
+        }
+      } catch (e) {
+        setAgentStatus('disconnected');
+      }
+    };
+
+    checkStatus();
+    intervalId = setInterval(checkStatus, 5000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   const [formData, setFormData] = useState({
     name: '',
     tax_id: '',
@@ -270,6 +303,109 @@ export default function SettingsPage() {
                 <MenuItem value="false">Oculto definitivo (Desactivado)</MenuItem>
               </Select>
             </FormControl>
+          </Paper>
+
+          {/* Card 4: Impresión Fiscal SENIAT */}
+          <Paper sx={{ p: 4, borderRadius: 4, mt: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+              <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+                <PrintIcon sx={{ fontSize: 20 }} />
+              </Avatar>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>Impresión Fiscal SENIAT</Typography>
+            </Box>
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+              Vincula NEXUS ERP con impresoras fiscales autorizadas usando nuestro Agente de Enlace Local.
+            </Typography>
+
+            <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>
+              <InputLabel id="printer-brand-label">Marca de la Impresora</InputLabel>
+              <Select
+                labelId="printer-brand-label"
+                label="Marca de la Impresora"
+                value={formData.settings?.fiscal_printer_brand || 'none'}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    settings: {
+                      ...formData.settings,
+                      fiscal_printer_brand: e.target.value
+                    }
+                  });
+                }}
+              >
+                <MenuItem value="none">Ninguna (Formatos Libres / Ticket Digital)</MenuItem>
+                <MenuItem value="hka">The Factory HKA (Clásicas / Nuevas)</MenuItem>
+                <MenuItem value="bematech">Bematech</MenuItem>
+                <MenuItem value="bixolon">Bixolon / SRP</MenuItem>
+                <MenuItem value="aclas">Aclas</MenuItem>
+              </Select>
+            </FormControl>
+
+            {formData.settings?.fiscal_printer_brand && formData.settings?.fiscal_printer_brand !== 'none' && (
+              <TextField
+                label="Puerto de Conexión (ej: COM1, USB001)"
+                fullWidth
+                size="small"
+                value={formData.settings?.fiscal_printer_port || 'COM1'}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    settings: {
+                      ...formData.settings,
+                      fiscal_printer_port: e.target.value
+                    }
+                  });
+                }}
+                sx={{ mb: 2.5 }}
+              />
+            )}
+
+            {/* Connection Status Indicator */}
+            <Box sx={{ 
+              p: 2, 
+              mb: 3, 
+              borderRadius: 3, 
+              border: '1px solid', 
+              borderColor: agentStatus === 'connected' ? 'success.main' : 'divider',
+              bgcolor: agentStatus === 'connected' ? 'rgba(46, 125, 50, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ 
+                  width: 10, 
+                  height: 10, 
+                  borderRadius: '50%', 
+                  bgcolor: agentStatus === 'connected' ? 'success.main' : 'error.main',
+                  boxShadow: agentStatus === 'connected' ? '0 0 10px #2e7d32' : 'none',
+                  animation: agentStatus === 'connected' ? 'pulse 2s infinite' : 'none',
+                  '@keyframes pulse': {
+                    '0%': { transform: 'scale(0.95)', boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.7)' },
+                    '70%': { transform: 'scale(1)', boxShadow: '0 0 0 6px rgba(46, 125, 50, 0)' },
+                    '100%': { transform: 'scale(0.95)', boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' }
+                  }
+                }} />
+                <Typography variant="body2" sx={{ fontWeight: 700, color: agentStatus === 'connected' ? 'success.dark' : 'text.secondary' }}>
+                  {agentStatus === 'connected' ? 'Agente Local Activo' : 'Agente Local Desconectado'}
+                </Typography>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                Puerto: 8080
+              </Typography>
+            </Box>
+
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={<DownloadIcon />}
+              href={`${api.defaults.baseURL || ''}/static/downloads/nexus-fiscal-connector.exe`}
+              download
+              sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700 }}
+            >
+              Descargar Agente Fiscal (Windows)
+            </Button>
           </Paper>
         </Grid>
       </Grid>

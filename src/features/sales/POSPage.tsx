@@ -206,6 +206,68 @@ export default function POSPage() {
     }
     
     setOpenFiscalDialog(false);
+
+    let fiscalInvoiceNumber: string | null = null;
+    let printerSerial: string | null = null;
+    
+    const tenantSettings = useAppStore.getState().tenant?.settings || {};
+    const printerBrand = tenantSettings.fiscal_printer_brand || 'none';
+    const printerPort = tenantSettings.fiscal_printer_port || 'COM1';
+
+    if (printerBrand !== 'none') {
+      try {
+        const payload = {
+          brand: printerBrand,
+          port: printerPort,
+          customer: {
+            name: fiscalData.name || 'CONSUMIDOR FINAL',
+            tax_id: fiscalData.tax_id || 'V-999999999',
+            phone: fiscalData.phone || '',
+            address: fiscalData.address || ''
+          },
+          payment_method: paymentMethod,
+          currency: currency,
+          exchange_rate: exchangeRate,
+          totals: {
+            subtotal: subtotalUSD,
+            tax: taxUSD,
+            igtf: igtfUSD,
+            total: totalUSD
+          },
+          items: cart.map(item => ({
+            name: item.name,
+            qty: item.qty,
+            price: item.price * (1 - (item.discount || 0) / 100) * (1 - globalDiscount / 100),
+            tax_rate: 16.0
+          }))
+        };
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for local printer
+        const printRes = await fetch('http://localhost:8080/print', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (printRes.ok) {
+          const printData = await printRes.json();
+          fiscalInvoiceNumber = printData.invoice_number || null;
+          printerSerial = printData.printer_serial || null;
+          alert("✨ Factura Fiscal Impresa con Éxito: #" + fiscalInvoiceNumber);
+        } else {
+          const proceed = confirm("⚠️ La impresora fiscal local retornó un error. ¿Desea completar la venta de todas formas sin imprimir ticket fiscal?");
+          if (!proceed) return;
+        }
+      } catch (err) {
+        console.error("Local printing failed", err);
+        const proceed = confirm("⚠️ El Agente Fiscal Local está desconectado o apagado. ¿Desea completar la venta de todas formas sin imprimir ticket fiscal?");
+        if (!proceed) return;
+      }
+    }
+
     createSaleMutation.mutate({
       customer_id: customerId,
       warehouse_id: warehouseId,
@@ -214,6 +276,8 @@ export default function POSPage() {
       exchange_rate: currency === 'USD' ? 1 : exchangeRate,
       cash_session_id: cashSession?.id,
       status: "COMPLETED",
+      fiscal_invoice_number: fiscalInvoiceNumber,
+      printer_serial: printerSerial,
       details: cart.map(item => ({
         product_id: item.id,
         quantity: item.qty,
