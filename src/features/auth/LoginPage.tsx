@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  
+
   const navigate = useNavigate();
   const { setTenantId, setUser } = useAppStore();
 
@@ -28,20 +28,20 @@ export default function LoginPage() {
     e.preventDefault();
     setLoginError(null);
     setLoading(true);
-    
+
     try {
       const response = await api.post('/auth/login', { username, password });
       const { access_token, refresh_token, tenant_id } = response.data;
-      
+
       localStorage.setItem('token', access_token);
       localStorage.setItem('refresh_token', refresh_token);
       setTenantId(tenant_id);
       sessionStorage.removeItem('nexus_wizard_prompted');
-      
+
       // Get user data immediately
       const userRes = await api.get('/auth/me');
       setUser(userRes.data);
-      
+
       navigate('/dashboard');
     } catch (err: any) {
       const detail = err.response?.data?.detail;
@@ -112,26 +112,26 @@ export default function LoginPage() {
 
 
   return (
-    <Box 
-      sx={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         background: 'radial-gradient(circle at center, #1e293b 0%, #0f172a 100%)',
         p: 2
       }}
     >
-      <Paper 
-        elevation={24} 
-        sx={{ 
-          width: '100%', 
-          maxWidth: 680, 
+      <Paper
+        elevation={24}
+        sx={{
+          width: '100%',
+          maxWidth: 680,
           minHeight: 500,
-          borderRadius: '16px', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          backgroundImage: 'url("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80")', 
+          borderRadius: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundImage: 'url("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80")',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           position: 'relative',
@@ -167,16 +167,16 @@ export default function LoginPage() {
             Acceso
           </Typography>
         </Box>
-        
+
         {/* Main Content Form */}
-        <Box 
-          component="form" 
-          onSubmit={handleLogin} 
-          sx={{ 
-            width: '100%', 
-            maxWidth: 360, 
-            mx: 'auto', 
-            my: 'auto', 
+        <Box
+          component="form"
+          onSubmit={handleLogin}
+          sx={{
+            width: '100%',
+            maxWidth: 360,
+            mx: 'auto',
+            my: 'auto',
             zIndex: 2,
             display: 'flex',
             flexDirection: 'column',
@@ -190,12 +190,12 @@ export default function LoginPage() {
           }}
         >
           {renderError()}
-          
+
           <TextField
             variant="standard"
             required
             fullWidth
-            placeholder="nealgao@163.com"
+            placeholder="usuario"
             autoComplete="username"
             autoFocus
             value={username}
@@ -210,7 +210,7 @@ export default function LoginPage() {
                 disableUnderline: true,
               }
             }}
-            sx={{ 
+            sx={{
               width: '100%',
               mb: 4,
               borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
@@ -254,7 +254,7 @@ export default function LoginPage() {
                 disableUnderline: true,
               }
             }}
-            sx={{ 
+            sx={{
               width: '100%',
               mb: 5,
               borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
@@ -283,12 +283,12 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             endIcon={<ArrowForward sx={{ color: '#ffffff', fontSize: '1.1rem', ml: 1 }} />}
-            sx={{ 
+            sx={{
               width: '100%',
               height: '46px',
-              borderRadius: '24px', 
-              fontWeight: 700, 
-              textTransform: 'none', 
+              borderRadius: '24px',
+              fontWeight: 700,
+              textTransform: 'none',
               fontSize: '0.98rem',
               background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.8) 0%, rgba(29, 78, 216, 0.8) 100%)', // Bright blue sapphire gradient for high contrast
               color: '#ffffff',
@@ -308,14 +308,14 @@ export default function LoginPage() {
         </Box>
 
         {/* Floating absolute dark footer overlay */}
-        <Box 
-          sx={{ 
-            position: 'absolute', 
-            bottom: 0, 
-            left: 0, 
-            right: 0, 
-            bgcolor: 'rgba(10, 18, 30, 0.65)', 
-            py: 2.2, 
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            bgcolor: 'rgba(10, 18, 30, 0.65)',
+            py: 2.2,
             textAlign: 'center',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             zIndex: 2
