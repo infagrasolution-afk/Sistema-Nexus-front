@@ -400,7 +400,7 @@ export default function SettingsPage() {
               variant="outlined"
               fullWidth
               startIcon={<DownloadIcon />}
-              href={`${api.defaults.baseURL || ''}/static/downloads/nexus-fiscal-connector.exe`}
+              href={(api.defaults.baseURL || '').replace('/api/v1', '') + '/static/downloads/nexus-fiscal-connector.exe'}
               download
               sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700 }}
             >
