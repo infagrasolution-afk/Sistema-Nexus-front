@@ -6,7 +6,8 @@ import {
 import { 
   Business as BusinessIcon, 
   Save as SaveIcon,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  Help as HelpIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +27,9 @@ export default function SettingsPage() {
     settings: { session_timeout: 5 } as any
   });
   const [success, setSuccess] = useState(false);
+  const [wizardEnabled, setWizardEnabled] = useState(() => {
+    return localStorage.getItem('nexus_wizard_enabled') !== 'false' ? 'true' : 'false';
+  });
   
   const queryClient = useQueryClient();
  
@@ -235,6 +239,37 @@ export default function SettingsPage() {
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
               Mantener las sesiones abiertas por más tiempo ayuda a evitar cierres e interrupciones constantes.
             </Typography>
+          </Paper>
+
+          {/* Card 3: Asistente de Bienvenida (Wizard) */}
+          <Paper sx={{ p: 4, borderRadius: 4, mt: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+              <Avatar sx={{ bgcolor: 'info.main', width: 40, height: 40 }}>
+                <HelpIcon sx={{ fontSize: 20 }} />
+              </Avatar>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>Asistente Guiado</Typography>
+            </Box>
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+              Activa o desactiva el asistente interactivo paso a paso que aparece al iniciar sesión en el sistema.
+            </Typography>
+
+            <FormControl fullWidth size="small">
+              <InputLabel id="wizard-status-label">Mostrar Asistente</InputLabel>
+              <Select
+                labelId="wizard-status-label"
+                label="Mostrar Asistente"
+                value={wizardEnabled}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setWizardEnabled(val);
+                  localStorage.setItem('nexus_wizard_enabled', val);
+                }}
+              >
+                <MenuItem value="true">Activo (Mostrar en cada inicio)</MenuItem>
+                <MenuItem value="false">Oculto definitivo (Desactivado)</MenuItem>
+              </Select>
+            </FormControl>
           </Paper>
         </Grid>
       </Grid>

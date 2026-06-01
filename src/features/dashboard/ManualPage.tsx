@@ -142,6 +142,34 @@ export default function ManualPage() {
             if (line.trim() === '---') {
               return <Divider key={i} sx={{ my: 4 }} />;
             }
+            if (line.trim().startsWith('![') && line.includes('](')) {
+              const altText = line.substring(line.indexOf('![') + 2, line.indexOf(']'));
+              const url = line.substring(line.indexOf('](') + 2, line.lastIndexOf(')'));
+              return (
+                <Box key={i} sx={{ my: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                  <Box 
+                    component="img" 
+                    src={url} 
+                    alt={altText}
+                    sx={{ 
+                      maxWidth: '100%', 
+                      height: 'auto', 
+                      borderRadius: '16px', 
+                      boxShadow: '0 10px 35px rgba(0, 0, 0, 0.15)', 
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      maxHeight: 500,
+                      objectFit: 'contain',
+                      bgcolor: 'background.paper',
+                      p: 1
+                    }} 
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, mt: 1, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                    📸 {altText}
+                  </Typography>
+                </Box>
+              );
+            }
             // Formatear texto en negrita inline
             if (line.includes('**')) {
               const parts = line.split('**');

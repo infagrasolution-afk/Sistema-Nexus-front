@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axiosConfig';
 import { useAppStore } from '../store/useAppStore';
+import SystemWizard from './SystemWizard';
 
 function Clock() {
   const [time, setTime] = useState(new Date());
@@ -419,6 +420,7 @@ export default function Layout() {
           </IconButton>
         </Tooltip>
       )}
+      <SystemWizard />
     </Box>
   );
 }
