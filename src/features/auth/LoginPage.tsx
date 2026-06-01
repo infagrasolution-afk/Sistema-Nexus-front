@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, TextField, Button, Alert, InputAdornment } from '@mui/material';
-import { MailOutlined, LockOutlined, ArrowForward } from '@mui/icons-material';
+import { MailOutlined, LockOutlined } from '@mui/icons-material';
 
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
@@ -118,39 +118,42 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'radial-gradient(circle at center, #1e293b 0%, #0f172a 100%)',
-        p: 2
+        backgroundImage: 'url("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1600&q=80")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        position: 'relative',
+        p: 2,
+        '&:before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.7) 100%)',
+          zIndex: 1,
+          pointerEvents: 'none'
+        }
       }}
     >
       <Paper
         elevation={24}
         sx={{
           width: '100%',
-          maxWidth: 680,
-          minHeight: 500,
-          borderRadius: '16px',
+          maxWidth: 480,
+          minHeight: 520,
+          borderRadius: '24px',
           display: 'flex',
           flexDirection: 'column',
-          backgroundImage: 'url("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=80")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          backgroundColor: 'rgba(15, 23, 42, 0.35)', // Elegant glassmorphic backdrop for excellent readability
+          backdropFilter: 'blur(24px)',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 30px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(0,0,0,0.2)',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          p: { xs: 4, sm: 6 },
+          zIndex: 2,
+          boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.12)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          p: { xs: 4, sm: 5 },
           pb: { xs: 12, sm: 12 }, // extra space for absolute footer
-          '&:before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.15) 0%, rgba(15, 23, 42, 0.4) 100%)',
-            zIndex: 1,
-            pointerEvents: 'none'
-          }
         }}
       >
         {/* Top Header inside Card */}
@@ -174,19 +177,12 @@ export default function LoginPage() {
           onSubmit={handleLogin}
           sx={{
             width: '100%',
-            maxWidth: 360,
             mx: 'auto',
             my: 'auto',
             zIndex: 2,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            backgroundColor: 'rgba(15, 23, 42, 0.55)', // Elegant glassmorphic backdrop for excellent readability
-            backdropFilter: 'blur(16px)',
-            borderRadius: '20px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            p: { xs: 3, sm: 4 },
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)'
           }}
         >
           {renderError()}
@@ -282,7 +278,6 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={loading}
-            endIcon={<ArrowForward sx={{ color: '#ffffff', fontSize: '1.1rem', ml: 1 }} />}
             sx={{
               width: '100%',
               height: '46px',
@@ -303,7 +298,7 @@ export default function LoginPage() {
               }
             }}
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? 'Logging in...' : 'Login'}
           </Button>
         </Box>
 
