@@ -65,6 +65,16 @@ const REPORT_CATEGORIES = [
       { id: 'purchase_history', title: 'Historial de Compras', description: 'Todas las facturas de proveedores procesadas.' },
       { id: 'supplier_stats', title: 'Estadísticas de Proveedores', description: 'Análisis de costos y tiempos de entrega.' },
     ]
+  },
+  { 
+    id: 'seniat', 
+    title: 'Obligaciones SENIAT', 
+    icon: <Description />, 
+    color: '#dc2626',
+    reports: [
+      { id: 'seniat_sales_book', title: 'Libro de Ventas Fiscal', description: 'Exportar Libro de Ventas mensual con formato oficial exigido por el SENIAT Venezuela.' },
+      { id: 'seniat_purchase_book', title: 'Libro de Compras Fiscal', description: 'Exportar Libro de Compras mensual con formato oficial exigido por el SENIAT Venezuela.' },
+    ]
   }
 ];
 
@@ -74,10 +84,13 @@ export default function ReportsPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [currentReport, setCurrentReport] = useState<{ id: string, title: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   // Extract user modules to dynamically hide categories
   const { user } = useAppStore();
-  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting';
+  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting,seniat';
 
   const allowedCategories = REPORT_CATEGORIES.filter(cat => {
     if (user?.is_superuser) return true;
@@ -110,7 +123,28 @@ export default function ReportsPage() {
     setCurrentReport(null);
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    if (currentReport?.id === 'seniat_sales_book' || currentReport?.id === 'seniat_purchase_book') {
+      const endpoint = currentReport.id === 'seniat_sales_book' ? '/fiscal/libro-ventas' : '/fiscal/libro-compras';
+      try {
+        const response = await api.get(endpoint, {
+          params: { month: selectedMonth, year: selectedYear },
+          responseType: 'blob'
+        });
+        
+        const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8-sig;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${currentReport.id === 'seniat_sales_book' ? 'libro_ventas' : 'libro_compras'}_${selectedMonth.toString().padStart(2, '0')}_${selectedYear}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+      } catch (err) {
+        alert('Error al descargar el libro fiscal. Verifique que existan registros completados en el período seleccionado.');
+      }
+      return;
+    }
     alert('Exportando reporte a formato CSV...');
   };
 
@@ -326,6 +360,64 @@ export default function ReportsPage() {
               </TableBody>
             </Table>
           </TableContainer>
+        </Box>
+      );
+    }
+    // --- 5. SENIAT SALES BOOK & SENIAT PURCHASE BOOK ---
+    if (currentReport.id === 'seniat_sales_book' || currentReport.id === 'seniat_purchase_book') {
+      const isSales = currentReport.id === 'seniat_sales_book';
+      return (
+        <Box sx={{ p: 2, textAlign: 'center' }}>
+          <Box sx={{ bgcolor: 'rgba(220, 38, 38, 0.05)', p: 3, borderRadius: '16px', mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, border: '1px dashed #dc2626' }}>
+            <Description sx={{ fontSize: '3rem', color: '#dc2626' }} />
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#991b1b' }}>
+              Generación de {isSales ? 'Libro de Ventas' : 'Libro de Compras'} Fiscal
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, fontWeight: 500 }}>
+              Este archivo cumple estrictamente con las normativas y providencias tributarias vigentes del SENIAT (Venezuela). Contiene las bases imponibles del IVA (16%), alícuotas adicionales, montos exentos y desglose del impuesto IGTF (3%) si aplica.
+            </Typography>
+          </Box>
+          <Grid container spacing={3} sx={{ mb: 2, justifyContent: 'center' }}>
+            <Grid size={{ xs: 6, sm: 4 }}>
+              <TextField
+                select
+                label="Mes Tributario"
+                fullWidth
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                slotProps={{ select: { native: true } }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              >
+                <option value={1}>Enero</option>
+                <option value={2}>Febrero</option>
+                <option value={3}>Marzo</option>
+                <option value={4}>Abril</option>
+                <option value={5}>Mayo</option>
+                <option value={6}>Junio</option>
+                <option value={7}>Julio</option>
+                <option value={8}>Agosto</option>
+                <option value={9}>Septiembre</option>
+                <option value={10}>Octubre</option>
+                <option value={11}>Noviembre</option>
+                <option value={12}>Diciembre</option>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4 }}>
+              <TextField
+                select
+                label="Año Fiscal"
+                fullWidth
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                slotProps={{ select: { native: true } }}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              >
+                <option value={2026}>2026</option>
+                <option value={2027}>2027</option>
+                <option value={2028}>2028</option>
+              </TextField>
+            </Grid>
+          </Grid>
         </Box>
       );
     }
