@@ -19,10 +19,12 @@ interface CashSession {
 }
 
 interface TenantInfo {
+  id?: number;
   name: string;
   logo_url?: string;
   primary_color?: string;
   secondary_color?: string;
+  settings?: any;
 }
 
 interface AppState {
