@@ -57,7 +57,7 @@ export default function DeliveryNotesPage() {
   // Load notes from localStorage on mount/tenant change
   useEffect(() => {
     if (tenant?.id) {
-      const saved = localStorage.getItem(`nexus_delivery_notes_${tenant.id}`);
+      const saved = localStorage.getItem(`apex_delivery_notes_${tenant.id}`);
       if (saved) {
         setNotes(JSON.parse(saved));
       } else {
@@ -69,7 +69,7 @@ export default function DeliveryNotesPage() {
   // Save notes to localStorage
   const saveNotes = (updatedNotes: DeliveryNote[]) => {
     if (tenant?.id) {
-      localStorage.setItem(`nexus_delivery_notes_${tenant.id}`, JSON.stringify(updatedNotes));
+      localStorage.setItem(`apex_delivery_notes_${tenant.id}`, JSON.stringify(updatedNotes));
       setNotes(updatedNotes);
     }
   };
@@ -143,7 +143,7 @@ export default function DeliveryNotesPage() {
 
     const logoHtml = tenant?.logo_url 
       ? `<img src="${tenant.logo_url}" alt="Logo" style="max-height: 80px; object-fit: contain;" />`
-      : `<div style="font-size: 24px; font-weight: 800; color: #2563eb;">${tenant?.name || 'NEXUS ERP'}</div>`;
+      : `<div style="font-size: 24px; font-weight: 800; color: #2563eb;">${tenant?.name || 'APEX ERP'}</div>`;
 
     const itemsRows = note.items.map((item, idx) => `
       <tr>
@@ -183,8 +183,8 @@ export default function DeliveryNotesPage() {
               <td style="vertical-align: top;">
                 ${logoHtml}
                 <div style="font-size: 12px; color: #64748b; margin-top: 5px;">
-                  <strong>${tenant?.name || 'Nexus Corp'}</strong><br/>
-                  Email: ${tenant?.email || 'admin@nexuserp.com'}<br/>
+                  <strong>${tenant?.name || 'APEX Corp'}</strong><br/>
+                  Email: ${tenant?.email || 'admin@apexerp.com'}<br/>
                   Rif / ID: J-00000000-0
                 </div>
               </td>
@@ -234,7 +234,7 @@ export default function DeliveryNotesPage() {
           <div class="signature-container">
             <div class="signature-box" style="margin-top: 60px;">
               Entregado Por (Firma y Cédula)<br/>
-              <strong>Despacho de Inventario NEXUS</strong>
+              <strong>Despacho de Inventario APEX</strong>
             </div>
             <div class="signature-box" style="margin-top: 60px;">
               Recibido Conforme (Nombre, Firma y Fecha)<br/>

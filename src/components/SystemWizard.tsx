@@ -28,20 +28,20 @@ export default function SystemWizard() {
 
   useEffect(() => {
     // Automatically trigger the wizard on login/startup if enabled
-    const enabled = localStorage.getItem('nexus_wizard_enabled') !== 'false';
-    const hasPromptedThisSession = sessionStorage.getItem('nexus_wizard_prompted') === 'true';
+    const enabled = localStorage.getItem('apex_wizard_enabled') !== 'false';
+    const hasPromptedThisSession = sessionStorage.getItem('apex_wizard_prompted') === 'true';
     
     if (enabled && !hasPromptedThisSession) {
       setOpen(true);
-      sessionStorage.setItem('nexus_wizard_prompted', 'true');
+      sessionStorage.setItem('apex_wizard_prompted', 'true');
     }
   }, []);
 
   useEffect(() => {
     if (open) {
-      sessionStorage.setItem('nexus_wizard_active', 'true');
+      sessionStorage.setItem('apex_wizard_active', 'true');
     } else {
-      sessionStorage.removeItem('nexus_wizard_active');
+      sessionStorage.removeItem('apex_wizard_active');
     }
   }, [open]);
 
@@ -49,9 +49,9 @@ export default function SystemWizard() {
   const allSteps = [
     {
       id: 'welcome',
-      title: "¡Bienvenido a NEXUS ERP!",
+      title: "¡Bienvenido a APEX ERP!",
       subtitle: "Tu centro de control empresarial inteligente",
-      description: "NEXUS ERP te permite automatizar la facturación, controlar inventarios con costeo promedio ponderado, realizar auditorías mediante una bitácora inmutable y monitorear tu flujo de caja en tiempo real. ¡Hagamos un recorrido rápido por el sistema!",
+      description: "APEX ERP te permite automatizar la facturación, controlar inventarios con costeo promedio ponderado, realizar auditorías mediante una bitácora inmutable y monitorear tu flujo de caja en tiempo real. ¡Hagamos un recorrido rápido por el sistema!",
       icon: (size: number) => <WelcomeIcon sx={{ fontSize: size, color: '#38bdf8', filter: 'drop-shadow(0 0 15px rgba(56, 189, 248, 0.5))' }} />,
       color: '#38bdf8',
       path: '/dashboard'
@@ -137,7 +137,7 @@ export default function SystemWizard() {
 
   const handleClose = () => {
     if (dontShowAgain) {
-      localStorage.setItem('nexus_wizard_enabled', 'false');
+      localStorage.setItem('apex_wizard_enabled', 'false');
     }
     setOpen(false);
   };

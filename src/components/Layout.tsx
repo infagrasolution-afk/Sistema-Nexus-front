@@ -65,7 +65,7 @@ export default function Layout() {
       localStorage.removeItem('active_tenant_id');
       localStorage.removeItem('active_tenant_name');
       sessionStorage.removeItem('session_active');
-      sessionStorage.removeItem('nexus_wizard_prompted');
+      sessionStorage.removeItem('apex_wizard_prompted');
       setUser(null);
       navigate('/login');
     }
@@ -247,7 +247,7 @@ export default function Layout() {
               </Box>
             )}
             <Typography variant="caption" sx={{ fontWeight: 900, color: tenantData?.primary_color || 'primary.main', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '1px' }}>
-              {tenantData?.name || 'NEXUS ERP'}
+              {tenantData?.name || 'APEX ERP'}
             </Typography>
           </Box>
           <Box sx={{ flexGrow: 1 }} />
@@ -379,7 +379,7 @@ export default function Layout() {
         {location.pathname !== '/sales' && (
           <Box sx={{ mt: 'auto', pt: 6, pb: 4, textAlign: 'center', width: '100%' }}>
             <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.disabled', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              NEXUS ERP v2.0 • Elaborado por <strong>Infagrasolution</strong>
+              APEX ERP v2.0 • Elaborado por <strong>Infagrasolution</strong>
             </Typography>
           </Box>
         )}
@@ -389,7 +389,7 @@ export default function Layout() {
       {user && (
         <Tooltip title="Soporte Técnico" arrow placement="left">
           <IconButton
-            href={`https://wa.me/584120161906?text=Hola%20NEXUS%20ERP%2C%20necesito%20soporte%20t%C3%A9cnico%20para%20mi%20empresa.%20Mi%20usuario%20es%20${user.username || 'invitado'}.`}
+            href={`https://wa.me/584120161906?text=Hola%20APEX%20ERP%2C%20necesito%20soporte%20t%C3%A9cnico%20para%20mi%20empresa.%20Mi%20usuario%20es%20${user.username || 'invitado'}.`}
             target="_blank"
             rel="noopener noreferrer"
             sx={{

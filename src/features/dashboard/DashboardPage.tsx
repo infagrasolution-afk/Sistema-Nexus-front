@@ -144,10 +144,10 @@ export default function DashboardPage() {
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
         })}>
-          Bienvenido a {tenant?.name || 'NEXUS ERP'}, {user?.username || 'Usuario'}
+          Bienvenido a {tenant?.name || 'APEX ERP'}, {user?.username || 'Usuario'}
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.75 }}>
-          Potencia tu negocio con NEXUS ERP
+          Potencia tu negocio con APEX ERP
         </Typography>
       </Box>
 

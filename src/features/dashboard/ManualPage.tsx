@@ -32,7 +32,7 @@ export default function ManualPage() {
       const blobUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = 'manual_usuario_nexus_erp.md';
+      a.download = 'manual_usuario_apex_erp.md';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -77,7 +77,7 @@ export default function ManualPage() {
             variant="outlined" 
             color="success"
             startIcon={<ContactSupportIcon />}
-            href={`https://wa.me/584120161906?text=Hola,%20tengo%20una%20duda%20sobre%20el%20funcionamiento%20del%20ERP%20NEXUS.`}
+            href={`https://wa.me/584120161906?text=Hola,%20tengo%20una%20duda%20sobre%20el%20funcionamiento%20del%20ERP%20APEX.`}
             target="_blank"
             sx={{ borderRadius: 3, fontWeight: 700 }}
           >
@@ -101,7 +101,7 @@ export default function ManualPage() {
           {data?.title}
         </Typography>
         <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 600, mb: 4 }}>
-          Manual de operaciones oficiales de NEXUS ERP Venezuela
+          Manual de operaciones oficiales de APEX ERP Venezuela
         </Typography>
         <Divider sx={{ mb: 4 }} />
         

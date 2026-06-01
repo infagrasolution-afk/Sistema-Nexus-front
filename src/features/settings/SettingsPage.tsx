@@ -61,7 +61,7 @@ export default function SettingsPage() {
   });
   const [success, setSuccess] = useState(false);
   const [wizardEnabled, setWizardEnabled] = useState(() => {
-    return localStorage.getItem('nexus_wizard_enabled') !== 'false' ? 'true' : 'false';
+    return localStorage.getItem('apex_wizard_enabled') !== 'false' ? 'true' : 'false';
   });
   
   const queryClient = useQueryClient();
@@ -296,7 +296,7 @@ export default function SettingsPage() {
                 onChange={(e) => {
                   const val = e.target.value;
                   setWizardEnabled(val);
-                  localStorage.setItem('nexus_wizard_enabled', val);
+                  localStorage.setItem('apex_wizard_enabled', val);
                 }}
               >
                 <MenuItem value="true">Activo (Mostrar en cada inicio)</MenuItem>
@@ -315,7 +315,7 @@ export default function SettingsPage() {
             </Box>
             
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-              Vincula NEXUS ERP con impresoras fiscales autorizadas usando nuestro Agente de Enlace Local.
+              Vincula APEX ERP con impresoras fiscales autorizadas usando nuestro Agente de Enlace Local.
             </Typography>
 
             <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>

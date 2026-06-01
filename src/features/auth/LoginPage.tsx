@@ -36,7 +36,7 @@ export default function LoginPage() {
       localStorage.setItem('token', access_token);
       localStorage.setItem('refresh_token', refresh_token);
       setTenantId(tenant_id);
-      sessionStorage.removeItem('nexus_wizard_prompted');
+      sessionStorage.removeItem('apex_wizard_prompted');
 
       // Get user data immediately
       const userRes = await api.get('/auth/me');
@@ -160,7 +160,7 @@ export default function LoginPage() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 2, mb: 6 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography sx={{ color: '#ffffff', fontWeight: 300, fontSize: '1.4rem', letterSpacing: '1px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-              NEXUS
+              APEX
             </Typography>
             <Typography sx={{ color: '#ffffff', fontWeight: 900, fontSize: '1.4rem', letterSpacing: '1px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
               ERP
@@ -317,7 +317,7 @@ export default function LoginPage() {
           }}
         >
           <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500, fontSize: '0.74rem', letterSpacing: '0.5px' }}>
-            SISTEMA NEXUS ERP • Licencia Activa
+            SISTEMA APEX ERP • Licencia Activa
           </Typography>
           <Typography sx={{ color: 'rgba(255, 255, 255, 0.25)', fontWeight: 400, fontSize: '0.68rem', mt: 0.25 }}>
             Elaborado por Infagrasolution

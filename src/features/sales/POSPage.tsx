@@ -96,7 +96,7 @@ export default function POSPage() {
       try {
         const res = await api.get(`/cash/session/current?computer_uid=${getComputerUID()}`);
         setCashSession(res.data);
-        const isWizardActive = sessionStorage.getItem('nexus_wizard_active') === 'true';
+        const isWizardActive = sessionStorage.getItem('apex_wizard_active') === 'true';
         if (!res.data && !isWizardActive) setOpenRegisterDialog(true);
         return res.data;
       } catch (e) {
