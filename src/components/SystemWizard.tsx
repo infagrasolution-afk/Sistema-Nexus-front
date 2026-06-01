@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
-  Dialog, DialogContent, Box, Typography, Button, IconButton, 
+  Dialog, Box, Typography, Button, IconButton, 
   Checkbox, FormControlLabel, MobileStepper, useTheme
 } from '@mui/material';
 import { 
