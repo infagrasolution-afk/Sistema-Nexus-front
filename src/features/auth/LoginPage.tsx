@@ -36,6 +36,7 @@ export default function LoginPage() {
       localStorage.setItem('token', access_token);
       localStorage.setItem('refresh_token', refresh_token);
       setTenantId(tenant_id);
+      sessionStorage.removeItem('nexus_wizard_prompted');
       
       // Get user data immediately
       const userRes = await api.get('/auth/me');

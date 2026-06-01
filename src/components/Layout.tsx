@@ -60,8 +60,12 @@ export default function Layout() {
     } catch (e) {
       console.error('Logout error', e);
     } finally {
-      localStorage.clear(); // Clear everything
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('active_tenant_id');
+      localStorage.removeItem('active_tenant_name');
       sessionStorage.removeItem('session_active');
+      sessionStorage.removeItem('nexus_wizard_prompted');
       setUser(null);
       navigate('/login');
     }

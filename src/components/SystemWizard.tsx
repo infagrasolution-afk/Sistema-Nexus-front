@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Dialog, Box, Typography, Button, IconButton, 
   Checkbox, FormControlLabel, MobileStepper, useTheme
@@ -18,6 +19,7 @@ import {
 
 export default function SystemWizard() {
   const theme = useTheme();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -39,44 +41,59 @@ export default function SystemWizard() {
       subtitle: "Tu centro de control empresarial inteligente",
       description: "NEXUS ERP te permite automatizar la facturación, controlar inventarios con costeo promedio ponderado, realizar auditorías mediante una bitácora inmutable y monitorear tu flujo de caja en tiempo real. ¡Hagamos un recorrido rápido por el sistema!",
       icon: <WelcomeIcon sx={{ fontSize: 70, color: '#38bdf8', filter: 'drop-shadow(0 0 15px rgba(56, 189, 248, 0.5))' }} />,
-      color: '#38bdf8'
+      color: '#38bdf8',
+      path: '/dashboard'
     },
     {
       title: "Módulo de Inventario (WMS)",
       subtitle: "Control absoluto de tus mercancías",
       description: "Registra productos con SKU único, categorías y límites de stock. Realiza 'Cargos' para saldos iniciales y 'Descargos' para retiros o mermas. El sistema recalcula automáticamente el Costo Promedio Ponderado con cada nueva entrada.",
       icon: <InventoryIcon sx={{ fontSize: 70, color: '#10b981', filter: 'drop-shadow(0 0 15px rgba(16, 185, 129, 0.5))' }} />,
-      color: '#10b981'
+      color: '#10b981',
+      path: '/catalog'
     },
     {
       title: "Punto de Venta (POS)",
       subtitle: "Ventas y facturación fluidas",
       description: "Abre y cierra turnos de caja para controlar el efectivo. Procesa cobros rápidos en Bolívares o Divisas mediante múltiples métodos de pago (Efectivo, Pago Móvil, Punto de Venta o Transferencia). El stock se descarga instantáneamente.",
       icon: <SalesIcon sx={{ fontSize: 70, color: '#3b82f6', filter: 'drop-shadow(0 0 15px rgba(59, 130, 246, 0.5))' }} />,
-      color: '#3b82f6'
+      color: '#3b82f6',
+      path: '/sales'
     },
     {
       title: "Compras e Importaciones",
       subtitle: "Gestión inteligente de proveedores",
       description: "Registra compras a proveedores utilizando RIF/Cédula y cargando los costos unitarios de compra. El sistema sumará stock automáticamente y actualizará los costos del catálogo para mantener tus márgenes precisos.",
       icon: <ShoppingCartIcon sx={{ fontSize: 70, color: '#f59e0b', filter: 'drop-shadow(0 0 15px rgba(245, 158, 11, 0.5))' }} />,
-      color: '#f59e0b'
+      color: '#f59e0b',
+      path: '/purchases'
     },
     {
       title: "Tesorería y CxC / CxP",
       subtitle: "Tus cuentas y flujo bajo control",
       description: "Monitorea cuentas por cobrar (CxC) de clientes y cuentas por pagar (CxP) a proveedores. Registra abonos y cobros parciales de manera ordenada, manteniendo el flujo de caja perfectamente cuadrado.",
       icon: <TreasuryIcon sx={{ fontSize: 70, color: '#8b5cf6', filter: 'drop-shadow(0 0 15px rgba(139, 92, 246, 0.5))' }} />,
-      color: '#8b5cf6'
+      color: '#8b5cf6',
+      path: '/accounting'
     },
     {
       title: "Bitácora Universal de Movimientos",
       subtitle: "Trazabilidad inmutable e informes transparentes",
       description: "Cada cargo, descargo, venta, compra y cierre de caja queda grabado de forma automática e inmutable en el historial del sistema con fecha, hora, usuario y descripción detallada, garantizando auditorías 100% transparentes.",
       icon: <AuditIcon sx={{ fontSize: 70, color: '#ec4899', filter: 'drop-shadow(0 0 15px rgba(236, 72, 153, 0.5))' }} />,
-      color: '#ec4899'
+      color: '#ec4899',
+      path: '/dashboard'
     }
   ];
+
+  useEffect(() => {
+    if (open) {
+      const current = steps[activeStep];
+      if (current && current.path) {
+        navigate(current.path);
+      }
+    }
+  }, [activeStep, open]);
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
