@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logAppError } from '../utils/errorLogger';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
@@ -59,6 +60,16 @@ api.interceptors.response.use(
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
+    }
+    
+    if (error.config && !error.config.url?.includes('/support/error-logs') && (error.response?.status >= 500 || !error.response)) {
+      const msg = `API Failure: ${error.response?.status || 'Network Error'} on ${error.config.method?.toUpperCase()} ${error.config.url}`;
+      const stackDetails = JSON.stringify({
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message
+      });
+      logAppError(msg, stackDetails, 'Axios Interceptor');
     }
     
     return Promise.reject(error);

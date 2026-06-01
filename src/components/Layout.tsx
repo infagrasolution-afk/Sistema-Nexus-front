@@ -175,6 +175,9 @@ export default function Layout() {
   }, [tenantData?.settings?.session_timeout]);
 
   const getLicenseWarning = () => {
+    if (tenantData?.id === 1 || tenantData?.name?.toLowerCase().includes('master') || user?.is_superuser) {
+      return null;
+    }
     if (!tenantData?.subscription_end) return null;
     const end = new Date(tenantData.subscription_end);
     const now = new Date();
