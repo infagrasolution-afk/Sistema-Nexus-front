@@ -174,7 +174,7 @@ export default function AdminPage() {
       {/* Tabs Menu */}
       <Tabs 
         value={tabValue} 
-        onChange={(e, val) => setTabValue(val)} 
+        onChange={(_, val) => setTabValue(val)} 
         sx={{ 
           mb: 4, 
           borderBottom: 1, 
@@ -478,19 +478,19 @@ export default function AdminPage() {
           {selectedError && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Usuario Activo</Typography>
                   <Typography sx={{ fontWeight: 700 }}>{selectedError.username || 'Invitado/Anónimo'}</Typography>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Inquilino ID / Tenant</Typography>
                   <Typography sx={{ fontWeight: 700 }}>{selectedError.tenant_id ? `Empresa ID #${selectedError.tenant_id}` : 'Global/Público'}</Typography>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>URL de Origen</Typography>
                   <Typography sx={{ fontFamily: 'monospace', fontSize: '0.9rem', color: '#38bdf8' }}>{selectedError.url}</Typography>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Navegador / User Agent</Typography>
                   <Typography sx={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{selectedError.user_agent}</Typography>
                 </Grid>
