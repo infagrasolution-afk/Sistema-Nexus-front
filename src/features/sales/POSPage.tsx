@@ -96,7 +96,8 @@ export default function POSPage() {
       try {
         const res = await api.get(`/cash/session/current?computer_uid=${getComputerUID()}`);
         setCashSession(res.data);
-        if (!res.data) setOpenRegisterDialog(true);
+        const isWizardActive = sessionStorage.getItem('nexus_wizard_active') === 'true';
+        if (!res.data && !isWizardActive) setOpenRegisterDialog(true);
         return res.data;
       } catch (e) {
         console.error("Error fetching session", e);

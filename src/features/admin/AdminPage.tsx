@@ -236,7 +236,17 @@ export default function AdminPage() {
                         />
                       </TableCell>
                       <TableCell>
-                        {new Date(tenant.subscription_end).toLocaleDateString()}
+                        {tenant.id === 1 || tenant.name.toLowerCase().includes('master') || tenant.name.toLowerCase().includes('demo') ? (
+                          <Chip 
+                            label="Ilimitada / Vitalicia" 
+                            color="primary" 
+                            size="small"
+                            variant="outlined" 
+                            sx={{ borderRadius: '6px', fontWeight: 800 }} 
+                          />
+                        ) : (
+                          new Date(tenant.subscription_end).toLocaleDateString()
+                        )}
                       </TableCell>
                       <TableCell>
                         <Chip 

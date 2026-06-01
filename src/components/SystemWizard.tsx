@@ -16,10 +16,12 @@ import {
   Security as AuditIcon,
   CheckCircle as FinishIcon
 } from '@mui/icons-material';
+import { useAppStore } from '../store/useAppStore';
 
 export default function SystemWizard() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { user } = useAppStore();
   const [open, setOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [dontShowAgain, setDontShowAgain] = useState(false);
@@ -35,8 +37,18 @@ export default function SystemWizard() {
     }
   }, []);
 
-  const steps = [
+  useEffect(() => {
+    if (open) {
+      sessionStorage.setItem('nexus_wizard_active', 'true');
+    } else {
+      sessionStorage.removeItem('nexus_wizard_active');
+    }
+  }, [open]);
+
+  // Comprehensive step catalogue representing modules
+  const allSteps = [
     {
+      id: 'welcome',
       title: "¡Bienvenido a NEXUS ERP!",
       subtitle: "Tu centro de control empresarial inteligente",
       description: "NEXUS ERP te permite automatizar la facturación, controlar inventarios con costeo promedio ponderado, realizar auditorías mediante una bitácora inmutable y monitorear tu flujo de caja en tiempo real. ¡Hagamos un recorrido rápido por el sistema!",
@@ -45,6 +57,7 @@ export default function SystemWizard() {
       path: '/dashboard'
     },
     {
+      id: 'inventory',
       title: "Módulo de Inventario (WMS)",
       subtitle: "Control absoluto de tus mercancías",
       description: "Registra productos con SKU único, categorías y límites de stock. Realiza 'Cargos' para saldos iniciales y 'Descargos' para retiros o mermas. El sistema recalcula automáticamente el Costo Promedio Ponderado con cada nueva entrada.",
@@ -53,6 +66,7 @@ export default function SystemWizard() {
       path: '/catalog'
     },
     {
+      id: 'sales',
       title: "Punto de Venta (POS)",
       subtitle: "Ventas y facturación fluidas",
       description: "Abre y cierra turnos de caja para controlar el efectivo. Procesa cobros rápidos en Bolívares o Divisas mediante múltiples métodos de pago (Efectivo, Pago Móvil, Punto de Venta o Transferencia). El stock se descarga instantáneamente.",
@@ -61,6 +75,7 @@ export default function SystemWizard() {
       path: '/sales'
     },
     {
+      id: 'purchases',
       title: "Compras e Importaciones",
       subtitle: "Gestión inteligente de proveedores",
       description: "Registra compras a proveedores utilizando RIF/Cédula y cargando los costos unitarios de compra. El sistema sumará stock automáticamente y actualizará los costos del catálogo para mantener tus márgenes precisos.",
@@ -69,6 +84,7 @@ export default function SystemWizard() {
       path: '/purchases'
     },
     {
+      id: 'accounting',
       title: "Tesorería y CxC / CxP",
       subtitle: "Tus cuentas y flujo bajo control",
       description: "Monitorea cuentas por cobrar (CxC) de clientes y cuentas por pagar (CxP) a proveedores. Registra abonos y cobros parciales de manera ordenada, manteniendo el flujo de caja perfectamente cuadrado.",
@@ -77,6 +93,7 @@ export default function SystemWizard() {
       path: '/accounting'
     },
     {
+      id: 'audit',
       title: "Bitácora Universal de Movimientos",
       subtitle: "Trazabilidad inmutable e informes transparentes",
       description: "Cada cargo, descargo, venta, compra y cierre de caja queda grabado de forma automática e inmutable en el historial del sistema con fecha, hora, usuario y descripción detallada, garantizando auditorías 100% transparentes.",
@@ -85,6 +102,15 @@ export default function SystemWizard() {
       path: '/dashboard'
     }
   ];
+
+  // Dynamically filter steps by user active modules and permissions
+  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting';
+  const isSuperuser = user?.is_superuser || false;
+  
+  const steps = allSteps.filter(step => {
+    if (step.id === 'welcome' || step.id === 'audit') return true;
+    return isSuperuser || userModulesStr.includes(step.id);
+  });
 
   useEffect(() => {
     if (open) {
@@ -118,17 +144,29 @@ export default function SystemWizard() {
 
   const current = steps[activeStep];
 
+  if (!current) return null;
+
   return (
     <Dialog 
       open={open} 
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth="xs"
       fullWidth
+      hideBackdrop={true} // Hides the dark background overlay completely, making layout visible!
+      disableScrollLock={true}
+      disableEnforceFocus={true} // Allows user interaction with elements behind it!
+      style={{ pointerEvents: 'none' }} // Let mouse clicks pass through the overlay container
       slotProps={{
         paper: {
           sx: {
+            pointerEvents: 'auto', // Re-enable clicks inside the actual floating wizard card!
+            position: 'fixed',
+            bottom: { xs: 16, sm: 24 },
+            right: { xs: 16, sm: 24 },
+            m: 0,
+            width: { xs: 'calc(100% - 32px)', sm: '380px' },
             borderRadius: '24px',
-            maxHeight: 'calc(100vh - 48px)', // Set max height to prevent viewport overflow
+            maxHeight: 'calc(100vh - 48px)', // Prevent viewport overflow
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden', // Crop border radius
@@ -136,7 +174,7 @@ export default function SystemWizard() {
             backdropFilter: 'blur(20px)',
             border: '1px solid',
             borderColor: 'divider',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.18)',
           }
         }
       }}
@@ -145,12 +183,12 @@ export default function SystemWizard() {
         sx={{ 
           position: 'relative', 
           p: { xs: 2.5, sm: 4 }, 
-          pt: { xs: 4.5, sm: 6 }, 
+          pt: { xs: 4.5, sm: 5 }, 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
           textAlign: 'center',
-          overflowY: 'auto', // Enable vertical scrolling when screen is short or zoomed in
+          overflowY: 'auto', // Internal scroll if needed
           flexGrow: 1
         }}
       >
@@ -164,14 +202,14 @@ export default function SystemWizard() {
         {/* Step Glowing Icon (Responsive size) */}
         <Box 
           sx={{ 
-            width: { xs: 80, sm: 100 }, 
-            height: { xs: 80, sm: 100 }, 
+            width: { xs: 80, sm: 90 }, 
+            height: { xs: 80, sm: 90 }, 
             borderRadius: '30%', 
             bgcolor: `${current.color}15`, 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            mb: { xs: 2.5, sm: 3 },
+            mb: { xs: 2, sm: 2.5 },
             animation: 'float 3s ease-in-out infinite',
             '@keyframes float': {
               '0%, 100%': { transform: 'translateY(0)' },
@@ -179,7 +217,7 @@ export default function SystemWizard() {
             }
           }}
         >
-          {current.icon(theme.breakpoints.down('sm') ? 48 : 56)}
+          {current.icon(theme.breakpoints.down('sm') ? 44 : 50)}
         </Box>
 
         {/* Step Title & Content */}
@@ -189,7 +227,7 @@ export default function SystemWizard() {
             fontWeight: 900, 
             mb: 1, 
             letterSpacing: '-0.5px',
-            fontSize: { xs: '1.45rem', sm: '1.85rem' } 
+            fontSize: { xs: '1.35rem', sm: '1.65rem' } 
           }}
         >
           {current.title}
@@ -199,8 +237,8 @@ export default function SystemWizard() {
           sx={{ 
             color: current.color, 
             fontWeight: 700, 
-            mb: { xs: 1.5, sm: 2.5 },
-            fontSize: { xs: '0.88rem', sm: '1rem' }
+            mb: { xs: 1.5, sm: 2 },
+            fontSize: { xs: '0.82rem', sm: '0.92rem' }
           }}
         >
           {current.subtitle}
@@ -209,10 +247,10 @@ export default function SystemWizard() {
           variant="body1" 
           color="text.secondary" 
           sx={{ 
-            lineHeight: 1.65, 
-            mb: { xs: 2, sm: 3.5 }, 
-            px: { xs: 1, sm: 3 }, 
-            fontSize: { xs: '0.88rem', sm: '0.98rem' } 
+            lineHeight: 1.6, 
+            mb: { xs: 2, sm: 3 }, 
+            px: { xs: 0.5, sm: 2 }, 
+            fontSize: { xs: '0.85rem', sm: '0.94rem' } 
           }}
         >
           {current.description}
@@ -229,11 +267,11 @@ export default function SystemWizard() {
             />
           }
           label={
-            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', fontSize: { xs: '0.78rem', sm: '0.88rem' } }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary', fontSize: { xs: '0.78rem', sm: '0.85rem' } }}>
               No volver a mostrar este asistente al iniciar sesión
             </Typography>
           }
-          sx={{ mb: { xs: 2, sm: 3.5 } }}
+          sx={{ mb: { xs: 2, sm: 3 } }}
         />
 
         {/* Navigation Stepper & Buttons (Flexible positioning) */}
@@ -243,7 +281,7 @@ export default function SystemWizard() {
             disabled={activeStep === 0}
             onClick={handleBack}
             startIcon={<ArrowBackIcon />}
-            sx={{ borderRadius: '12px', fontWeight: 700, textTransform: 'none', px: { xs: 1.5, sm: 2.5 } }}
+            sx={{ borderRadius: '12px', fontWeight: 700, textTransform: 'none', px: { xs: 1, sm: 2 } }}
           >
             Atrás
           </Button>
@@ -267,7 +305,7 @@ export default function SystemWizard() {
               borderRadius: '12px', 
               fontWeight: 800, 
               textTransform: 'none', 
-              px: { xs: 2, sm: 3 },
+              px: { xs: 1.5, sm: 2.5 },
               bgcolor: current.color,
               '&:hover': {
                 bgcolor: current.color,
