@@ -4,7 +4,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Chip, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, FormControl, InputLabel, Select, MenuItem, OutlinedInput, Checkbox, ListItemText, Divider,
-  Tabs, Tab
+  Tabs, Tab, IconButton, Tooltip
 } from '@mui/material';
 import { 
   Business as BusinessIcon, 
@@ -16,7 +16,8 @@ import {
   Warning as WarningIcon,
   Login as LoginIcon,
   BugReport as ErrorIcon,
-  Terminal as TerminalIcon
+  Terminal as TerminalIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -123,6 +124,32 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ['admin-metrics'] });
     }
   });
+
+  const deleteLogMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/support/error-logs/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
+    }
+  });
+
+  const clearAllLogsMutation = useMutation({
+    mutationFn: () => api.delete('/support/error-logs'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['error-logs'] });
+    }
+  });
+
+  const handleDeleteLog = (id: number) => {
+    if (confirm('¿Está seguro de eliminar este registro de incidente?')) {
+      deleteLogMutation.mutate(id);
+    }
+  };
+
+  const handleClearAllLogs = () => {
+    if (confirm('¿Está seguro de limpiar TODO el historial de incidentes? Esta acción no se puede deshacer.')) {
+      clearAllLogsMutation.mutate();
+    }
+  };
 
   const dashboardCards = [
     { title: t('Total Companies'), value: metrics?.total_tenants || 0, icon: <BusinessIcon />, color: '#2563eb' },
@@ -289,12 +316,28 @@ export default function AdminPage() {
 
       {tabValue === 1 && (
         <Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
-            🚨 Historial de Incidentes y Diagnósticos en Tiempo Real
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Monitorea en tiempo real todas las fallas, excepciones de red e incidencias críticas que reportan los clientes para dar un soporte proactivo de nivel empresarial.
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
+                🚨 Historial de Incidentes y Diagnósticos en Tiempo Real
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Monitorea en tiempo real todas las fallas, excepciones de red e incidencias críticas que reportan los clientes para dar un soporte proactivo de nivel empresarial.
+              </Typography>
+            </Box>
+            {errorLogs.length > 0 && (
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={handleClearAllLogs}
+                disabled={clearAllLogsMutation.isPending}
+                sx={{ borderRadius: 3, fontWeight: 700, textTransform: 'none', py: 1, px: 2.5 }}
+              >
+                Limpiar Todo el Historial
+              </Button>
+            )}
+          </Box>
 
           <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
             <TableContainer>
@@ -342,16 +385,28 @@ export default function AdminPage() {
                           <Chip label={log.component} size="small" color="error" variant="outlined" sx={{ borderRadius: 1.5, fontWeight: 700 }} />
                         </TableCell>
                         <TableCell align="right">
-                          <Button 
-                            variant="contained" 
-                            color="error" 
-                            size="small" 
-                            startIcon={<TerminalIcon />}
-                            onClick={() => setSelectedError(log)}
-                            sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
-                          >
-                            Ver Stack
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <Button 
+                              variant="contained" 
+                              color="error" 
+                              size="small" 
+                              startIcon={<TerminalIcon />}
+                              onClick={() => setSelectedError(log)}
+                              sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 700 }}
+                            >
+                              Ver Stack
+                            </Button>
+                            <Tooltip title="Eliminar Registro">
+                              <IconButton 
+                                size="small" 
+                                color="error"
+                                onClick={() => handleDeleteLog(log.id)}
+                                disabled={deleteLogMutation.isPending}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))

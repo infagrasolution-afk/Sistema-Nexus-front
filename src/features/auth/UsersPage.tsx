@@ -6,7 +6,8 @@ import {
 } from '@mui/material';
 import { 
   Add as AddIcon, Person as PersonIcon, LockOpen as LockOpenIcon, 
-  Delete as DeleteIcon, Edit as EditIcon, Security as SecurityIcon 
+  Edit as EditIcon, Security as SecurityIcon,
+  CheckCircle as CheckCircleIcon, Block as BlockIcon
 } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
@@ -175,8 +176,19 @@ export default function UsersPage() {
         )) : <Typography variant="caption" color="text.disabled">-</Typography>}
       </Box>
     )},
-    { field: 'is_locked', headerName: 'Estado', width: 130, renderCell: (params) => {
-      const isLocked = params.value;
+    { field: 'is_active', headerName: 'Estado', width: 130, renderCell: (params) => {
+      const isActive = params.row.is_active;
+      const isLocked = params.row.is_locked;
+      if (!isActive) {
+        return (
+          <Chip 
+            label="Inactivo ❌" 
+            color="default" 
+            size="small" 
+            sx={{ fontWeight: 800 }}
+          />
+        );
+      }
       return (
         <Chip 
           label={isLocked ? 'Bloqueado 🔒' : 'Activo ✅'} 
@@ -187,23 +199,23 @@ export default function UsersPage() {
       );
     }},
     { field: 'actions', headerName: 'Acciones', width: 180, sortable: false, renderCell: (params) => {
-      const user = params.row;
+      const u = params.row;
       return (
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', height: '100%' }}>
           <Tooltip title="Editar Usuario">
-            <IconButton size="small" onClick={() => handleOpenEdit(user)}>
+            <IconButton size="small" onClick={() => handleOpenEdit(u)}>
               <EditIcon fontSize="small" color="primary" />
             </IconButton>
           </Tooltip>
 
-          {user.is_locked && (
+          {u.is_locked && (
             <Tooltip title="Desbloquear Cuenta (Reset Intentos)">
               <Button
                 variant="contained"
                 color="success"
                 size="small"
                 startIcon={<LockOpenIcon sx={{ fontSize: '1rem' }} />}
-                onClick={() => unlockMutation.mutate(user.id)}
+                onClick={() => unlockMutation.mutate(u.id)}
                 sx={{ 
                   py: 0.2, 
                   px: 1.5, 
@@ -218,14 +230,34 @@ export default function UsersPage() {
             </Tooltip>
           )}
 
-          {!user.is_superuser && user.is_active && (
-            <Tooltip title="Desactivar Usuario">
-              <IconButton size="small" onClick={() => {
-                if(confirm(`¿Está seguro de desactivar a '${user.username}'?`)) {
-                  deleteMutation.mutate(user.id);
-                }
-              }}>
-                <DeleteIcon fontSize="small" color="error" />
+          {!u.is_superuser && (
+            <Tooltip title={u.is_active ? "Desactivar Usuario" : "Activar Usuario"}>
+              <IconButton 
+                size="small" 
+                onClick={() => {
+                  const actionText = u.is_active ? 'desactivar' : 'activar';
+                  if (confirm(`¿Está seguro de ${actionText} a '${u.username}'?`)) {
+                    if (u.is_active) {
+                      deleteMutation.mutate(u.id);
+                    } else {
+                      updateMutation.mutate({ 
+                        id: u.id, 
+                        data: { 
+                          username: u.username,
+                          email: u.email,
+                          modules: u.modules,
+                          is_active: true 
+                        } 
+                      });
+                    }
+                  }
+                }}
+              >
+                {u.is_active ? (
+                  <BlockIcon fontSize="small" color="error" />
+                ) : (
+                  <CheckCircleIcon fontSize="small" color="success" />
+                )}
               </IconButton>
             </Tooltip>
           )}
