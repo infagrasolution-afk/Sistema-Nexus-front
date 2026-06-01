@@ -164,10 +164,10 @@ export default function CatalogPage() {
           <Typography variant="body2" color="text.secondary">Explora y gestiona tus listados de productos</Typography>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2 }, width: { xs: '100%', sm: 'auto' } }}>
           <TextField
             size="small"
-            placeholder="Buscar productos..."
+            placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             slotProps={{
@@ -179,15 +179,16 @@ export default function CatalogPage() {
                 ),
               }
             }}
-            sx={{ width: 250, bgcolor: 'background.paper', borderRadius: 2 }}
+            sx={{ width: { xs: '100%', sm: 200, md: 250 }, flexGrow: { xs: 1, sm: 0 }, bgcolor: 'background.paper', borderRadius: 2 }}
           />
           <Button 
             variant="contained" 
             startIcon={<AddIcon />} 
             onClick={handleOpenCreate}
-            sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700 }}
+            sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, whiteSpace: 'nowrap', minWidth: 'fit-content' }}
           >
-            Agregar Producto
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Agregar Producto</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Agregar</Box>
           </Button>
         </Box>
       </Box>
