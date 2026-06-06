@@ -220,7 +220,7 @@ export default function PurchasesPage() {
             <Grid size={{ xs: 12, md: 4 }}>
               <Autocomplete
                 options={suppliers}
-                getOptionLabel={(option: any) => `${option.rif || ''} - ${option.name || ''}`}
+                getOptionLabel={(option: any) => `${option.tax_id || ''} - ${option.name || ''}`}
                 value={suppliers.find((s: any) => s.id === Number(supplierId)) || null}
                 onChange={(_, newValue) => setSupplierId(newValue ? newValue.id.toString() : '')}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
