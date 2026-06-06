@@ -22,6 +22,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Autocomplete } from '@mui/material';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
 
@@ -133,6 +134,11 @@ export default function POSPage() {
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
     queryFn: async () => (await api.get('/inventory/products')).data,
+  });
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => (await api.get('/sales/customers')).data,
   });
 
   const { data: warehouses = [] } = useQuery({
@@ -865,21 +871,55 @@ export default function POSPage() {
       </Dialog>
 
       {/* Fiscal Data Dialog */}
-      <Dialog open={openFiscalDialog} onClose={() => setOpenFiscalDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <PersonAddIcon color="primary" /> Datos de Cliente (Factura Fiscal)
+      <Dialog open={openFiscalDialog} onClose={() => setOpenFiscalDialog(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: '16px' } } }}>
+        <DialogTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PersonAddIcon color="primary" /> Seleccionar / Registrar Cliente
         </DialogTitle>
         <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Ingrese los datos del cliente. Si el RIF ya existe, los datos se actualizarán. Puede dejar los campos en blanco para consumidor final.
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500 }}>
+            Busca un cliente registrado en el sistema o ingresa los datos correspondientes para registrar uno nuevo automáticamente al facturar.
           </Typography>
+
+          <Autocomplete
+            options={customers}
+            getOptionLabel={(option: any) => `${option.name} (${option.tax_id})`}
+            value={customers.find((c: any) => c.tax_id === fiscalData.tax_id) || null}
+            onChange={(_, newValue: any) => {
+              if (newValue) {
+                setFiscalData({
+                  tax_id: newValue.tax_id || '',
+                  name: newValue.name || '',
+                  phone: newValue.phone || '',
+                  address: newValue.address || ''
+                });
+              } else {
+                setFiscalData({ tax_id: '', name: '', phone: '', address: '' });
+              }
+            }}
+            renderInput={(params) => (
+              <TextField 
+                {...params} 
+                label="Buscar por Nombre o RIF" 
+                variant="outlined"
+                placeholder="Escribe para buscar..."
+                sx={{ mb: 3, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+              />
+            )}
+            noOptionsText="No se encontraron clientes coincidentes"
+          />
+
+          <Divider sx={{ my: 2, borderStyle: 'dashed' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>DATOS DE FACTURACIÓN</Typography>
+          </Divider>
+
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField 
-                label="RIF / CI (tax_id)" 
+                label="RIF / CI / Identificación" 
                 fullWidth 
                 value={fiscalData.tax_id}
                 onChange={e => setFiscalData({...fiscalData, tax_id: e.target.value})}
+                slotProps={{ input: { sx: { borderRadius: '10px' } } }}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -888,14 +928,16 @@ export default function POSPage() {
                 fullWidth 
                 value={fiscalData.name}
                 onChange={e => setFiscalData({...fiscalData, name: e.target.value})}
+                slotProps={{ input: { sx: { borderRadius: '10px' } } }}
               />
             </Grid>
             <Grid size={12}>
               <TextField 
-                label="Dirección" 
+                label="Dirección Fiscal" 
                 fullWidth 
                 value={fiscalData.address}
                 onChange={e => setFiscalData({...fiscalData, address: e.target.value})}
+                slotProps={{ input: { sx: { borderRadius: '10px' } } }}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -904,13 +946,14 @@ export default function POSPage() {
                 fullWidth 
                 value={fiscalData.phone}
                 onChange={e => setFiscalData({...fiscalData, phone: e.target.value})}
+                slotProps={{ input: { sx: { borderRadius: '10px' } } }}
               />
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenFiscalDialog(false)} color="inherit">Omitir y Facturar</Button>
-          <Button onClick={handleProcessFiscalSale} variant="contained" color="primary" disabled={createCustomerMutation.isPending || createSaleMutation.isPending}>
+        <DialogActions sx={{ p: 2.5, gap: 1 }}>
+          <Button onClick={() => setOpenFiscalDialog(false)} color="inherit" sx={{ fontWeight: 600 }}>Cancelar</Button>
+          <Button onClick={handleProcessFiscalSale} variant="contained" color="primary" disabled={createCustomerMutation.isPending || createSaleMutation.isPending} sx={{ borderRadius: '8px', fontWeight: 700 }}>
             Confirmar y Facturar
           </Button>
         </DialogActions>

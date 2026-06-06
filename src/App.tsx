@@ -11,6 +11,7 @@ import DashboardPage from './features/dashboard/DashboardPage';
 import LoginPage from './features/auth/LoginPage';
 import BudgetsPage from './features/sales/BudgetsPage';
 import ManualBillingPage from './features/sales/ManualBillingPage';
+import CustomersPage from './features/sales/CustomersPage';
 import CatalogPage from './features/catalog/CatalogPage';
 import SuppliersPage from './features/inventory/SuppliersPage';
 import PurchasesPage from './features/inventory/PurchasesPage';
@@ -73,6 +74,7 @@ function App() {
               <Route path="/sales" element={<POSPage />} />
               <Route path="/sales/budgets" element={<BudgetsPage />} />
               <Route path="/sales/manual-billing" element={<ManualBillingPage />} />
+              <Route path="/sales/customers" element={<CustomersPage />} />
               <Route path="/sales/delivery-notes" element={<DeliveryNotesPage />} />
               <Route path="/inventory/dispatch-notes" element={<DispatchNotesPage />} />
               <Route path="/inventory/adjustments" element={<AdjustmentsPage />} />

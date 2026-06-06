@@ -71,33 +71,9 @@ export default function Layout() {
     }
   };
 
-  // Check for page reload on initial mount for extreme security
+  // Check for page reload on initial mount - auto-logout disabled
   useEffect(() => {
-    const checkReload = async () => {
-      try {
-        const isSwitchingBranch = sessionStorage.getItem('switching_branch') === 'true';
-        if (isSwitchingBranch) {
-          sessionStorage.removeItem('switching_branch');
-          return;
-        }
-
-        const sessionActive = sessionStorage.getItem('session_active') === 'true';
-        const navs = window.performance.getEntriesByType('navigation');
-        const isReload = navs.length > 0 && (navs[0] as any).type === 'reload';
-        const isLegacyReload = window.performance && window.performance.navigation && window.performance.navigation.type === 1;
-        
-        if (sessionActive && (isReload || isLegacyReload)) {
-          console.log("Page reload detected. Logging out for security.");
-          await handleLogout();
-        } else {
-          sessionStorage.setItem('session_active', 'true');
-        }
-      } catch (e) {
-        console.error("Error checking reload", e);
-      }
-    };
-    
-    checkReload();
+    sessionStorage.setItem('session_active', 'true');
   }, []);
 
   const { data: userData } = useQuery({
@@ -117,6 +93,7 @@ export default function Layout() {
     { id: 'inventory', text: t('Catalog'), icon: <ViewModuleIcon />, path: '/catalog' },
     { id: 'purchases', text: t('Suppliers'), icon: <BusinessIcon />, path: '/suppliers' },
     { id: 'purchases', text: t('Purchases'), icon: <ShoppingCartIcon />, path: '/purchases' },
+    { id: 'sales', text: t('Clientes'), icon: <PeopleIcon />, path: '/sales/customers' },
     { id: 'users', text: t('Users'), icon: <PeopleIcon />, path: '/users' },
     { id: 'settings', text: t('Settings'), icon: <SettingsIcon />, path: '/settings' },
     { id: 'accounting', text: t('Contabilidad'), icon: <AccountIcon />, path: '/accounting' },
@@ -148,7 +125,7 @@ export default function Layout() {
   // Inactivity monitor (dynamic from tenant settings, defaults to 5 minutes)
   useEffect(() => {
     let timeoutId: any;
-    const timeoutMinutes = tenantData?.settings?.session_timeout || 5;
+    const timeoutMinutes = tenantData?.settings?.session_timeout || 30;
     const INACTIVITY_LIMIT = timeoutMinutes * 60 * 1000;
 
     const resetTimer = () => {

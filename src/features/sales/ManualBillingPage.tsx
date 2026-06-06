@@ -46,9 +46,31 @@ export default function ManualBillingPage() {
     queryFn: async () => (await api.get('/inventory/products')).data,
   });
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => (await api.get('/sales/customers')).data,
+  });
+
   const { data: warehouses = [] } = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => (await api.get('/inventory/warehouses')).data,
+  });
+
+  const [quickCustOpen, setQuickCustOpen] = useState(false);
+  const [quickCustData, setQuickCustData] = useState({ name: '', tax_id: '', phone: '', email: '', address: '' });
+
+  const createCustomerMutation = useMutation({
+    mutationFn: (data: typeof quickCustData) => api.post('/sales/customers', data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setCustomerId(res.data.id);
+      setQuickCustOpen(false);
+      setQuickCustData({ name: '', tax_id: '', phone: '', email: '', address: '' });
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.detail || 'Error al registrar el cliente';
+      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    }
   });
 
   useEffect(() => {
@@ -207,16 +229,33 @@ export default function ManualBillingPage() {
                 <SearchIcon fontSize="small" color="primary" /> Datos del Cliente y Despacho
               </Typography>
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <TextField 
-                    fullWidth 
-                    label="ID del Cliente" 
-                    variant="outlined"
-                    type="number"
-                    value={customerId || ''}
-                    onChange={(e) => setCustomerId(Number(e.target.value))}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                <Grid size={{ xs: 12, sm: 6 }} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Autocomplete
+                    options={customers}
+                    getOptionLabel={(option: any) => `${option.name} (${option.tax_id})`}
+                    value={customers.find((c: any) => c.id === customerId) || null}
+                    onChange={(_, newValue: any) => {
+                      setCustomerId(newValue ? newValue.id : null);
+                    }}
+                    fullWidth
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        label="Seleccionar Cliente" 
+                        variant="outlined" 
+                        required
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                      />
+                    )}
+                    noOptionsText="No se encontraron clientes"
                   />
+                  <IconButton 
+                    color="primary" 
+                    onClick={() => setQuickCustOpen(true)}
+                    sx={{ border: '1px solid', borderColor: 'primary.main', borderRadius: '12px', p: 1.5 }}
+                  >
+                    +
+                  </IconButton>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
@@ -518,6 +557,78 @@ export default function ManualBillingPage() {
             sx={{ borderRadius: '10px', px: 3, fontWeight: 700 }}
           >
             Importar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog 
+        open={quickCustOpen} 
+        onClose={() => setQuickCustOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '20px' } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Registrar Nuevo Cliente</DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Nombre / Razón Social"
+                size="small"
+                value={quickCustData.name}
+                onChange={e => setQuickCustData({ ...quickCustData, name: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="RIF / Identificación Fiscal"
+                size="small"
+                value={quickCustData.tax_id}
+                onChange={e => setQuickCustData({ ...quickCustData, tax_id: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Teléfono"
+                size="small"
+                value={quickCustData.phone}
+                onChange={e => setQuickCustData({ ...quickCustData, phone: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Correo Electrónico"
+                size="small"
+                value={quickCustData.email}
+                onChange={e => setQuickCustData({ ...quickCustData, email: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Dirección Completa"
+                size="small"
+                multiline
+                rows={2}
+                value={quickCustData.address}
+                onChange={e => setQuickCustData({ ...quickCustData, address: e.target.value })}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setQuickCustOpen(false)} color="inherit" sx={{ fontWeight: 600 }}>Cancelar</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => createCustomerMutation.mutate(quickCustData)} 
+            disabled={!quickCustData.name || !quickCustData.tax_id || createCustomerMutation.isPending}
+            sx={{ borderRadius: '10px', px: 3, fontWeight: 700 }}
+          >
+            Registrar Cliente
           </Button>
         </DialogActions>
       </Dialog>
