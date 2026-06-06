@@ -8,12 +8,15 @@ import {
   Add as AddIcon, 
   Delete as DeleteIcon, 
   ShoppingCart as ShoppingCartIcon,
-  Receipt as ReceiptIcon 
+  Receipt as ReceiptIcon,
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function PurchasesPage() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [supplierId, setSupplierId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
@@ -149,14 +152,24 @@ export default function PurchasesPage() {
               </Typography>
             </Box>
           </Box>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={() => setOpen(true)}
-            sx={{ borderRadius: '12px', px: 4, py: 1.2, fontWeight: 700 }}
-          >
-            Nueva Compra
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              startIcon={<BusinessIcon />} 
+              onClick={() => navigate('/suppliers')}
+              sx={{ borderRadius: '12px', px: 3, py: 1.2, fontWeight: 700 }}
+            >
+              Gestionar Proveedores
+            </Button>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />} 
+              onClick={() => setOpen(true)}
+              sx={{ borderRadius: '12px', px: 4, py: 1.2, fontWeight: 700 }}
+            >
+              Nueva Compra
+            </Button>
+          </Box>
         </Box>
 
         <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '16px' }}>

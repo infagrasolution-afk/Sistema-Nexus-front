@@ -7,7 +7,7 @@ import {
   PointOfSale, Inventory, AccountBalance, Settings, AdminPanelSettings,
   Warehouse, CompareArrows, ViewModule, People, ShoppingCart,
   Assessment, Timeline, LocalShipping, RequestQuote, Receipt, Description,
-  AccountBalanceWallet
+  AccountBalanceWallet, Business
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -65,7 +65,8 @@ const ALL_MODULES = [
     reqId: 'users', // Use users as base requirement
     subModules: [
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
-      { id: 'purchases', title: 'Compras y Proveedores', path: '/purchases', icon: ShoppingCart },
+      { id: 'purchases', title: 'Órdenes de Compra', path: '/purchases', icon: ShoppingCart },
+      { id: 'purchases', title: 'Proveedores', path: '/suppliers', icon: Business },
       { id: 'treasury', title: 'Tesorería y Caja', path: '/cash', icon: AccountBalanceWallet },
       { id: 'users', title: 'Usuarios y Permisos', path: '/users', icon: People },
       { id: 'reports', title: 'Reportes y Estadísticas', path: '/reports', icon: Assessment },

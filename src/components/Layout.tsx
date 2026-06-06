@@ -105,7 +105,13 @@ export default function Layout() {
   // Menu items kept in code for reference or future use if needed, but not rendered in sidebar
   const menuItems = user?.is_superuser 
     ? allMenuItems
-    : allMenuItems.filter(item => item.id === 'dashboard' || userModulesStr.includes(item.id));
+    : allMenuItems.filter(item => {
+        if (item.id === 'dashboard') return true;
+        if (item.id === 'purchases') {
+          return userModulesStr.includes('purchases') || userModulesStr.includes('inventory') || userModulesStr.includes('users');
+        }
+        return userModulesStr.includes(item.id);
+      });
 
   if (user?.is_superuser || userData?.is_superuser) {
     menuItems.push({ id: 'admin', text: t('Admin SaaS'), icon: <AdminIcon />, path: '/admin' });
