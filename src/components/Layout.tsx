@@ -337,7 +337,8 @@ export default function Layout() {
         sx={{ 
           flexGrow: 1, 
           minHeight: '100vh',
-          mt: 12, // Always push pages down below the fixed top AppBar
+          mt: { xs: 10, sm: 12 }, 
+          px: { xs: 2, sm: 4, md: 6 },
           pb: location.pathname === '/sales' ? 0 : 8,
           width: '100%',
           display: 'flex',
