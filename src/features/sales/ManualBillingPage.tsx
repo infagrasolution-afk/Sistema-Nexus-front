@@ -300,7 +300,7 @@ export default function ManualBillingPage() {
               
               <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '16px' }}>
                 <Table size="small">
-                  <TableHead sx={{ bgcolor: 'grey.50' }}>
+                  <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 700, py: 2 }}>Producto</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700 }}>Cant.</TableCell>

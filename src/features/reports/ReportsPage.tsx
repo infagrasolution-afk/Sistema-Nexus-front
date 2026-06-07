@@ -182,7 +182,7 @@ export default function ReportsPage() {
       return (
         <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
           <Table size="small">
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
+            <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>SKU</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Nombre del Producto</TableCell>
@@ -229,7 +229,7 @@ export default function ReportsPage() {
           </Box>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>SKU</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Nombre del Producto</TableCell>
@@ -275,7 +275,7 @@ export default function ReportsPage() {
       return (
         <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
           <Table size="small">
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
+            <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Fecha / Hora</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Operación</TableCell>
@@ -354,7 +354,7 @@ export default function ReportsPage() {
           </Grid>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>SKU</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
@@ -476,7 +476,7 @@ export default function ReportsPage() {
           <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 2 }}>Transacciones del Día</Typography>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Hora</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Factura Nro.</TableCell>
@@ -522,7 +522,7 @@ export default function ReportsPage() {
           </Typography>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Factura</TableCell>
@@ -617,7 +617,7 @@ export default function ReportsPage() {
           </Typography>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Usuario / Cajero</TableCell>
                   <TableCell sx={{ fontWeight: 700 }} align="right">Transacciones</TableCell>
@@ -748,7 +748,7 @@ export default function ReportsPage() {
           </Typography>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Código Cuenta</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Nombre Cuenta</TableCell>
@@ -825,7 +825,7 @@ export default function ReportsPage() {
           </Typography>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Nro. Referencia</TableCell>
@@ -869,7 +869,7 @@ export default function ReportsPage() {
           </Typography>
           <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
             <Table size="small">
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Proveedor</TableCell>
                   <TableCell sx={{ fontWeight: 700 }} align="right">Facturas Recibidas</TableCell>
@@ -897,7 +897,7 @@ export default function ReportsPage() {
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Resumen del Reporte ({currentReport.title})</Typography>
         <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
           <Table size="small">
-            <TableHead sx={{ bgcolor: 'grey.50' }}>
+            <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Concepto / Rubro</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Monto Estimado</TableCell>

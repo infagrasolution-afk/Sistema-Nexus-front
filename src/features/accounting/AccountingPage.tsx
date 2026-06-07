@@ -300,7 +300,7 @@ export default function AccountingPage() {
         bgcolor: 'background.paper',
         overflow: 'hidden'
       }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3, pt: 2, bgcolor: 'grey.50' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3, pt: 2, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
           <Tabs value={tabValue} onChange={handleTabChange} sx={{ '& .MuiTab-root': { fontWeight: 700, textTransform: 'none', fontSize: '0.95rem', minWidth: 160 } }}>
             <Tab label="Plan de Cuentas (VEN-NIF)" />
             <Tab label="Libro Diario" />
@@ -338,7 +338,7 @@ export default function AccountingPage() {
 
                 <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '12px', overflow: 'hidden' }}>
                   <Table>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
+                    <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 700, py: 2 }}>Código</TableCell>
                         <TableCell sx={{ fontWeight: 700 }}>Nombre de Cuenta</TableCell>
@@ -458,7 +458,7 @@ export default function AccountingPage() {
                       return refMatch || descMatch || detailMatch;
                     }).map((entry: any) => (
                       <Grid size={{ xs: 12 }} key={entry.id}>
-                        <Card variant="outlined" sx={{ borderRadius: '16px', border: '1px solid', borderColor: 'grey.200', bgcolor: 'grey.50' }}>
+                        <Card variant="outlined" sx={{ borderRadius: '16px', border: '1px solid', borderColor: 'grey.200', bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                           <CardHeader
                             title={
                               <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
@@ -478,7 +478,7 @@ export default function AccountingPage() {
                           <CardContent sx={{ p: 0 }}>
                             <TableContainer sx={{ bgcolor: 'background.paper' }}>
                               <Table size="small">
-                                <TableHead sx={{ bgcolor: 'grey.50' }}>
+                                <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                                   <TableRow>
                                     <TableCell sx={{ fontWeight: 700, py: 1.5, pl: 3 }}>Código de Cuenta</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>Descripción de Cuenta</TableCell>

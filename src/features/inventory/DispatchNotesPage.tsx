@@ -283,7 +283,7 @@ export default function DispatchNotesPage() {
         <Paper elevation={0} sx={{ borderRadius: '16px', border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
           <TableContainer>
             <Table>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>Nro. Nota</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Cliente / Referencia</TableCell>

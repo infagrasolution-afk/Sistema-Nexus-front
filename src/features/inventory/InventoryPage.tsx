@@ -302,7 +302,7 @@ export default function InventoryPage() {
             placeholder="Buscar por SKU o Nombre de Producto..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ maxWidth: 400, bgcolor: 'grey.50', borderRadius: '10px', '& fieldset': { borderRadius: '10px' } }}
+            sx={{ maxWidth: 400, bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50', borderRadius: '10px', '& fieldset': { borderRadius: '10px' } }}
           />
         </Box>
 
@@ -314,7 +314,7 @@ export default function InventoryPage() {
         ) : (
           <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '12px', overflow: 'hidden' }}>
             <Table sx={{ minWidth: 650 }}>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 700 }}>SKU</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>

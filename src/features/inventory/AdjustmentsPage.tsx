@@ -132,7 +132,7 @@ export default function AdjustmentsPage() {
         ) : (
           <TableContainer>
             <Table>
-              <TableHead sx={{ bgcolor: 'grey.50' }}>
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                 <TableRow>
                   <TableCell>Fecha</TableCell>
                   <TableCell>Producto</TableCell>
