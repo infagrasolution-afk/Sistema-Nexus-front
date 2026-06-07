@@ -50,25 +50,26 @@ export default function Layout() {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setAnchorEl(null);
-    try {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        await api.post('/auth/logout', { refresh_token: refreshToken });
-      }
-    } catch (e) {
-      console.error('Logout error', e);
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('active_tenant_id');
-      localStorage.removeItem('active_tenant_name');
-      sessionStorage.removeItem('session_active');
-      sessionStorage.removeItem('apex_wizard_prompted');
-      setUser(null);
-      navigate('/login');
+    
+    // Disparar la revocación del token en el backend sin bloquear la UI
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      api.post('/auth/logout', { refresh_token: refreshToken }).catch(e => console.error('Logout error', e));
     }
+    
+    // Limpiar TODO el estado local inmediatamente
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('active_tenant_id');
+    localStorage.removeItem('active_tenant_name');
+    sessionStorage.removeItem('session_active');
+    sessionStorage.removeItem('apex_wizard_prompted');
+    setUser(null);
+    
+    // Forzar recarga limpia hacia el login
+    window.location.href = '/login';
   };
 
   // Check for page reload on initial mount - auto-logout disabled
