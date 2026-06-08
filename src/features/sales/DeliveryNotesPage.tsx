@@ -9,9 +9,10 @@ import {
   Print as PrintIcon, Person as PersonIcon, LocationOn as LocationOnIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../../store/useAppStore';
 import api from '../../api/axiosConfig';
+import { Autocomplete } from '@mui/material';
 
 interface DeliveryNoteItem {
   product_id: number;
@@ -44,6 +45,41 @@ export default function DeliveryNotesPage() {
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [items, setItems] = useState<DeliveryNoteItem[]>([]);
+  
+  // Customer Autocomplete and Quick Add State
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [quickCustOpen, setQuickCustOpen] = useState(false);
+  const [quickCustData, setQuickCustData] = useState({ name: '', tax_id: '', phone: '', email: '', address: '' });
+  
+  const queryClient = useQueryClient();
+
+  // Fetch customers from backend
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => {
+      const res = await api.get('/sales/customers');
+      return res.data;
+    }
+  });
+
+  // Create customer mutation
+  const createCustomerMutation = useMutation({
+    mutationFn: (data: typeof quickCustData) => api.post('/sales/customers', data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setSelectedCustomer(res.data);
+      setCustomerName(res.data.name);
+      setCustomerTaxId(res.data.tax_id);
+      setDeliveryAddress(res.data.address);
+      setPhone(res.data.phone || '');
+      setQuickCustOpen(false);
+      setQuickCustData({ name: '', tax_id: '', phone: '', email: '', address: '' });
+    },
+    onError: (err: any) => {
+      const msg = err.response?.data?.detail || 'Error al registrar el cliente';
+      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    }
+  });
 
   // Fetch catalog products
   const { data: products = [] } = useQuery({
@@ -75,6 +111,7 @@ export default function DeliveryNotesPage() {
   };
 
   const handleOpenCreate = () => {
+    setSelectedCustomer(null);
     setCustomerName('');
     setCustomerTaxId('');
     setDeliveryAddress('');
@@ -341,6 +378,46 @@ export default function DeliveryNotesPage() {
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Autocomplete
+                    options={customers}
+                    getOptionLabel={(option: any) => `${option.name} (${option.tax_id})`}
+                    value={selectedCustomer}
+                    onChange={(_, newValue: any) => {
+                      setSelectedCustomer(newValue);
+                      if (newValue) {
+                        setCustomerName(newValue.name || '');
+                        setCustomerTaxId(newValue.tax_id || '');
+                        setDeliveryAddress(newValue.address || '');
+                        setPhone(newValue.phone || '');
+                      } else {
+                        setCustomerName('');
+                        setCustomerTaxId('');
+                        setDeliveryAddress('');
+                        setPhone('');
+                      }
+                    }}
+                    fullWidth
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        label="Seleccionar Cliente Registrado" 
+                        variant="outlined" 
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                      />
+                    )}
+                    noOptionsText="No se encontraron clientes"
+                  />
+                  <Button 
+                    variant="outlined"
+                    onClick={() => setQuickCustOpen(true)}
+                    sx={{ borderRadius: '12px', minWidth: '120px', height: '56px', fontWeight: 700 }}
+                  >
+                    + Nuevo
+                  </Button>
+                </Box>
+              </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   label="Nombre del Cliente"
@@ -468,6 +545,79 @@ export default function DeliveryNotesPage() {
             disabled={!customerName || !deliveryAddress || items.some(item => !item.product_id)}
           >
             Generar Nota
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Quick Add Customer Dialog */}
+      <Dialog 
+        open={quickCustOpen} 
+        onClose={() => setQuickCustOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '20px' } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Registrar Nuevo Cliente</DialogTitle>
+        <DialogContent dividers>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Nombre / Razón Social"
+                size="small"
+                value={quickCustData.name}
+                onChange={e => setQuickCustData({ ...quickCustData, name: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="RIF / Identificación Fiscal"
+                size="small"
+                value={quickCustData.tax_id}
+                onChange={e => setQuickCustData({ ...quickCustData, tax_id: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField
+                fullWidth
+                label="Teléfono"
+                size="small"
+                value={quickCustData.phone}
+                onChange={e => setQuickCustData({ ...quickCustData, phone: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Correo Electrónico"
+                size="small"
+                value={quickCustData.email}
+                onChange={e => setQuickCustData({ ...quickCustData, email: e.target.value })}
+              />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Dirección Completa"
+                size="small"
+                multiline
+                rows={2}
+                value={quickCustData.address}
+                onChange={e => setQuickCustData({ ...quickCustData, address: e.target.value })}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setQuickCustOpen(false)} color="inherit" sx={{ fontWeight: 600 }}>Cancelar</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => createCustomerMutation.mutate(quickCustData)} 
+            disabled={!quickCustData.name || !quickCustData.tax_id || createCustomerMutation.isPending}
+            sx={{ borderRadius: '10px', px: 3, fontWeight: 700 }}
+          >
+            Registrar Cliente
           </Button>
         </DialogActions>
       </Dialog>

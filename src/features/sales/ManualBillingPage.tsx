@@ -249,13 +249,13 @@ export default function ManualBillingPage() {
                     )}
                     noOptionsText="No se encontraron clientes"
                   />
-                  <IconButton 
-                    color="primary" 
+                  <Button 
+                    variant="outlined"
                     onClick={() => setQuickCustOpen(true)}
-                    sx={{ border: '1px solid', borderColor: 'primary.main', borderRadius: '12px', p: 1.5 }}
+                    sx={{ borderRadius: '12px', minWidth: '120px', height: '56px', fontWeight: 700 }}
                   >
-                    +
-                  </IconButton>
+                    + Nuevo
+                  </Button>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
