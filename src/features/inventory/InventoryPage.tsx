@@ -8,7 +8,8 @@ import {
 import { 
   Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
   Refresh as RefreshIcon, Inventory as InventoryIcon, 
-  Warning as WarningIcon, Error as ErrorIcon 
+  Warning as WarningIcon, Error as ErrorIcon,
+  FileUpload as UploadIcon, Description as TemplateIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -40,6 +41,9 @@ export default function InventoryPage() {
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Import Dialog State
+  const [importOpen, setImportOpen] = useState(false);
 
   // Notification Toast state
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
@@ -105,6 +109,24 @@ export default function InventoryPage() {
     }
   });
 
+  // 5. Import Initial Stock Mutation
+  const importMutation = useMutation({
+    mutationFn: async (data: any[]) => {
+      const response = await api.post('/inventory/import-initial-stock', data);
+      return response.data;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['wms-alerts'] });
+      showToast(`Carga Inicial Exitosa: ${res.imported} productos procesados.`, 'success');
+      setImportOpen(false);
+    },
+    onError: (error: any) => {
+      const detail = error.response?.data?.detail || 'Error en la importación de saldo inicial';
+      showToast(typeof detail === 'string' ? detail : JSON.stringify(detail), 'error');
+    }
+  });
+
   const showToast = (message: string, severity: 'success' | 'error' | 'warning') => {
     setToast({ open: true, message, severity });
   };
@@ -153,6 +175,72 @@ export default function InventoryPage() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = ['sku', 'name', 'cost', 'price', 'quantity', 'warehouse_id'];
+    const example = ['SKU-001', 'Producto de Ejemplo', '10.50', '15.00', '100', '1'];
+    
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
+      + [headers.join(','), example.join(',')].join('\n');
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'plantilla_cargo_inicial.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        if (lines.length <= 1) {
+          showToast('El archivo está vacío o solo contiene encabezados.', 'error');
+          return;
+        }
+
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const parsedData = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
+          if (values.length < headers.length) continue;
+
+          const rowObj: any = {};
+          headers.forEach((header, index) => {
+            rowObj[header] = values[index] || '';
+          });
+
+          parsedData.push({
+            sku: rowObj.sku || '',
+            name: rowObj.name || rowObj['nombre'] || '',
+            cost: parseFloat(rowObj.cost || rowObj['costo'] || '0'),
+            price: parseFloat(rowObj.price || rowObj['precio'] || '0'),
+            quantity: parseFloat(rowObj.quantity || rowObj['cantidad'] || '0'),
+            warehouse_id: parseInt(rowObj.warehouse_id || rowObj['almacen'] || '1', 10)
+          });
+        }
+
+        if (parsedData.length === 0) {
+          showToast('No se pudieron procesar filas válidas.', 'error');
+          return;
+        }
+
+        importMutation.mutate(parsedData);
+      } catch (err) {
+        showToast('Error al procesar el archivo CSV.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,6 +314,14 @@ export default function InventoryPage() {
           <IconButton onClick={() => refetch()} disabled={isLoading || isRefetching} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '12px' }}>
             {isLoading || isRefetching ? <CircularProgress size={20} /> : <RefreshIcon />}
           </IconButton>
+          <Button 
+            variant="outlined" 
+            startIcon={<UploadIcon />} 
+            onClick={() => setImportOpen(true)}
+            sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 600, bgcolor: 'background.paper' }}
+          >
+            Importar Cargo Inicial
+          </Button>
           <Button 
             variant="contained" 
             startIcon={<AddIcon />} 
@@ -609,6 +705,57 @@ export default function InventoryPage() {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {/* Import Initial Stock CSV Dialog */}
+      <Dialog 
+        open={importOpen} 
+        onClose={() => setImportOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '16px' } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Importar Inventario / Cargo Inicial</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500 }}>
+            Sube un archivo CSV para cargar masivamente tus productos y su stock inicial. 
+            Si el producto no existe, será creado automáticamente. Si ya existe, se registrará un cargo de inventario.
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Button
+                variant="outlined"
+                fullWidth
+                startIcon={<TemplateIcon />}
+                onClick={handleDownloadTemplate}
+                sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
+              >
+                Descargar Plantilla
+              </Button>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Button
+                variant="contained"
+                component="label"
+                fullWidth
+                startIcon={<UploadIcon />}
+                disabled={importMutation.isPending}
+                sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
+              >
+                {importMutation.isPending ? 'Procesando...' : 'Subir Archivo CSV'}
+                <input
+                  type="file"
+                  hidden
+                  accept=".csv"
+                  onChange={handleImportFile}
+                />
+              </Button>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setImportOpen(false)} color="inherit" sx={{ fontWeight: 600 }}>Cancelar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
