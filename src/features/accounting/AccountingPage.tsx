@@ -11,7 +11,8 @@ import api from '../../api/axiosConfig';
 import { 
   Add as AddIcon, ReceiptLong as ReceiptIcon, AccountBalanceWallet as AccountIcon,
   Delete as DeleteIcon, LibraryAdd as LibraryAddIcon, CheckCircleOutlined as CheckedIcon,
-  ErrorOutlined as ErrorIcon, AccountTree as ChartIcon, Search as SearchIcon
+  ErrorOutlined as ErrorIcon, AccountTree as ChartIcon, Search as SearchIcon,
+  FileUpload as UploadIcon, Description as TemplateIcon
 } from '@mui/icons-material';
 
 interface TabPanelProps {
@@ -67,6 +68,7 @@ export default function AccountingPage() {
   // Dialog State
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [journalDialogOpen, setJournalDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // Form State
   const [accountForm, setAccountForm] = useState(defaultAccountForm);
@@ -111,6 +113,23 @@ export default function AccountingPage() {
     },
     onError: (error: any) => {
       const detail = error.response?.data?.detail || 'Error al crear la cuenta contable';
+      showToast(typeof detail === 'string' ? detail : JSON.stringify(detail), 'error');
+    }
+  });
+
+  // Import Mutation
+  const importMutation = useMutation({
+    mutationFn: async (data: any[]) => {
+      const res = await api.post('/accounting/accounts/import', data);
+      return res.data;
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      showToast(`Importación exitosa: ${res.imported} cuentas procesadas.`, 'success');
+      setImportOpen(false);
+    },
+    onError: (error: any) => {
+      const detail = error.response?.data?.detail || 'Error al importar las cuentas';
       showToast(typeof detail === 'string' ? detail : JSON.stringify(detail), 'error');
     }
   });
@@ -175,6 +194,75 @@ export default function AccountingPage() {
       return;
     }
     createAccountMutation.mutate(accountForm);
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = ['code', 'name', 'type'];
+    const example1 = ['1.01.01.01', 'Caja Fuerte Principal', 'Activo'];
+    const example2 = ['1.01.01.02', 'Banco Mercantil', 'Activo'];
+    const example3 = ['5.01.01.01', 'Gastos de Nómina', 'Gasto'];
+    
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
+      + [headers.join(','), example1.join(','), example2.join(','), example3.join(',')].join('\n');
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'plantilla_plan_cuentas.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+        if (lines.length <= 1) {
+          showToast('El archivo está vacío o solo contiene encabezados.', 'error');
+          return;
+        }
+
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const parsedData = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
+          if (values.length < headers.length) continue;
+
+          const rowObj: any = {};
+          headers.forEach((header, index) => {
+            rowObj[header] = values[index] || '';
+          });
+
+          // Capitalize first letter of type
+          const rawType = (rowObj.type || rowObj.tipo || 'Activo').toLowerCase();
+          const type = rawType.charAt(0).toUpperCase() + rawType.slice(1);
+
+          parsedData.push({
+            code: rowObj.code || rowObj.codigo || '',
+            name: rowObj.name || rowObj.nombre || '',
+            type: ['Activo', 'Pasivo', 'Capital', 'Ingreso', 'Gasto'].includes(type) ? type : 'Activo'
+          });
+        }
+
+        if (parsedData.length === 0) {
+          showToast('No se pudieron procesar filas válidas.', 'error');
+          return;
+        }
+
+        importMutation.mutate(parsedData);
+      } catch (err) {
+        showToast('Error al procesar el archivo CSV.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   // Journal form handlers
@@ -265,7 +353,15 @@ export default function AccountingPage() {
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Button 
+            variant="outlined" 
+            startIcon={<UploadIcon />} 
+            onClick={() => setImportOpen(true)}
+            sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700, px: 2, bgcolor: 'background.paper' }}
+          >
+            Importar Cuentas
+          </Button>
           <Button 
             variant="outlined" 
             startIcon={<ChartIcon />} 
@@ -772,6 +868,56 @@ export default function AccountingPage() {
           {toast.message}
         </Alert>
       </Snackbar>
+      {/* DIALOG: Importar Cuentas */}
+      <Dialog 
+        open={importOpen} 
+        onClose={() => setImportOpen(false)} 
+        maxWidth="sm" 
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '16px' } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Importar Plan de Cuentas</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500 }}>
+            Sube un archivo CSV para cargar masivamente tu árbol contable. 
+            El sistema construirá la jerarquía automáticamente basado en el código. Las cuentas que ya existan serán ignoradas.
+          </Typography>
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Button
+                variant="outlined"
+                fullWidth
+                startIcon={<TemplateIcon />}
+                onClick={handleDownloadTemplate}
+                sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
+              >
+                Descargar Plantilla
+              </Button>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Button
+                variant="contained"
+                component="label"
+                fullWidth
+                startIcon={<UploadIcon />}
+                disabled={importMutation.isPending}
+                sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
+              >
+                {importMutation.isPending ? 'Procesando...' : 'Subir CSV'}
+                <input
+                  type="file"
+                  hidden
+                  accept=".csv"
+                  onChange={handleImportFile}
+                />
+              </Button>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setImportOpen(false)} color="inherit" sx={{ fontWeight: 600 }}>Cancelar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
