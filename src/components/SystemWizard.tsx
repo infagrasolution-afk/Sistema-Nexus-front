@@ -14,7 +14,8 @@ import {
   ShoppingCart as ShoppingCartIcon,
   AccountBalanceWallet as TreasuryIcon,
   Security as AuditIcon,
-  CheckCircle as FinishIcon
+  CheckCircle as FinishIcon,
+  FileUpload as UploadIcon
 } from '@mui/icons-material';
 import { useAppStore } from '../store/useAppStore';
 
@@ -93,6 +94,15 @@ export default function SystemWizard() {
       path: '/accounting'
     },
     {
+      id: 'import',
+      title: "Migración y Carga Masiva",
+      subtitle: "Sube toda tu data usando Excel (CSV)",
+      description: "¡No empieces desde cero! Sube masivamente tu catálogo de productos, saldos iniciales, clientes y proveedores usando nuestras plantillas CSV. Busca el botón 'Plantilla CSV' y luego 'Importar' en cada módulo.",
+      icon: (size: number) => <UploadIcon sx={{ fontSize: size, color: '#f43f5e', filter: 'drop-shadow(0 0 15px rgba(244, 63, 94, 0.5))' }} />,
+      color: '#f43f5e',
+      path: '/catalog'
+    },
+    {
       id: 'audit',
       title: "Bitácora Universal de Movimientos",
       subtitle: "Trazabilidad inmutable e informes transparentes",
@@ -108,7 +118,7 @@ export default function SystemWizard() {
   const isSuperuser = user?.is_superuser || false;
   
   const steps = allSteps.filter(step => {
-    if (step.id === 'welcome' || step.id === 'audit') return true;
+    if (step.id === 'welcome' || step.id === 'audit' || step.id === 'import') return true;
     return isSuperuser || userModulesStr.includes(step.id);
   });
 
