@@ -26,6 +26,7 @@ const ALL_MODULES = [
       { id: 'manual_billing', title: 'Facturación Manual', path: '/sales/manual-billing', icon: Receipt },
       { id: 'budgets', title: 'Presupuestos', path: '/sales/budgets', icon: RequestQuote },
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
+      { id: 'customers', title: 'Clientes', path: '/sales/customers', icon: People },
     ]
   },
   { 
@@ -65,6 +66,7 @@ const ALL_MODULES = [
     reqId: 'users', // Use users as base requirement
     subModules: [
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
+      { id: 'customers', title: 'Directorio de Clientes', path: '/sales/customers', icon: People },
       { id: 'purchases', title: 'Órdenes de Compra', path: '/purchases', icon: ShoppingCart },
       { id: 'purchases', title: 'Proveedores', path: '/suppliers', icon: Business },
       { id: 'treasury', title: 'Tesorería y Caja', path: '/cash', icon: AccountBalanceWallet },
