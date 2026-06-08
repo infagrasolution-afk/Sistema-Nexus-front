@@ -130,6 +130,12 @@ export default function ReportsPage() {
     enabled: viewerOpen && selectedCategory === 'accounting'
   });
 
+  const { data: pnlData, isLoading: isLoadingPnl } = useQuery({
+    queryKey: ['reports-pnl'],
+    queryFn: async () => (await api.get('/accounting/pnl')).data,
+    enabled: viewerOpen && currentReport?.id === 'p_and_l'
+  });
+
   const handleOpenReport = (reportId: string, title: string) => {
     setCurrentReport({ id: reportId, title });
     setSearchQuery('');
@@ -641,11 +647,11 @@ export default function ReportsPage() {
 
     // --- 10. PROFIT & LOSS ---
     if (currentReport.id === 'p_and_l') {
-      if (isLoadingSales || isLoadingPurchases) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+      if (isLoadingPnl) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
       
-      const revenue = sales.reduce((acc: number, s: any) => acc + s.total, 0);
-      const expenses = purchases.reduce((acc: number, p: any) => acc + p.total, 0);
-      const grossMargin = revenue - expenses;
+      const revenue = pnlData?.total_revenue || 0;
+      const expenses = pnlData?.total_expense || 0;
+      const grossMargin = pnlData?.net_income || 0;
 
       return (
         <Box>

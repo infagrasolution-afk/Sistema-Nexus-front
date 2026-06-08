@@ -4,10 +4,10 @@ import {
   DialogContent, DialogActions, Button
 } from '@mui/material';
 import { 
-  PointOfSale, Inventory, AccountBalance, Settings, AdminPanelSettings,
-  Warehouse, CompareArrows, ViewModule, People, ShoppingCart,
-  Assessment, Timeline, LocalShipping, RequestQuote, Receipt, Description,
-  AccountBalanceWallet, Business
+  Inventory, PointOfSale, People, Settings, Assessment, LocalShipping, 
+  ShoppingCart, Business, CompareArrows, ViewModule, Receipt, Description,
+  Warehouse, AccountBalance, AccountBalanceWallet, Security, AdminPanelSettings,
+  Timeline, RequestQuote, Sync
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -40,6 +40,7 @@ const ALL_MODULES = [
       { id: 'catalog', title: 'Catálogo de Productos', path: '/catalog', icon: ViewModule },
       { id: 'warehouses', title: 'Almacenes y Ubicaciones', path: '/warehouses', icon: Warehouse },
       { id: 'movements', title: 'Movimientos de Stock', path: '/inventory', icon: CompareArrows },
+      { id: 'audits', title: 'Auditoría Física', path: '/inventory/audits', icon: Inventory },
       { id: 'adjustments', title: 'Ajustes de Inventario', path: '/inventory/adjustments', icon: Assessment },
       { id: 'charges', title: 'Cargos de Inventario', path: '/inventory/charges', icon: CompareArrows },
       { id: 'discharges', title: 'Descargos de Inventario', path: '/inventory/discharges', icon: CompareArrows },
@@ -56,6 +57,19 @@ const ALL_MODULES = [
     subModules: [
       { id: 'accounts', title: 'Plan de Cuentas', path: '/accounting/accounts', icon: AccountBalance },
       { id: 'journal', title: 'Asientos de Diario', path: '/accounting/journal', icon: Description },
+      { id: 'reconciliation', title: 'Conciliación Bancaria', path: '/accounting/reconciliation', icon: Sync },
+    ]
+  },
+  {
+    id: 'treasury_group',
+    title: 'Tesorería y Finanzas',
+    icon: PointOfSale,
+    color: '#8b5cf6', // Violet
+    reqId: 'treasury',
+    subModules: [
+      { id: 'cxc', title: 'Cuentas por Cobrar', path: '/ar', icon: AccountBalanceWallet },
+      { id: 'cxp', title: 'Cuentas por Pagar', path: '/ap', icon: PointOfSale },
+      { id: 'cash', title: 'Caja y Bancos', path: '/cash', icon: AccountBalance },
     ]
   },
   { 
@@ -70,7 +84,8 @@ const ALL_MODULES = [
       { id: 'purchases', title: 'Órdenes de Compra', path: '/purchases', icon: ShoppingCart },
       { id: 'purchases', title: 'Proveedores', path: '/suppliers', icon: Business },
       { id: 'treasury', title: 'Tesorería y Caja', path: '/cash', icon: AccountBalanceWallet },
-      { id: 'users', title: 'Usuarios y Permisos', path: '/users', icon: People },
+      { id: 'users', title: 'Directorio de Usuarios', path: '/users', icon: People },
+      { id: 'roles', title: 'Roles y Permisos', path: '/roles', icon: Security },
       { id: 'reports', title: 'Reportes y Estadísticas', path: '/reports', icon: Assessment },
       { id: 'settings', title: 'Configuración General', path: '/settings', icon: Settings },
       { id: 'manual', title: 'Manual de Usuario', path: '/manual', icon: Description },

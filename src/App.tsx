@@ -16,12 +16,15 @@ import CatalogPage from './features/catalog/CatalogPage';
 import SuppliersPage from './features/inventory/SuppliersPage';
 import PurchasesPage from './features/inventory/PurchasesPage';
 import UsersPage from './features/auth/UsersPage';
+import RolesPage from './features/auth/RolesPage';
 import WarehousesPage from './features/inventory/WarehousesPage';
 import TransfersPage from './features/inventory/TransfersPage';
 import AdjustmentsPage from './features/inventory/AdjustmentsPage';
+import AuditsPage from './features/inventory/AuditsPage';
 import SettingsPage from './features/settings/SettingsPage';
 import AdminPage from './features/admin/AdminPage';
 import AccountingPage from './features/accounting/AccountingPage';
+import ReconciliationPage from './features/accounting/ReconciliationPage';
 import ReportsPage from './features/reports/ReportsPage';
 import AccountsReceivablePage from './features/treasury/AccountsReceivablePage';
 import AccountsPayablePage from './features/treasury/AccountsPayablePage';
@@ -65,11 +68,13 @@ function App() {
               <Route path="/suppliers" element={<SuppliersPage />} />
               <Route path="/purchases" element={<PurchasesPage />} />
               <Route path="/users" element={<UsersPage />} />
+              <Route path="/roles" element={<RolesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
                <Route path="/admin" element={<AdminPage />} />
               <Route path="/accounting" element={<AccountingPage />} />
               <Route path="/accounting/accounts" element={<AccountingPage />} />
               <Route path="/accounting/journal" element={<AccountingPage />} />
+              <Route path="/accounting/reconciliation" element={<ReconciliationPage />} />
               <Route path="/sales" element={<POSPage />} />
               <Route path="/sales/budgets" element={<BudgetsPage />} />
               <Route path="/sales/manual-billing" element={<ManualBillingPage />} />
@@ -78,6 +83,7 @@ function App() {
               <Route path="/sales/debit-notes" element={<DebitNotesPage />} />
               <Route path="/inventory/dispatch-notes" element={<DispatchNotesPage />} />
               <Route path="/inventory/adjustments" element={<AdjustmentsPage />} />
+              <Route path="/inventory/audits" element={<AuditsPage />} />
               <Route path="/inventory/charges" element={<ChargesPage />} />
               <Route path="/inventory/discharges" element={<DischargesPage />} />
               <Route path="/cash" element={<CashPage />} />

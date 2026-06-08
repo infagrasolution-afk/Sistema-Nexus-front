@@ -31,9 +31,17 @@ export default function UsersPage() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const response = await api.get('/users/');
-      return response.data;
-    },
+      const res = await api.get('/users');
+      return res.data;
+    }
+  });
+
+  const { data: roles = [] } = useQuery({
+    queryKey: ['roles'],
+    queryFn: async () => {
+      const res = await api.get('/roles');
+      return res.data;
+    }
   });
 
   // 3. Mutación para crear usuario
@@ -156,14 +164,14 @@ export default function UsersPage() {
       </Box>
     )},
     { field: 'email', headerName: 'Correo', flex: 1.2 },
-    { field: 'role', headerName: 'Rol / Permisos', flex: 1.2, renderCell: (params) => {
-      const isUserAdmin = params.row.modules?.includes('users');
+    { field: 'role_id', headerName: 'Rol / Permisos', flex: 1.2, renderCell: (params) => {
+      const role = roles.find((r: any) => r.id === params.row.role_id);
       return (
         <Chip 
           icon={<SecurityIcon fontSize="small" />} 
-          label={isUserAdmin ? "Administrador" : "Usuario Básico"} 
-          color={isUserAdmin ? "primary" : "default"} 
-          variant={isUserAdmin ? "filled" : "outlined"} 
+          label={role ? role.name : "Usuario Básico"} 
+          color={role?.is_system_role ? "primary" : "default"} 
+          variant="filled" 
           size="small" 
           sx={{ fontWeight: 700 }}
         />
@@ -360,8 +368,10 @@ export default function UsersPage() {
                   label="Rol del Usuario"
                   onChange={(e) => setRoleId(e.target.value)}
                 >
-                  <MenuItem value="basic">Usuario Básico (Ventas e Inventario solamente)</MenuItem>
-                  <MenuItem value="admin">Administrador (Acceso total a todos los módulos contratados)</MenuItem>
+                  <MenuItem value="">Sin Rol Asignado</MenuItem>
+                  {roles.map((r: any) => (
+                    <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>

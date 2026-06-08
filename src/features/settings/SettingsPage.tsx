@@ -9,7 +9,8 @@ import {
   Security as SecurityIcon,
   Help as HelpIcon,
   Print as PrintIcon,
-  FileDownload as DownloadIcon
+  FileDownload as DownloadIcon,
+  AccountBalance as AccountBalanceIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -271,6 +272,45 @@ export default function SettingsPage() {
 
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
               Mantener las sesiones abiertas por más tiempo ayuda a evitar cierres e interrupciones constantes.
+            </Typography>
+          </Paper>
+
+          {/* Card 2.5: Contabilidad Automática vs Manual */}
+          <Paper sx={{ p: 4, borderRadius: 4, mt: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+              <Avatar sx={{ bgcolor: 'warning.main', width: 40, height: 40 }}>
+                <AccountBalanceIcon sx={{ fontSize: 20 }} />
+              </Avatar>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>Contabilidad (Libro Diario)</Typography>
+            </Box>
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+              Elige si deseas que el sistema genere los Asientos de Diario de manera automática o si prefieres registrarlos de forma manual.
+            </Typography>
+
+            <FormControl fullWidth size="small">
+              <InputLabel id="accounting-mode-label">Modo de Contabilidad</InputLabel>
+              <Select
+                labelId="accounting-mode-label"
+                label="Modo de Contabilidad"
+                value={formData.settings?.accounting_mode || 'manual'}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    settings: {
+                      ...formData.settings,
+                      accounting_mode: e.target.value
+                    }
+                  });
+                }}
+              >
+                <MenuItem value="manual">Manual (Por Defecto)</MenuItem>
+                <MenuItem value="automatic">Automática (Sugerido)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+              Nota: El módulo de Cuentas por Cobrar y por Pagar seguirá funcionando de forma automática independientemente del modo que elijas.
             </Typography>
           </Paper>
 
