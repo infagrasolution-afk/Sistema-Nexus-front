@@ -351,14 +351,25 @@ export default function AccountingPage() {
                         const q = accountSearchQuery.toLowerCase();
                         return !q || 
                           acc.code?.toLowerCase().includes(q) || 
-                          acc.name?.toLowerCase().includes(q) || 
+                          acc.name?.toLowerCase().includes(q) ||
                           acc.type?.toLowerCase().includes(q);
-                      }).map((acc: any) => (
+                      }).sort((a: any, b: any) => (a.code || '').localeCompare(b.code || '')).map((acc: any) => {
+                        const depth = (acc.code.match(/[.-]/g) || []).length;
+                        const isMain = depth === 0;
+                        return (
                         <TableRow key={acc.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                          <TableCell sx={{ fontWeight: 800, color: 'primary.main', fontFamily: 'monospace', fontSize: '1rem' }}>
+                          <TableCell sx={{ 
+                            fontWeight: isMain ? 900 : 700, 
+                            color: isMain ? 'primary.main' : 'text.primary', 
+                            fontFamily: 'monospace', 
+                            fontSize: isMain ? '1.05rem' : '0.95rem',
+                            pl: 2 + depth * 3
+                          }}>
                             {acc.code}
                           </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>{acc.name}</TableCell>
+                          <TableCell sx={{ fontWeight: isMain ? 800 : 500, color: isMain ? 'text.primary' : 'text.secondary' }}>
+                            {acc.name}
+                          </TableCell>
                           <TableCell>
                             <Chip 
                               label={acc.type} 
@@ -377,7 +388,8 @@ export default function AccountingPage() {
                             </Typography>
                           </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                       {accounts.filter((acc: any) => {
                         const q = accountSearchQuery.toLowerCase();
                         return !q || 
@@ -525,15 +537,15 @@ export default function AccountingPage() {
           <Divider />
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
             <TextField
-              label="Código Contable (Ej. 1140)"
+              label="Código Contable (Ej. 1.01.01.01.0001)"
               name="code"
               value={accountForm.code}
               onChange={handleAccountChange}
               required
               fullWidth
               size="small"
-              placeholder="Número de cuenta"
-              helperText="Determina la jerarquía en el plan de cuentas"
+              placeholder="Ej. 1.1.01.02"
+              helperText="Determina la jerarquía en el plan de cuentas (separe con puntos o guiones)"
             />
             <TextField
               label="Nombre de la Cuenta"

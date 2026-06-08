@@ -25,8 +25,8 @@ import AccountingPage from './features/accounting/AccountingPage';
 import ReportsPage from './features/reports/ReportsPage';
 import AccountsReceivablePage from './features/treasury/AccountsReceivablePage';
 import AccountsPayablePage from './features/treasury/AccountsPayablePage';
-import DebitNotesPage from './features/accounting/DebitNotesPage';
 import DeliveryNotesPage from './features/sales/DeliveryNotesPage';
+import DebitNotesPage from './features/sales/DebitNotesPage';
 import DispatchNotesPage from './features/inventory/DispatchNotesPage';
 import CashPage from './features/treasury/CashPage';
 import ChargesPage from './features/inventory/ChargesPage';
@@ -70,12 +70,12 @@ function App() {
               <Route path="/accounting" element={<AccountingPage />} />
               <Route path="/accounting/accounts" element={<AccountingPage />} />
               <Route path="/accounting/journal" element={<AccountingPage />} />
-              <Route path="/accounting/debit-notes" element={<DebitNotesPage />} />
               <Route path="/sales" element={<POSPage />} />
               <Route path="/sales/budgets" element={<BudgetsPage />} />
               <Route path="/sales/manual-billing" element={<ManualBillingPage />} />
               <Route path="/sales/customers" element={<CustomersPage />} />
               <Route path="/sales/delivery-notes" element={<DeliveryNotesPage />} />
+              <Route path="/sales/debit-notes" element={<DebitNotesPage />} />
               <Route path="/inventory/dispatch-notes" element={<DispatchNotesPage />} />
               <Route path="/inventory/adjustments" element={<AdjustmentsPage />} />
               <Route path="/inventory/charges" element={<ChargesPage />} />
