@@ -178,7 +178,7 @@ export default function CustomersPage() {
 
   // CSV Template Download
   const handleDownloadTemplate = () => {
-    const headers = ['name', 'tax_id', 'phone', 'email', 'address'];
+    const headers = ['nombre', 'rif', 'telefono', 'correo', 'direccion'];
     const example = ['Cliente Ejemplo S.A.', 'V-12345678-9', '0412-0000000', 'cliente@ejemplo.com', 'Av. Principal Local 1'];
     
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 

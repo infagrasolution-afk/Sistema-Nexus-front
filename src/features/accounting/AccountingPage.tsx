@@ -197,7 +197,7 @@ export default function AccountingPage() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['code', 'name', 'type'];
+    const headers = ['codigo', 'nombre', 'tipo'];
     const example1 = ['1.01.01.01', 'Caja Fuerte Principal', 'Activo'];
     const example2 = ['1.01.01.02', 'Banco Mercantil', 'Activo'];
     const example3 = ['5.01.01.01', 'Gastos de Nómina', 'Gasto'];

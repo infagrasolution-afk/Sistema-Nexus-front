@@ -156,7 +156,7 @@ export default function SuppliersPage() {
 
   // Template Download
   const handleDownloadTemplate = () => {
-    const headers = ['name', 'contact_name', 'tax_id', 'email', 'phone', 'address'];
+    const headers = ['nombre', 'contacto', 'rif', 'correo', 'telefono', 'direccion'];
     const example = ['Proveedor Ejemplo C.A.', 'Juan Perez', 'J-12345678-0', 'contacto@proveedor.com', '0212-5555555', 'Zona Industrial II'];
     
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 

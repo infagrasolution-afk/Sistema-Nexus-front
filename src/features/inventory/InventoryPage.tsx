@@ -178,7 +178,7 @@ export default function InventoryPage() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['sku', 'name', 'cost', 'price', 'quantity', 'warehouse_id'];
+    const headers = ['sku', 'nombre', 'costo', 'precio', 'cantidad', 'almacen_id'];
     const example = ['SKU-001', 'Producto de Ejemplo', '10.50', '15.00', '100', '1'];
     
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 

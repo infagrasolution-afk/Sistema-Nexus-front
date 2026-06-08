@@ -263,7 +263,7 @@ export default function CatalogPage() {
 
   // Template Download
   const handleDownloadTemplate = () => {
-    const headers = ['sku', 'name', 'description', 'cost', 'price', 'min_stock', 'max_stock', 'unit_of_measure'];
+    const headers = ['sku', 'nombre', 'descripcion', 'costo', 'precio', 'stock_minimo', 'stock_maximo', 'unidad_medida'];
     const example = ['PROD-001', 'Galletas de Chocolate', 'Caja de galletas de choco 12 und', '2.50', '3.50', '10', '100', 'cja'];
     
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 

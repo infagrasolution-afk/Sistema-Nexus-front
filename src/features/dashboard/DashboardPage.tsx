@@ -27,7 +27,7 @@ const ALL_MODULES = [
       { id: 'budgets', title: 'Presupuestos', path: '/sales/budgets', icon: RequestQuote },
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
       { id: 'customers', title: 'Clientes', path: '/sales/customers', icon: People },
-      { id: 'debit_notes', title: 'Notas de Débito', path: '/sales/debit-notes', icon: Receipt },
+      { id: 'debit_notes', title: 'Notas de Cr. / Déb.', path: '/sales/debit-notes', icon: Receipt },
     ]
   },
   { 

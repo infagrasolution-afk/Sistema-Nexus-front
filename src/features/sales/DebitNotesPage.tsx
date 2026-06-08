@@ -9,7 +9,7 @@ export default function DebitNotesPage() {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 800, color: 'primary.main' }}>
-          Notas de Débito
+          Notas de Crédito y Débito
         </Typography>
         <Button variant="contained" startIcon={<AddIcon />} sx={{ borderRadius: 2 }}>
           Nueva Nota
@@ -22,6 +22,7 @@ export default function DebitNotesPage() {
             <TableHead sx={{ bgcolor: 'background.default' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 600 }}>Número</TableCell>
+                <TableCell sx={{ fontWeight: 600 }}>Tipo</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Fecha</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Cliente/Proveedor</TableCell>
                 <TableCell sx={{ fontWeight: 600 }}>Monto</TableCell>
@@ -40,6 +41,9 @@ export default function DebitNotesPage() {
                 notes.map((note: any) => (
                   <TableRow key={note.id} hover>
                     <TableCell>{note.number}</TableCell>
+                    <TableCell>
+                      <Chip label={note.type || 'Débito'} size="small" color={note.type === 'Crédito' ? 'success' : 'error'} />
+                    </TableCell>
                     <TableCell>{new Date(note.date).toLocaleDateString()}</TableCell>
                     <TableCell>{note.entity_name}</TableCell>
                     <TableCell>${note.amount.toFixed(2)}</TableCell>
