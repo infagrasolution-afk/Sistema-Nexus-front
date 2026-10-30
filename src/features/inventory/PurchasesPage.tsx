@@ -21,6 +21,11 @@ export default function PurchasesPage() {
   const [supplierId, setSupplierId] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [reference, setReference] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [controlNumber, setControlNumber] = useState('');
+  const [ivaWithholding, setIvaWithholding] = useState('0');
+  const [islrWithholding, setIslrWithholding] = useState('0');
+  const [paymentMethod, setPaymentMethod] = useState('credit');
   const [items, setItems] = useState<{product_id: number, name: string, quantity: number, cost_price: number}[]>([]);
   
   const queryClient = useQueryClient();
@@ -70,7 +75,28 @@ export default function PurchasesPage() {
     setSupplierId('');
     setWarehouseId('');
     setReference('');
+    setInvoiceNumber('');
+    setControlNumber('');
+    setIvaWithholding('0');
+    setIslrWithholding('0');
+    setPaymentMethod('credit');
     setItems([]);
+  };
+
+  const handleDownloadVoucher = async (purchaseId: number) => {
+    try {
+      const response = await api.get(`/fiscal/comprobante-iva/${purchaseId}`, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `comprobante_iva_${purchaseId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (err) {
+      alert('Error al generar el comprobante de retención.');
+    }
   };
 
   const addItem = () => {
@@ -97,9 +123,14 @@ export default function PurchasesPage() {
   const handleSubmit = () => {
     if (!supplierId || !warehouseId || items.length === 0) return;
     createMutation.mutate({
-      supplier_id: supplierId,
-      warehouse_id: warehouseId,
-      reference,
+      supplier_id: Number(supplierId),
+      warehouse_id: Number(warehouseId),
+      reference: reference || invoiceNumber,
+      invoice_number: invoiceNumber,
+      control_number: controlNumber,
+      iva_withholding: parseFloat(ivaWithholding) || 0,
+      islr_withholding: parseFloat(islrWithholding) || 0,
+      payment_method: paymentMethod,
       details: items.map(item => ({
         product_id: item.product_id,
         quantity: item.quantity,
@@ -177,27 +208,52 @@ export default function PurchasesPage() {
             <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700, py: 2.5 }}>ID</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Ref / Factura</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Proveedor</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>N° Factura / Control</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Total</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Ret. IVA</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="center">Comprobante</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {purchases.map((row: any) => (
                 <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                   <TableCell sx={{ fontWeight: 700, color: 'primary.main' }}>#{row.id}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{row.reference || 'S/N'}</TableCell>
-                  <TableCell>
-                    <Chip label={row.status} size="small" color="success" sx={{ fontWeight: 700, borderRadius: '6px' }} />
+                  <TableCell sx={{ fontWeight: 600 }}>{row.supplier?.name || `Prov. #${row.supplier_id}`}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace' }}>
+                    {row.invoice_number || row.reference || 'S/N'}
+                    {row.control_number && <Typography variant="caption" sx={{ display: 'block' }} color="text.secondary">Ctrl: {row.control_number}</Typography>}
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>${row.total.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Chip label={row.status} size="small" color={row.status === 'COMPLETED' ? 'success' : 'default'} sx={{ fontWeight: 700, borderRadius: '6px' }} />
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800 }}>${Number(row.total || 0).toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: Number(row.iva_withholding || 0) > 0 ? 'secondary.main' : 'text.disabled' }}>
+                    ${Number(row.iva_withholding || 0).toFixed(2)}
+                  </TableCell>
                   <TableCell sx={{ color: 'text.secondary' }}>{new Date(row.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell align="center">
+                    {Number(row.iva_withholding || 0) > 0 ? (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="secondary"
+                        onClick={() => handleDownloadVoucher(row.id)}
+                        sx={{ fontSize: '0.72rem', py: 0.2, borderRadius: 1.5 }}
+                      >
+                        PDF Retención
+                      </Button>
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">—</Typography>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
               {purchases.length === 0 && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 10, color: 'text.secondary' }}>No hay compras registradas.</TableCell>
+                  <TableCell colSpan={8} align="center" sx={{ py: 10, color: 'text.secondary' }}>No hay compras registradas.</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -216,7 +272,7 @@ export default function PurchasesPage() {
           <ReceiptIcon color="primary" /> Nueva Orden de Compra
         </DialogTitle>
         <DialogContent dividers>
-          <Grid container spacing={3} sx={{ mb: 4, mt: 0.5 }}>
+          <Grid container spacing={2.5} sx={{ mb: 4, mt: 0.5 }}>
             <Grid size={{ xs: 12, md: 4 }}>
               <Autocomplete
                 options={suppliers}
@@ -248,10 +304,54 @@ export default function PurchasesPage() {
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
-                label="Factura / Referencia #"
+                select
+                label="Condición de Pago"
                 fullWidth
-                value={reference}
-                onChange={(e) => setReference(e.target.value)}
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              >
+                <MenuItem value="credit">Crédito Comercial (CxP)</MenuItem>
+                <MenuItem value="cash">Contado / Transferencia Inmediata</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                label="N° Factura del Proveedor"
+                fullWidth
+                placeholder="Ej: FAC-10294"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                label="N° Control Fiscal SENIAT"
+                fullWidth
+                placeholder="Ej: 00-0010294"
+                value={controlNumber}
+                onChange={(e) => setControlNumber(e.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                label="Retención IVA (Bs/USD)"
+                fullWidth
+                type="number"
+                placeholder="0.00"
+                value={ivaWithholding}
+                onChange={(e) => setIvaWithholding(e.target.value)}
+                slotProps={{ htmlInput: { step: '0.01' } }}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                label="Retención ISLR (Bs/USD)"
+                fullWidth
+                type="number"
+                placeholder="0.00"
+                value={islrWithholding}
+                onChange={(e) => setIslrWithholding(e.target.value)}
+                slotProps={{ htmlInput: { step: '0.01' } }}
               />
             </Grid>
           </Grid>

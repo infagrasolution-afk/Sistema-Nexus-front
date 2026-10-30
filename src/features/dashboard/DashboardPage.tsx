@@ -7,7 +7,7 @@ import {
   Inventory, PointOfSale, People, Settings, Assessment, LocalShipping, 
   ShoppingCart, Business, CompareArrows, ViewModule, Receipt, Description,
   Warehouse, AccountBalance, AccountBalanceWallet, Security, AdminPanelSettings,
-  Timeline, RequestQuote, Sync
+  Timeline, RequestQuote, Sync, Badge
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -27,7 +27,8 @@ const ALL_MODULES = [
       { id: 'budgets', title: 'Presupuestos', path: '/sales/budgets', icon: RequestQuote },
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
       { id: 'customers', title: 'Clientes', path: '/sales/customers', icon: People },
-      { id: 'debit_notes', title: 'Notas de Cr. / Déb.', path: '/sales/debit-notes', icon: Receipt },
+      { id: 'debit_notes', title: 'Notas de Débito', path: '/sales/debit-notes', icon: Receipt },
+      { id: 'credit_notes', title: 'Notas de Crédito (SENIAT)', path: '/sales/credit-notes', icon: Receipt },
     ]
   },
   { 
@@ -69,7 +70,19 @@ const ALL_MODULES = [
     subModules: [
       { id: 'cxc', title: 'Cuentas por Cobrar', path: '/ar', icon: AccountBalanceWallet },
       { id: 'cxp', title: 'Cuentas por Pagar', path: '/ap', icon: PointOfSale },
-      { id: 'cash', title: 'Caja y Bancos', path: '/cash', icon: AccountBalance },
+      { id: 'bank_accounts', title: 'Cuentas Bancarias', path: '/treasury/bank-accounts', icon: AccountBalance },
+      { id: 'cash', title: 'Caja y Arqueo', path: '/cash', icon: AccountBalanceWallet },
+    ]
+  },
+  {
+    id: 'payroll_group',
+    title: 'Nómina y Gestión Humana (LOTTT)',
+    icon: Badge,
+    color: '#ec4899', // Pink / Rose
+    reqId: 'payroll',
+    subModules: [
+      { id: 'employees', title: 'Expediente de Trabajadores', path: '/payroll', icon: People },
+      { id: 'payroll_periods', title: 'Cálculo de Nómina y Leyes', path: '/payroll', icon: Badge },
     ]
   },
   { 
@@ -79,6 +92,7 @@ const ALL_MODULES = [
     color: '#64748b', // Slate
     reqId: 'users', // Use users as base requirement
     subModules: [
+      { id: 'payroll', title: 'Nómina y RRHH (LOTTT)', path: '/payroll', icon: Badge },
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
       { id: 'customers', title: 'Directorio de Clientes', path: '/sales/customers', icon: People },
       { id: 'purchases', title: 'Órdenes de Compra', path: '/purchases', icon: ShoppingCart },
@@ -99,7 +113,7 @@ export default function DashboardPage() {
   const { user, tenant } = useAppStore();
   const [openPosModal, setOpenPosModal] = useState(false);
 
-  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting,users,settings,reports,treasury';
+  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting,users,settings,reports,treasury,payroll';
   
   const { data: alerts = [] } = useQuery({
     queryKey: ['wms-alerts'],

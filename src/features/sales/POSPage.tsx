@@ -18,13 +18,16 @@ import {
   Sync as SyncIcon,
   PersonAdd as PersonAddIcon,
   Pause as PauseIcon,
-  PlayArrow as PlayArrowIcon
+  PlayArrow as PlayArrowIcon,
+  CloudDone as OnlineIcon,
+  CloudOff as OfflineIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Autocomplete } from '@mui/material';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
+import { saveOfflineSale, getOfflineSales, syncOfflineSales } from '../../utils/offlineQueue';
 
 function Clock() {
   const [time, setTime] = useState(new Date());
@@ -56,6 +59,54 @@ export default function POSPage() {
   const [closeRegisterDialog, setCloseRegisterDialog] = useState(false);
   const [openFiscalDialog, setOpenFiscalDialog] = useState(false);
   const [openParkedDialog, setOpenParkedDialog] = useState(false);
+  
+  // Estado de contingencia Offline
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [offlineCount, setOfflineCount] = useState(getOfflineSales().length);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      // Auto-sincronizar ventas offline al regresar la conexión
+      const pending = getOfflineSales();
+      if (pending.length > 0) {
+        setIsSyncing(true);
+        const { synced } = await syncOfflineSales(api);
+        setOfflineCount(getOfflineSales().length);
+        setIsSyncing(false);
+        if (synced > 0) {
+          alert(`✅ Conexión restablecida: Se sincronizaron exitosamente ${synced} ventas guardadas en modo contingencia.`);
+        }
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    const { synced, failed } = await syncOfflineSales(api);
+    setOfflineCount(getOfflineSales().length);
+    setIsSyncing(false);
+    if (synced > 0) {
+      alert(`✅ Sincronizadas ${synced} ventas offline.${failed > 0 ? ` (${failed} pendientes)` : ''}`);
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    } else if (failed > 0) {
+      alert(`⚠️ No se pudieron sincronizar ${failed} ventas. Verifica la conexión con el servidor.`);
+    } else {
+      alert('No hay ventas offline pendientes por sincronizar.');
+    }
+  };
   
   // Fiscal Data State
   const [fiscalData, setFiscalData] = useState({ tax_id: '', name: '', phone: '', address: '' });
@@ -166,6 +217,23 @@ export default function POSPage() {
         window.open(`${api.defaults.baseURL}/sales/${response.data.id}/invoice`, '_blank');
       }
     },
+    onError: (_error: any, variables: any) => {
+      // Contingencia Offline ante caídas de internet/luz
+      saveOfflineSale(variables, {
+        subtotal: subtotalUSD,
+        tax: taxUSD,
+        igtf: igtfUSD,
+        total: totalUSD,
+        currency: currency
+      });
+      setOfflineCount(getOfflineSales().length);
+      setCart([]);
+      alert(
+        "⚡ MODO CONTINGENCIA OFFLINE ACTIVADO\n\n" +
+        "La conexión con el servidor falló o no hay internet. La venta ha sido registrada y guardada en este equipo local de forma segura.\n" +
+        "Puedes seguir cobrando normalmente a los clientes; las ventas se sincronizarán solas al volver la conexión."
+      );
+    }
   });
 
   const completeParkedMutation = useMutation({
@@ -476,9 +544,30 @@ export default function POSPage() {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 3 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', maxWidth: 180 }}>
+            {/* Indicador de Conectividad y Contingencia Offline */}
+            <Chip 
+              icon={isOnline ? <OnlineIcon sx={{ fontSize: '1rem !important' }} /> : <OfflineIcon sx={{ fontSize: '1rem !important' }} />}
+              label={isOnline ? "En Línea" : "Offline"}
+              color={isOnline ? "success" : "warning"}
+              size="small"
+              sx={{ fontWeight: 700, borderRadius: '8px', height: '30px' }}
+            />
+            {offlineCount > 0 && (
+              <Button
+                size="small"
+                variant="contained"
+                color="warning"
+                startIcon={<SyncIcon sx={{ animation: isSyncing ? 'spin 1.5s linear infinite' : 'none' }} />}
+                onClick={handleManualSync}
+                disabled={isSyncing || !isOnline}
+                sx={{ borderRadius: '8px', fontWeight: 800, textTransform: 'none', height: '30px', px: 1.5, fontSize: '0.75rem' }}
+              >
+                Sincronizar ({offlineCount})
+              </Button>
+            )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', maxWidth: 160 }}>
               <WarehouseIcon color="action" fontSize="small" />
               <TextField
                 select

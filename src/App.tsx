@@ -32,9 +32,12 @@ import DeliveryNotesPage from './features/sales/DeliveryNotesPage';
 import DebitNotesPage from './features/sales/DebitNotesPage';
 import DispatchNotesPage from './features/inventory/DispatchNotesPage';
 import CashPage from './features/treasury/CashPage';
+import BankAccountsPage from './features/treasury/BankAccountsPage';
+import CreditNotesPage from './features/sales/CreditNotesPage';
 import ChargesPage from './features/inventory/ChargesPage';
 import DischargesPage from './features/inventory/DischargesPage';
 import ManualPage from './features/dashboard/ManualPage';
+import PayrollPage from './features/payroll/PayrollPage';
 
 const queryClient = new QueryClient();
 
@@ -81,15 +84,18 @@ function App() {
               <Route path="/sales/customers" element={<CustomersPage />} />
               <Route path="/sales/delivery-notes" element={<DeliveryNotesPage />} />
               <Route path="/sales/debit-notes" element={<DebitNotesPage />} />
+              <Route path="/sales/credit-notes" element={<CreditNotesPage />} />
               <Route path="/inventory/dispatch-notes" element={<DispatchNotesPage />} />
               <Route path="/inventory/adjustments" element={<AdjustmentsPage />} />
               <Route path="/inventory/audits" element={<AuditsPage />} />
               <Route path="/inventory/charges" element={<ChargesPage />} />
               <Route path="/inventory/discharges" element={<DischargesPage />} />
               <Route path="/cash" element={<CashPage />} />
+              <Route path="/treasury/bank-accounts" element={<BankAccountsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/ar" element={<AccountsReceivablePage />} />
               <Route path="/ap" element={<AccountsPayablePage />} />
+              <Route path="/payroll" element={<PayrollPage />} />
               <Route path="/manual" element={<ManualPage />} />
             </Route>
 

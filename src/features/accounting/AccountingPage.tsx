@@ -99,7 +99,35 @@ export default function AccountingPage() {
     }
   });
 
-  // 3. Create Account Mutation
+  // 3. Fetch Trial Balance (Balance de Comprobación)
+  const { data: trialBalance, isLoading: isLoadingTB } = useQuery({
+    queryKey: ['trial-balance'],
+    queryFn: async () => (await api.get('/accounting/trial-balance')).data,
+    enabled: tabValue === 2
+  });
+
+  // 4. Fetch Balance Sheet (Estado de Situación Financiera)
+  const { data: balanceSheet, isLoading: isLoadingBS } = useQuery({
+    queryKey: ['balance-sheet'],
+    queryFn: async () => (await api.get('/accounting/balance-sheet')).data,
+    enabled: tabValue === 3
+  });
+
+  // 5. Close Fiscal Year Mutation
+  const closeFiscalYearMutation = useMutation({
+    mutationFn: (year: number) => api.post(`/accounting/year-end-closing?year=${year}`),
+    onSuccess: (res: any) => {
+      showToast(res.data.message || 'Ejercicio fiscal cerrado exitosamente', 'success');
+      queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['trial-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['balance-sheet'] });
+    },
+    onError: (err: any) => {
+      showToast(err.response?.data?.detail || 'Error cerrando el ejercicio', 'error');
+    }
+  });
+
+  // 6. Create Account Mutation
   const createAccountMutation = useMutation({
     mutationFn: async (newAccount: typeof defaultAccountForm) => {
       const res = await api.post('/accounting/accounts', newAccount);
@@ -400,6 +428,8 @@ export default function AccountingPage() {
           <Tabs value={tabValue} onChange={handleTabChange} sx={{ '& .MuiTab-root': { fontWeight: 700, textTransform: 'none', fontSize: '0.95rem', minWidth: 160 } }}>
             <Tab label="Plan de Cuentas (VEN-NIF)" />
             <Tab label="Libro Diario" />
+            <Tab label="Balance de Comprobación" />
+            <Tab label="Balance General (Situación)" />
           </Tabs>
         </Box>
 
@@ -620,6 +650,233 @@ export default function AccountingPage() {
                     ))}
                   </Grid>
                 )}
+              </Box>
+            )}
+          </CustomTabPanel>
+
+          {/* TAB 3: Balance de Comprobación (Sumas y Saldos VEN-NIF) */}
+          <CustomTabPanel value={tabValue} index={2}>
+            {isLoadingTB ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                <CircularProgress />
+              </Box>
+            ) : !trialBalance ? (
+              <Alert severity="info">No se encontraron datos para el balance de comprobación.</Alert>
+            ) : (
+              <Box>
+                {/* Resumen de Cuadre */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                      Balance de Comprobación de Sumas y Saldos
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Verificación de partida doble según Normas de Información Financiera de Venezuela (VEN-NIF)
+                    </Typography>
+                  </Box>
+                  <Chip 
+                    icon={trialBalance.is_balanced ? <CheckedIcon /> : <ErrorIcon />}
+                    label={trialBalance.is_balanced ? "BALANCE CUADRADO (Sumas Iguales)" : "DESBALANCE CONTABLE DETECTADO"}
+                    color={trialBalance.is_balanced ? "success" : "error"}
+                    sx={{ fontWeight: 800, px: 1.5, py: 0.5, borderRadius: '10px' }}
+                  />
+                </Box>
+
+                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '14px', overflow: 'hidden' }}>
+                  <Table size="small">
+                    <TableHead sx={{ bgcolor: 'action.hover' }}>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Nombre de la Cuenta</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Suma Débito ($)</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>Suma Crédito ($)</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: 'primary.main' }}>Saldo Deudor ($)</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: 'secondary.main' }}>Saldo Acreedor ($)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {(trialBalance.rows || []).map((row: any) => (
+                        <TableRow key={row.account_id} hover>
+                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700, color: 'primary.main' }}>{row.code}</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
+                          <TableCell><Chip label={row.type} size="small" color={getTypeColor(row.type) as any} variant="outlined" /></TableCell>
+                          <TableCell align="right">${row.total_debit.toFixed(2)}</TableCell>
+                          <TableCell align="right">${row.total_credit.toFixed(2)}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>${row.debit_balance.toFixed(2)}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: 700 }}>${row.credit_balance.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Fila de Totales */}
+                      <TableRow sx={{ bgcolor: 'action.selected' }}>
+                        <TableCell colSpan={3} sx={{ fontWeight: 900, textAlign: 'right', fontSize: '0.95rem' }}>
+                          TOTALES CONSOLIDADOS:
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, fontSize: '0.95rem' }}>
+                          ${trialBalance.total_debit_sum.toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, fontSize: '0.95rem' }}>
+                          ${trialBalance.total_credit_sum.toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: 'primary.main', fontSize: '0.95rem' }}>
+                          ${trialBalance.total_debit_balance.toFixed(2)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 900, color: 'secondary.main', fontSize: '0.95rem' }}>
+                          ${trialBalance.total_credit_balance.toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </CustomTabPanel>
+
+          {/* TAB 4: Balance General (Estado de Situación Financiera) */}
+          <CustomTabPanel value={tabValue} index={3}>
+            {isLoadingBS ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                <CircularProgress />
+              </Box>
+            ) : !balanceSheet ? (
+              <Alert severity="info">No se encontraron datos para el balance general.</Alert>
+            ) : (
+              <Box>
+                {/* Header con botón de Cierre */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                      Estado de Situación Financiera (Balance General)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Estructura VEN-NIF: Activo = Pasivo + Capital + Resultados
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => {
+                      const year = prompt('Ingresa el año fiscal a cerrar:', new Date().getFullYear().toString());
+                      if (year && !isNaN(Number(year))) {
+                        closeFiscalYearMutation.mutate(Number(year));
+                      }
+                    }}
+                    sx={{ borderRadius: '12px', fontWeight: 800, textTransform: 'none' }}
+                  >
+                    Cierre de Ejercicio Fiscal
+                  </Button>
+                </Box>
+
+                {/* Tarjetas KPI de la Ecuación Contable */}
+                <Grid container spacing={3} sx={{ mb: 4 }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card variant="outlined" sx={{ borderRadius: '16px', borderLeft: '6px solid', borderColor: 'success.main' }}>
+                      <CardContent>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>
+                          Total Activos
+                        </Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 900, color: 'success.main', mt: 0.5 }}>
+                          ${balanceSheet.total_assets.toFixed(2)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card variant="outlined" sx={{ borderRadius: '16px', borderLeft: '6px solid', borderColor: 'error.main' }}>
+                      <CardContent>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>
+                          Total Pasivos
+                        </Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 900, color: 'error.main', mt: 0.5 }}>
+                          ${balanceSheet.total_liabilities.toFixed(2)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card variant="outlined" sx={{ borderRadius: '16px', borderLeft: '6px solid', borderColor: 'primary.main' }}>
+                      <CardContent>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>
+                          Patrimonio / Capital
+                        </Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 900, color: 'primary.main', mt: 0.5 }}>
+                          ${balanceSheet.total_equity.toFixed(2)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card variant="outlined" sx={{ borderRadius: '16px', borderLeft: '6px solid', borderColor: balanceSheet.current_year_earnings >= 0 ? 'success.main' : 'error.main' }}>
+                      <CardContent>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase' }}>
+                          Utilidad del Ejercicio
+                        </Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 900, color: balanceSheet.current_year_earnings >= 0 ? 'success.main' : 'error.main', mt: 0.5 }}>
+                          ${balanceSheet.current_year_earnings.toFixed(2)}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                </Grid>
+
+                {/* Tablas de detalle Activo vs Pasivo + Capital */}
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Card variant="outlined" sx={{ borderRadius: '16px' }}>
+                      <CardHeader title="ACTIVOS (Bienes y Derechos)" sx={{ bgcolor: 'action.hover', '& .MuiCardHeader-title': { fontWeight: 800, fontSize: '1rem' } }} />
+                      <Table size="small">
+                        <TableBody>
+                          {(balanceSheet.assets || []).map((a: any) => (
+                            <TableRow key={a.code} hover>
+                              <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{a.code}</TableCell>
+                              <TableCell>{a.name}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 700 }}>${a.balance.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Card>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Card variant="outlined" sx={{ borderRadius: '16px', mb: 2 }}>
+                      <CardHeader title="PASIVOS (Obligaciones y Deudas)" sx={{ bgcolor: 'action.hover', '& .MuiCardHeader-title': { fontWeight: 800, fontSize: '1rem' } }} />
+                      <Table size="small">
+                        <TableBody>
+                          {(balanceSheet.liabilities || []).map((l: any) => (
+                            <TableRow key={l.code} hover>
+                              <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{l.code}</TableCell>
+                              <TableCell>{l.name}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 700 }}>${l.balance.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Card>
+
+                    <Card variant="outlined" sx={{ borderRadius: '16px' }}>
+                      <CardHeader title="PATRIMONIO (Capital y Resultados)" sx={{ bgcolor: 'action.hover', '& .MuiCardHeader-title': { fontWeight: 800, fontSize: '1rem' } }} />
+                      <Table size="small">
+                        <TableBody>
+                          {(balanceSheet.equity || []).map((e: any) => (
+                            <TableRow key={e.code} hover>
+                              <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{e.code}</TableCell>
+                              <TableCell>{e.name}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 700 }}>${e.balance.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow sx={{ bgcolor: 'action.selected' }}>
+                            <TableCell colSpan={2} sx={{ fontWeight: 800 }}>Utilidad Neta del Ejercicio en Curso</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 900 }}>${balanceSheet.current_year_earnings.toFixed(2)}</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </Card>
+                  </Grid>
+                </Grid>
               </Box>
             )}
           </CustomTabPanel>

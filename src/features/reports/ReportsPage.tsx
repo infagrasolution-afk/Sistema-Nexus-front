@@ -74,6 +74,7 @@ const REPORT_CATEGORIES = [
     reports: [
       { id: 'seniat_sales_book', title: 'Libro de Ventas Fiscal', description: 'Exportar Libro de Ventas mensual con formato oficial exigido por el SENIAT Venezuela.' },
       { id: 'seniat_purchase_book', title: 'Libro de Compras Fiscal', description: 'Exportar Libro de Compras mensual con formato oficial exigido por el SENIAT Venezuela.' },
+      { id: 'seniat_txt_withholding', title: 'Archivo TXT Retenciones IVA', description: 'Generar y descargar archivo TXT oficial para la declaración en el portal del SENIAT.' },
     ]
   }
 ];
@@ -148,6 +149,26 @@ export default function ReportsPage() {
   };
 
   const handleExportCSV = async () => {
+    if (currentReport?.id === 'seniat_txt_withholding') {
+      try {
+        const response = await api.get('/fiscal/txt-retenciones-iva', {
+          params: { month: selectedMonth, year: selectedYear },
+          responseType: 'blob'
+        });
+        const blob = new Blob([response.data], { type: 'text/plain;charset=latin1;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `retenciones_iva_${selectedYear}${selectedMonth.toString().padStart(2, '0')}.txt`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+      } catch (err) {
+        alert('Error al descargar el archivo TXT para el SENIAT.');
+      }
+      return;
+    }
+
     if (currentReport?.id === 'seniat_sales_book' || currentReport?.id === 'seniat_purchase_book') {
       const endpoint = currentReport.id === 'seniat_sales_book' ? '/fiscal/libro-ventas' : '/fiscal/libro-compras';
       try {
@@ -387,18 +408,24 @@ export default function ReportsPage() {
         </Box>
       );
     }
-    // --- 5. SENIAT SALES BOOK & SENIAT PURCHASE BOOK ---
-    if (currentReport.id === 'seniat_sales_book' || currentReport.id === 'seniat_purchase_book') {
+    // --- 5. SENIAT FISCAL BOOKS & TXT WITHHOLDING ---
+    if (currentReport.id === 'seniat_sales_book' || currentReport.id === 'seniat_purchase_book' || currentReport.id === 'seniat_txt_withholding') {
       const isSales = currentReport.id === 'seniat_sales_book';
+      const isTxt = currentReport.id === 'seniat_txt_withholding';
+      const title = isTxt ? 'Archivo TXT de Retenciones IVA' : (isSales ? 'Libro de Ventas Fiscal' : 'Libro de Compras Fiscal');
+      const desc = isTxt
+        ? 'Genera el archivo plano estructurado oficial requerido por el portal web del SENIAT para la declaración quincenal de retenciones de IVA aplicadas a proveedores.'
+        : 'Este archivo cumple estrictamente con las normativas y providencias tributarias vigentes del SENIAT (Venezuela). Contiene las bases imponibles del IVA (16%), alícuotas adicionales, montos exentos y notas de crédito.';
+      
       return (
         <Box sx={{ p: 2, textAlign: 'center' }}>
           <Box sx={{ bgcolor: 'rgba(220, 38, 38, 0.05)', p: 3, borderRadius: '16px', mb: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, border: '1px dashed #dc2626' }}>
             <Description sx={{ fontSize: '3rem', color: '#dc2626' }} />
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#991b1b' }}>
-              Generación de {isSales ? 'Libro de Ventas' : 'Libro de Compras'} Fiscal
+              Generación de {title}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, fontWeight: 500 }}>
-              Este archivo cumple estrictamente con las normativas y providencias tributarias vigentes del SENIAT (Venezuela). Contiene las bases imponibles del IVA (16%), alícuotas adicionales, montos exentos y desglose del impuesto IGTF (3%) si aplica.
+              {desc}
             </Typography>
           </Box>
           <Grid container spacing={3} sx={{ mb: 2, justifyContent: 'center' }}>
