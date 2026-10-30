@@ -1,19 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Box, AppBar, Toolbar, Typography, IconButton, Avatar, Button, Menu, MenuItem, Divider, ListItemIcon, ListItemText, Tooltip } from '@mui/material';
 import { 
-  Dashboard as DashboardIcon, 
-  Inventory as InventoryIcon, 
-  PointOfSale as SalesIcon, 
-  ViewModule as ViewModuleIcon,
+  Dashboard as DashboardIcon,
   Business as BusinessIcon,
-  ShoppingCart as ShoppingCartIcon,
-  People as PeopleIcon,
   Settings as SettingsIcon,
   AdminPanelSettings as AdminIcon,
-  Warehouse as WarehouseIcon,
-  CompareArrows as TransferIcon,
   Logout as LogoutIcon,
-  AccountBalanceWallet as AccountIcon,
   Home as HomeIcon,
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon
@@ -39,8 +31,6 @@ function Clock() {
     </Typography>
   );
 }
-
-
 
 export default function Layout() {
   const { user, setUser, themeMode, setThemeMode } = useAppStore();
@@ -77,7 +67,7 @@ export default function Layout() {
     sessionStorage.setItem('session_active', 'true');
   }, []);
 
-  const { data: userData } = useQuery({
+  useQuery({
     queryKey: ['me'],
     queryFn: async () => {
       const response = await api.get('/auth/me');
@@ -85,38 +75,6 @@ export default function Layout() {
       return response.data;
     },
   });
-
-  const allMenuItems = [
-    { id: 'dashboard', text: t('Dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
-    { id: 'inventory', text: t('Inventory'), icon: <InventoryIcon />, path: '/inventory' },
-    { id: 'inventory', text: t('Warehouses'), icon: <WarehouseIcon />, path: '/warehouses' },
-    { id: 'inventory', text: t('Transfers'), icon: <TransferIcon />, path: '/transfers' },
-    { id: 'inventory', text: t('Catalog'), icon: <ViewModuleIcon />, path: '/catalog' },
-    { id: 'purchases', text: t('Suppliers'), icon: <BusinessIcon />, path: '/suppliers' },
-    { id: 'purchases', text: t('Purchases'), icon: <ShoppingCartIcon />, path: '/purchases' },
-    { id: 'sales', text: t('Clientes'), icon: <PeopleIcon />, path: '/sales/customers' },
-    { id: 'users', text: t('Users'), icon: <PeopleIcon />, path: '/users' },
-    { id: 'settings', text: t('Settings'), icon: <SettingsIcon />, path: '/settings' },
-    { id: 'accounting', text: t('Contabilidad'), icon: <AccountIcon />, path: '/accounting' },
-    { id: 'sales', text: t('Point of Sale'), icon: <SalesIcon />, path: '/sales' },
-  ];
-
-  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting';
-  
-  // Menu items kept in code for reference or future use if needed, but not rendered in sidebar
-  const menuItems = user?.is_superuser 
-    ? allMenuItems
-    : allMenuItems.filter(item => {
-        if (item.id === 'dashboard') return true;
-        if (item.id === 'purchases') {
-          return userModulesStr.includes('purchases') || userModulesStr.includes('inventory') || userModulesStr.includes('users');
-        }
-        return userModulesStr.includes(item.id);
-      });
-
-  if (user?.is_superuser || userData?.is_superuser) {
-    menuItems.push({ id: 'admin', text: t('Admin SaaS'), icon: <AdminIcon />, path: '/admin' });
-  }
 
   const { data: tenantData } = useQuery({
     queryKey: ['my-tenant'],

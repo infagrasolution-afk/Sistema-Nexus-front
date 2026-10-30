@@ -110,20 +110,23 @@ const ALL_MODULES = [
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user, tenant } = useAppStore();
+  const { user, tenant, hasModule } = useAppStore();
   const [openPosModal, setOpenPosModal] = useState(false);
 
-  const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting,users,settings,reports,treasury,payroll';
-  
   const { data: alerts = [] } = useQuery({
     queryKey: ['wms-alerts'],
     queryFn: async () => (await api.get('/inventory/alerts')).data,
     enabled: !!user
   });
 
+  // Módulos visibles en el Dashboard según la licencia activa del tenant (o todos si es superusuario)
   const allowedModules = user?.is_superuser 
     ? [...ALL_MODULES, { id: 'admin', title: 'Súper Admin SaaS', path: '/admin', icon: AdminPanelSettings, color: '#1e3a8a', reqId: 'admin' }]
-    : ALL_MODULES.filter(m => userModulesStr.includes(m.reqId));
+    : ALL_MODULES.filter(m => {
+        // Mapeo entre reqId del dashboard y las claves de licencia
+        const licenseKey = m.reqId === 'users' ? 'admin' : (m.reqId === 'payroll' ? 'hr' : m.reqId);
+        return hasModule(licenseKey as any);
+      });
 
   const handleModuleClick = (module: any) => {
     if (module.id === 'pos') {

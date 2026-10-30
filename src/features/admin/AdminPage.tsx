@@ -30,17 +30,20 @@ export default function AdminPage() {
   const [selectedError, setSelectedError] = useState<any>(null);
 
   const AVAILABLE_MODULES = [
-    { id: 'sales', label: 'Módulo de Ventas' },
-    { id: 'inventory', label: 'Módulo de Inventario' },
+    { id: 'admin', label: 'Módulo Administrativo (Base Obligatoria)' },
+    { id: 'inventory', label: 'Módulo de Inventario (Bundle con Admin)' },
+    { id: 'sales', label: 'Módulo de Ventas / Facturación / POS' },
+    { id: 'purchases', label: 'Módulo de Compras y Proveedores' },
+    { id: 'treasury', label: 'Módulo de Tesorería (Cuentas por Cobrar/Pagar, Bancos)' },
     { id: 'accounting', label: 'Módulo Contable' },
-    { id: 'users', label: 'Módulo Administrativo' },
+    { id: 'hr', label: 'Módulo de Nómina y RRHH (LOTTT)' },
   ];
 
   const [newCompany, setNewCompany] = useState({ 
     name: '', 
     email: '', 
     tax_id: '', 
-    modules: ['sales', 'inventory', 'accounting', 'users'],
+    modules: ['admin', 'inventory', 'sales', 'purchases', 'treasury', 'accounting', 'hr'],
     admin_username: '',
     admin_password: '',
     logo_url: ''
@@ -473,9 +476,12 @@ export default function AdminPage() {
                 value={newCompany.modules}
                 onChange={(e) => {
                   const value = e.target.value;
-                  const newModules = typeof value === 'string' ? value.split(',') : value;
-                  if (newModules.length > 0 && !newModules.includes('users')) {
-                    newModules.push('users');
+                  let newModules = typeof value === 'string' ? value.split(',') : value;
+                  // Regla de Negocio: Administrativo e Inventario se venden y operan en bundle
+                  if (newModules.includes('admin') && !newModules.includes('inventory')) {
+                    newModules.push('inventory');
+                  } else if (newModules.includes('inventory') && !newModules.includes('admin')) {
+                    newModules.push('admin');
                   }
                   setNewCompany({...newCompany, modules: newModules});
                 }}
