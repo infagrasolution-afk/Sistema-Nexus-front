@@ -116,7 +116,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
   const [hasSpecialAgreement, setHasSpecialAgreement] = useState(false);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [specialAgreementNotes, setSpecialAgreementNotes] = useState(
-    'Acuerdo comercial: 50% de anticipo al firmar la propuesta y 50% contra entrega de la plataforma parametrizada con capacitación del personal.'
+    'Forma de pago acordada: 60% de anticipo al formalizar la propuesta y 40% al terminar contra entrega de la plataforma parametrizada con capacitación del personal.'
   );
 
   // Exchange rate BCV en tiempo real
@@ -347,11 +347,37 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
             </div>
           </div>
 
+          <div style="margin-top: 15px; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px 16px;">
+            <div style="font-size: 11.5px; font-weight: 800; color: #166534; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">
+              💳 Modalidad y Plan de Pago Acordado (Año 1):
+            </div>
+            <table style="width: 100%; font-size: 11.5px; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 3px 0; color: #1e293b; width: 55%;">
+                  • <strong>Anticipo Inicial (60%):</strong> Al formalizar la propuesta y firma:
+                </td>
+                <td style="padding: 3px 0; text-align: right; font-weight: 800; color: #15803d; font-size: 12.5px;">
+                  $${(finalInitialTotal * 0.60).toFixed(2)} USD 
+                  <span style="font-size: 10.5px; color: #475569; font-weight: 600;">(≈ Bs. ${(totalInBsInitial * 0.60).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 0; color: #1e293b;">
+                  • <strong>Saldo Final (40%):</strong> Al terminar contra entrega de la plataforma e inducción:
+                </td>
+                <td style="padding: 3px 0; text-align: right; font-weight: 800; color: #1e40af; font-size: 12.5px;">
+                  $${(finalInitialTotal * 0.40).toFixed(2)} USD 
+                  <span style="font-size: 10.5px; color: #475569; font-weight: 600;">(≈ Bs. ${(totalInBsInitial * 0.40).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
           ${observationBoxHtml}
 
           <div class="clauses">
             <strong>Garantías, Propiedad y Nivel de Servicio (SLA):</strong><br/>
-            • <strong>Moneda y Liquidación de Pagos:</strong> Los precios están fijados en Dólares ($ USD). Los pagos en Bolívares (Bs.) se liquidarán a la tasa de cambio oficial publicada por el Banco Central de Venezuela (BCV) vigente al momento de la transferencia o pago.<br/>
+            • <strong>Forma y Condiciones de Pago:</strong> La inversión del primer año se liquidará en un <strong>60% de anticipo</strong> al formalizar la propuesta y el <strong>40% restante al culminar</strong> contra entrega de la plataforma parametrizada y capacitación del personal. Precios fijados en Dólares ($ USD); los pagos en Bolívares (Bs.) se liquidarán a la tasa oficial del Banco Central de Venezuela (BCV) del día de pago.<br/>
             • <strong>Arquitectura en la Nube y Aislamiento:</strong> Base de datos PostgreSQL dedicada e independiente alojada en la nube con disponibilidad garantizada del 99.9% uptime.<br/>
             • <strong>Vigencia de la Licencia:</strong> La licencia inicial tiene una vigencia contractual de 365 días a partir de la firma y activación.<br/>
             • <strong>Propiedad Absoluta de Datos:</strong> Todos los registros, clientes, ventas y stock son propiedad exclusiva del cliente, con exportación y resguardo en cualquier momento.<br/>
@@ -930,6 +956,49 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                     </Typography>
                   </Box>
                 </Box>
+
+                {/* Forma de Pago 60% adelante y 40% al terminar */}
+                <Paper variant="outlined" sx={{ mt: 2.5, p: 1.5, borderRadius: 2.5, bgcolor: '#f0fdf4', borderColor: '#86efac' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: '#166534', display: 'block', mb: 1, letterSpacing: '0.3px', fontSize: '0.72rem' }}>
+                    💳 Modalidad de Pago: 60% Adelanto y 40% al Culminar
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.8 }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#14532d', fontSize: '0.8rem' }}>
+                        1. Anticipo Inicial (60%):
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">Al firmar propuesta</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: '#15803d' }}>
+                        ${(finalInitialTotal * 0.60).toFixed(2)} USD
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#475569', display: 'block', fontSize: '0.7rem' }}>
+                        ≈ Bs. {(totalInBsInitial * 0.60).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Divider sx={{ my: 0.8, borderStyle: 'dashed', borderColor: '#bbf7d0' }} />
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e3a8a', fontSize: '0.8rem' }}>
+                        2. Saldo Final (40%):
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">Contra entrega e inducción</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 900, color: '#1e40af' }}>
+                        ${(finalInitialTotal * 0.40).toFixed(2)} USD
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#475569', display: 'block', fontSize: '0.7rem' }}>
+                        ≈ Bs. {(totalInBsInitial * 0.40).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Paper>
 
                 <Box sx={{ 
                   mt: 2, 
