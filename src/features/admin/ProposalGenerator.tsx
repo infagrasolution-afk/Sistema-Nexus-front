@@ -234,8 +234,9 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                 <div class="brand-name">APEX ERP</div>
                 <div style="font-size: 12px; color: #64748b; font-weight: 600;">Ecosistema Integral de Automatización Empresarial & Fiscal</div>
                 <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
-                  <strong>Proveedor:</strong> Infagrasolution / División Cloud Systems<br/>
-                  <strong>Email:</strong> contacto@apexerp.com | <strong>Soporte Técnico:</strong> 24/7 SLA
+                  <strong>Empresa Proveedora:</strong> InfaGraSolution<br/>
+                  <strong>Contacto Comercial:</strong> Luis Infante | <strong>Teléfono:</strong> 0412-0161906<br/>
+                  <strong>Email:</strong> infagrasolution@gmail.com | <strong>Soporte Técnico:</strong> 24/7 SLA
                 </div>
               </td>
               <td style="vertical-align: top; text-align: right;">
@@ -320,7 +321,9 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
           <div class="signatures">
             <div class="sig-box">
               <strong>POR EL PROVEEDOR</strong><br/>
-              Infagrasolution / APEX ERP<br/>
+              <strong>InfaGraSolution</strong><br/>
+              Luis Infante — Director de Sistemas<br/>
+              Telf: 0412-0161906 | infagrasolution@gmail.com<br/>
               Firma y Sello Autorizado
             </div>
             <div class="sig-box">
@@ -392,7 +395,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                 <div class="brand-name">APEX ERP</div>
                 <div style="font-size: 12px; color: #64748b; font-weight: 600;">Acta y Nota de Entrega Oficial de Software</div>
                 <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
-                  Infagrasolution / Plataforma SaaS en la Nube
+                  <strong>InfaGraSolution</strong> · Contacto: Luis Infante · Telf: 0412-0161906 · infagrasolution@gmail.com
                 </div>
               </td>
               <td style="vertical-align: top; text-align: right;">
@@ -446,7 +449,9 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
           <div class="signatures">
             <div class="sig-box">
               <strong>ENTREGADO POR</strong><br/>
-              Infagrasolution / Administrador de Sistemas<br/>
+              <strong>InfaGraSolution</strong><br/>
+              Luis Infante — Administrador de Sistemas<br/>
+              Telf: 0412-0161906 | infagrasolution@gmail.com<br/>
               Firma y Sello de Entrega
             </div>
             <div class="sig-box">
