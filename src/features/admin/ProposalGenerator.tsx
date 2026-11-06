@@ -10,7 +10,6 @@ import {
   PictureAsPdf as PdfIcon,
   LocalShipping as DeliveryNoteIcon,
   AddBusiness as AddBusinessIcon,
-  AttachMoney as MoneyIcon,
   CloudDone as CloudDoneIcon,
   Calculate as CalculateIcon,
   EditNote as NoteIcon,
@@ -19,8 +18,7 @@ import {
   CurrencyExchange as CurrencyIcon,
   Tune as TuneIcon,
   LocalOffer as OfferIcon,
-  RestartAlt as ResetIcon,
-  Percent as PercentIcon
+  RestartAlt as ResetIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
