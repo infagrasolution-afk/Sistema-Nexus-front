@@ -24,6 +24,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<any>(null);
+  const [sessionClosedAlert, setSessionClosedAlert] = useState(false);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -31,8 +32,13 @@ export default function LoginPage() {
   const { setTenantId, setUser } = useAppStore();
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'session_superseded') {
+      setSessionClosedAlert(true);
+    }
+
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && params.get('reason') !== 'session_superseded') {
       navigate('/dashboard');
     }
     // Trigger mount animation
@@ -382,6 +388,26 @@ export default function LoginPage() {
           {/* Main Login Form */}
           <Fade in={mounted} timeout={2000}>
             <Box component="form" onSubmit={handleLogin} sx={{ width: '100%' }}>
+              {sessionClosedAlert && (
+                <Fade in>
+                  <Alert 
+                    severity="warning" 
+                    onClose={() => setSessionClosedAlert(false)}
+                    sx={{ 
+                      mb: 2.5, 
+                      borderRadius: 3, 
+                      fontWeight: 700, 
+                      fontSize: '0.84rem',
+                      bgcolor: '#fef3c7',
+                      color: '#92400e',
+                      border: '1px solid #fde68a'
+                    }}
+                  >
+                    ⚠️ Tu sesión anterior se cerró automáticamente porque tu cuenta fue abierta en otro dispositivo o navegador.
+                  </Alert>
+                </Fade>
+              )}
+
               {renderError()}
 
               <Box sx={{ mb: 2.5 }}>

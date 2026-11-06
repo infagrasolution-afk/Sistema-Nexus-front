@@ -88,6 +88,9 @@ export default function Layout() {
       setUser(response.data);
       return response.data;
     },
+    refetchInterval: 12000, // Polling de seguridad: verifica cada 12s si la sesión sigue activa o se abrió en otra máquina
+    refetchOnWindowFocus: true, // Si el usuario vuelve a esta ventana o pestaña, valida de inmediato
+    retry: false
   });
 
   const { data: tenantData } = useQuery({

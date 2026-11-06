@@ -27,6 +27,21 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
+    // Si la sesión fue abierta en otra máquina, cerrar de inmediato sin intentar refresh
+    const isSuperseded = 
+      typeof error.response?.data?.detail === 'string' && 
+      error.response.data.detail.includes('SESSION_SUPERSEDED');
+
+    if (isSuperseded) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('active_tenant_id');
+      localStorage.removeItem('active_tenant_name');
+      sessionStorage.removeItem('session_active');
+      window.location.href = '/login?reason=session_superseded';
+      return Promise.reject(error);
+    }
+    
     // If error is 401 (Unauthorized) and we haven't retried yet
     if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/login') {
       originalRequest._retry = true;
@@ -52,12 +67,19 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return api(originalRequest);
         
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         // If refresh fails, log out the user
         localStorage.removeItem('token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('active_tenant_id');
-        window.location.href = '/login';
+        localStorage.removeItem('active_tenant_name');
+        sessionStorage.removeItem('session_active');
+        const refreshSuperseded = 
+          typeof refreshError.response?.data?.detail === 'string' && 
+          refreshError.response.data.detail.includes('SESSION_SUPERSEDED');
+        window.location.href = refreshSuperseded 
+          ? '/login?reason=session_superseded' 
+          : '/login';
         return Promise.reject(refreshError);
       }
     }
