@@ -1,16 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Paper, Typography, TextField, Button, Alert, InputAdornment } from '@mui/material';
-import { MailOutlined, LockOutlined } from '@mui/icons-material';
-
+import { 
+  Box, Paper, Typography, TextField, Button, Alert, 
+  InputAdornment, IconButton, Chip, Stack 
+} from '@mui/material';
+import { 
+  PersonOutlined as PersonIcon, 
+  LockOutlined as LockIcon,
+  VisibilityOutlined as VisibilityIcon,
+  VisibilityOffOutlined as VisibilityOffIcon,
+  ArrowForward as ArrowForwardIcon,
+  CloudDone as CloudDoneIcon,
+  Security as SecurityIcon,
+  ReceiptLong as ReceiptIcon,
+  WhatsApp as WhatsAppIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
 import api from '../../api/axiosConfig';
-import { useTranslation } from 'react-i18next';
 
 export default function LoginPage() {
-  const { } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -55,12 +66,25 @@ export default function LoginPage() {
     if (!loginError) return null;
 
     if (typeof loginError === 'string') {
-      return <Alert severity="error" sx={{ mb: 2, width: '100%', borderRadius: 2 }}>{loginError}</Alert>;
+      return (
+        <Alert severity="error" sx={{ mb: 2.5, width: '100%', borderRadius: 3, fontWeight: 600 }}>
+          {loginError}
+        </Alert>
+      );
     }
 
     if (loginError.type === 'account_locked_admin') {
       return (
-        <Box sx={{ width: '100%', mb: 2, p: 2, bgcolor: '#fff5f5', border: '1px solid #feb2b2', borderRadius: 4, textAlign: 'center' }}>
+        <Box sx={{ 
+          width: '100%', 
+          mb: 2.5, 
+          p: 2.5, 
+          bgcolor: 'rgba(254, 242, 242, 0.95)', 
+          border: '1px solid #fca5a5', 
+          borderRadius: 3, 
+          textAlign: 'center',
+          backdropFilter: 'blur(8px)'
+        }}>
           <Typography variant="subtitle2" color="error" sx={{ fontWeight: 800, mb: 1 }}>
             🚨 Acceso Suspendido por Seguridad
           </Typography>
@@ -70,12 +94,13 @@ export default function LoginPage() {
           <Button
             variant="contained"
             color="error"
-            href={loginError.whatsapp_link}
+            href={loginError.whatsapp_link || 'https://wa.me/584120161906'}
             target="_blank"
             size="small"
+            startIcon={<WhatsAppIcon />}
             sx={{ borderRadius: 3, fontWeight: 700, textTransform: 'none', px: 3 }}
           >
-            Desbloquear por WhatsApp
+            Desbloquear por WhatsApp (Luis Infante)
           </Button>
         </Box>
       );
@@ -83,8 +108,15 @@ export default function LoginPage() {
 
     if (loginError.type === 'account_locked') {
       return (
-        <Box sx={{ width: '100%', mb: 2, p: 2, bgcolor: '#fffaf0', border: '1px solid #fbd38d', borderRadius: 4 }}>
-          <Typography variant="subtitle2" sx={{ color: '#dd6b20', fontWeight: 800, mb: 0.5 }}>
+        <Box sx={{ 
+          width: '100%', 
+          mb: 2.5, 
+          p: 2, 
+          bgcolor: 'rgba(255, 251, 235, 0.95)', 
+          border: '1px solid #fcd34d', 
+          borderRadius: 3 
+        }}>
+          <Typography variant="subtitle2" sx={{ color: '#b45309', fontWeight: 800, mb: 0.5 }}>
             🔒 Cuenta Bloqueada
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
@@ -96,33 +128,41 @@ export default function LoginPage() {
 
     if (loginError.type === 'wrong_password') {
       return (
-        <Box sx={{ width: '100%', mb: 2 }}>
-          <Alert severity="error" sx={{ borderRadius: 2, mb: 1 }}>
+        <Box sx={{ width: '100%', mb: 2.5 }}>
+          <Alert severity="error" sx={{ borderRadius: 3, mb: 1, fontWeight: 600 }}>
             {loginError.message}
           </Alert>
-          <Alert severity="warning" sx={{ borderRadius: 2 }}>
-            {loginError.warning}
-          </Alert>
+          {loginError.warning && (
+            <Alert severity="warning" sx={{ borderRadius: 3, fontWeight: 600 }}>
+              {loginError.warning}
+            </Alert>
+          )}
         </Box>
       );
     }
 
-    return <Alert severity="error" sx={{ mb: 2, width: '100%', borderRadius: 2 }}>Error al iniciar sesión.</Alert>;
+    return (
+      <Alert severity="error" sx={{ mb: 2.5, width: '100%', borderRadius: 3, fontWeight: 600 }}>
+        Error al iniciar sesión. Verifique sus credenciales.
+      </Alert>
+    );
   };
-
 
   return (
     <Box
       sx={{
         minHeight: '100vh',
+        width: '100vw',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundImage: 'url("https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1600&q=80")',
+        backgroundImage: 'url("/apex_login_bg.jpg")',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         position: 'relative',
-        p: 2,
+        p: { xs: 2, sm: 4 },
+        overflow: 'hidden',
         '&:before': {
           content: '""',
           position: 'absolute',
@@ -130,201 +170,275 @@ export default function LoginPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(15, 23, 42, 0.7) 100%)',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(240, 249, 255, 0.45) 50%, rgba(224, 242, 254, 0.3) 100%)',
+          backdropFilter: 'blur(3px)',
           zIndex: 1,
           pointerEvents: 'none'
         }
       }}
     >
       <Paper
-        elevation={24}
+        elevation={0}
         sx={{
           width: '100%',
-          maxWidth: 480,
-          minHeight: 520,
-          borderRadius: '24px',
+          maxWidth: 460,
+          borderRadius: '32px',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'rgba(15, 23, 42, 0.35)', // Elegant glassmorphic backdrop for excellent readability
-          backdropFilter: 'blur(24px)',
+          backgroundColor: 'rgba(255, 255, 255, 0.92)', // Ultra-clean frosted glass card
+          backdropFilter: 'blur(28px)',
           position: 'relative',
           overflow: 'hidden',
           zIndex: 2,
-          boxShadow: '0 30px 60px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.12)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          p: { xs: 4, sm: 5 },
-          pb: { xs: 12, sm: 12 }, // extra space for absolute footer
+          boxShadow: '0 30px 80px -15px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.95), 0 12px 30px -10px rgba(37, 99, 235, 0.12)',
+          border: '1px solid rgba(255, 255, 255, 0.8)',
+          p: { xs: 3.5, sm: 5 },
+          transition: 'all 0.3s ease'
         }}
       >
-        {/* Top Header inside Card */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', zIndex: 2, mb: 6 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography sx={{ color: '#ffffff', fontWeight: 300, fontSize: '1.4rem', letterSpacing: '1px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+        {/* Brand Header */}
+        <Box sx={{ textAlign: 'center', mb: 3.5 }}>
+          {/* Logo Badge */}
+          <Box 
+            sx={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              width: 58, 
+              height: 58, 
+              borderRadius: '20px', 
+              background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
+              color: 'white',
+              boxShadow: '0 10px 25px rgba(37, 99, 235, 0.35)',
+              mb: 2,
+              fontWeight: 900,
+              fontSize: '1.75rem',
+              letterSpacing: '-0.5px'
+            }}
+          >
+            A
+          </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 900, 
+                letterSpacing: '-1px', 
+                color: '#0f172a',
+                fontFamily: '"Outfit", "Inter", sans-serif'
+              }}
+            >
               APEX
             </Typography>
-            <Typography sx={{ color: '#ffffff', fontWeight: 900, fontSize: '1.4rem', letterSpacing: '1px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 900, 
+                letterSpacing: '-1px', 
+                color: '#2563eb',
+                fontFamily: '"Outfit", "Inter", sans-serif'
+              }}
+            >
               ERP
             </Typography>
           </Box>
-          <Typography sx={{ color: '#ffffff', fontWeight: 800, fontSize: '0.88rem', pb: 0.5, borderBottom: '2px solid #ffffff' }}>
-            Acceso
+
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: '#64748b', 
+              fontWeight: 600, 
+              mt: 0.5,
+              fontSize: '0.92rem'
+            }}
+          >
+            Ecosistema de Automatización Empresarial & Fiscal
           </Typography>
+
+          <Chip 
+            label="Desarrollado por InfaGraSolution" 
+            size="small" 
+            sx={{ 
+              mt: 1.5, 
+              fontWeight: 700, 
+              fontSize: '0.72rem',
+              bgcolor: 'rgba(37, 99, 235, 0.08)',
+              color: '#1d4ed8',
+              borderRadius: '12px'
+            }} 
+          />
         </Box>
 
-        {/* Main Content Form */}
-        <Box
-          component="form"
-          onSubmit={handleLogin}
-          sx={{
-            width: '100%',
-            mx: 'auto',
-            my: 'auto',
-            zIndex: 2,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
+        {/* Main Login Form */}
+        <Box component="form" onSubmit={handleLogin} sx={{ width: '100%' }}>
           {renderError()}
 
-          <TextField
-            variant="standard"
-            required
-            fullWidth
-            placeholder="usuario"
-            autoComplete="username"
-            autoFocus
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start" sx={{ mr: 2 }}>
-                    <MailOutlined sx={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: '1.25rem' }} />
-                  </InputAdornment>
-                ),
-                disableUnderline: true,
-              }
-            }}
-            sx={{
-              width: '100%',
-              mb: 4,
-              borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
-              pb: 1,
-              transition: 'border-color 0.3s ease',
-              '&:hover': {
-                borderBottomColor: 'rgba(255, 255, 255, 0.8)',
-              },
-              '&.Mui-focused': {
-                borderBottomColor: '#ffffff',
-              },
-              '& input': {
-                color: '#ffffff',
-                fontSize: '1rem',
-                fontWeight: 500,
-                py: 0.5,
-                '&::placeholder': {
-                  color: 'rgba(255, 255, 255, 0.55)',
-                  opacity: 1
+          <Box sx={{ mb: 2.5 }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: '#334155', mb: 0.8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.72rem' }}>
+              Usuario o Correo Electrónico
+            </Typography>
+            <TextField
+              required
+              fullWidth
+              size="medium"
+              placeholder="Ingrese su usuario..."
+              autoComplete="username"
+              autoFocus
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <PersonIcon sx={{ color: '#2563eb', fontSize: '1.25rem' }} />
+                    </InputAdornment>
+                  )
                 }
-              }
-            }}
-          />
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '16px',
+                  bgcolor: 'rgba(248, 250, 252, 0.85)',
+                  transition: 'all 0.2s ease',
+                  '& fieldset': {
+                    borderColor: 'rgba(203, 213, 225, 0.8)',
+                    borderWidth: '1.5px'
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#2563eb'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#2563eb',
+                    borderWidth: '2px',
+                    boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.12)'
+                  }
+                },
+                '& input': {
+                  fontWeight: 600,
+                  color: '#0f172a'
+                }
+              }}
+            />
+          </Box>
 
-          <TextField
-            variant="standard"
-            required
-            fullWidth
-            type="password"
-            placeholder="*********"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start" sx={{ mr: 2 }}>
-                    <LockOutlined sx={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: '1.25rem' }} />
-                  </InputAdornment>
-                ),
-                disableUnderline: true,
-              }
-            }}
-            sx={{
-              width: '100%',
-              mb: 5,
-              borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
-              pb: 1,
-              transition: 'border-color 0.3s ease',
-              '&:hover': {
-                borderBottomColor: 'rgba(255, 255, 255, 0.8)',
-              },
-              '&.Mui-focused': {
-                borderBottomColor: '#ffffff',
-              },
-              '& input': {
-                color: '#ffffff',
-                fontSize: '1rem',
-                fontWeight: 500,
-                py: 0.5,
-                '&::placeholder': {
-                  color: 'rgba(255, 255, 255, 0.55)',
-                  opacity: 1
+          <Box sx={{ mb: 3.5 }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: '#334155', mb: 0.8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.72rem' }}>
+              Contraseña
+            </Typography>
+            <TextField
+              required
+              fullWidth
+              size="medium"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••••••"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockIcon sx={{ color: '#2563eb', fontSize: '1.25rem' }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        size="small"
+                        sx={{ color: '#64748b' }}
+                      >
+                        {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
                 }
-              }
-            }}
-          />
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '16px',
+                  bgcolor: 'rgba(248, 250, 252, 0.85)',
+                  transition: 'all 0.2s ease',
+                  '& fieldset': {
+                    borderColor: 'rgba(203, 213, 225, 0.8)',
+                    borderWidth: '1.5px'
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#2563eb'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#2563eb',
+                    borderWidth: '2px',
+                    boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.12)'
+                  }
+                },
+                '& input': {
+                  fontWeight: 600,
+                  color: '#0f172a'
+                }
+              }}
+            />
+          </Box>
 
           <Button
             type="submit"
+            fullWidth
             disabled={loading}
+            size="large"
+            endIcon={<ArrowForwardIcon />}
             sx={{
-              width: '100%',
-              height: '46px',
-              borderRadius: '24px',
-              fontWeight: 700,
+              py: 1.6,
+              borderRadius: '16px',
+              fontWeight: 800,
+              fontSize: '1rem',
+              letterSpacing: '0.2px',
               textTransform: 'none',
-              fontSize: '0.98rem',
-              background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.8) 0%, rgba(29, 78, 216, 0.8) 100%)', // Bright blue sapphire gradient for high contrast
+              background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
               color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              boxShadow: '0 8px 32px rgba(37, 99, 235, 0.25)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: '0 10px 30px rgba(37, 99, 235, 0.38)',
+              transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
               '&:hover': {
-                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(29, 78, 216, 0.95) 100%)',
-                transform: 'translateY(-1px)',
-                boxShadow: '0 12px 40px rgba(37, 99, 235, 0.4)',
-                borderColor: 'rgba(255, 255, 255, 0.3)',
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 16px 36px rgba(37, 99, 235, 0.48)'
+              },
+              '&:active': {
+                transform: 'translateY(0)'
               }
             }}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Validando Acceso...' : 'Iniciar Sesión'}
           </Button>
         </Box>
 
-        {/* Floating absolute dark footer overlay */}
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            bgcolor: 'rgba(10, 18, 30, 0.65)',
-            py: 2.2,
-            textAlign: 'center',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            zIndex: 2
-          }}
-        >
-          <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500, fontSize: '0.74rem', letterSpacing: '0.5px' }}>
-            SISTEMA APEX ERP • Licencia Activa
-          </Typography>
-          <Typography sx={{ color: 'rgba(255, 255, 255, 0.25)', fontWeight: 400, fontSize: '0.68rem', mt: 0.25 }}>
-            Elaborado por Infagrasolution
+        {/* Feature Badges */}
+        <Stack direction="row" spacing={1} sx={{ mt: 3.5, pt: 2.5, borderTop: '1px solid rgba(226, 232, 240, 0.8)', justifyContent: 'center', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#475569' }}>
+            <CloudDoneIcon sx={{ fontSize: 16, color: '#2563eb' }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>Cloud 99.9%</Typography>
+          </Box>
+          <Typography variant="caption" sx={{ color: '#cbd5e1' }}>•</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#475569' }}>
+            <ReceiptIcon sx={{ fontSize: 16, color: '#059669' }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>SENIAT / BCV</Typography>
+          </Box>
+          <Typography variant="caption" sx={{ color: '#cbd5e1' }}>•</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#475569' }}>
+            <SecurityIcon sx={{ fontSize: 16, color: '#7c3aed' }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.72rem' }}>Multi-Tenant</Typography>
+          </Box>
+        </Stack>
+
+        {/* Bottom Support Info */}
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
+          <Typography sx={{ color: '#94a3b8', fontSize: '0.72rem', fontWeight: 500 }}>
+            Soporte: <strong>Luis Infante (0412-0161906)</strong>
           </Typography>
         </Box>
       </Paper>
     </Box>
   );
 }
-

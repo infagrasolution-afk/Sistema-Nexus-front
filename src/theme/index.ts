@@ -2,7 +2,7 @@ import { createTheme } from '@mui/material';
 import { type ThemeOptions } from '@mui/material/styles';
 
 export const getTheme = (primaryColor?: string | null, mode: 'light' | 'dark' = 'light') => {
-  const safeColor = primaryColor || (mode === 'dark' ? '#6366f1' : '#4f46e5'); // Premium Indigo primary
+  const safeColor = primaryColor || (mode === 'dark' ? '#6366f1' : '#2563eb'); // Premium Vibrant Sapphire Blue
   
   const themeOptions: ThemeOptions = {
     palette: {
@@ -18,12 +18,12 @@ export const getTheme = (primaryColor?: string | null, mode: 'light' | 'dark' = 
         contrastText: '#ffffff',
       },
       background: {
-        default: mode === 'dark' ? '#0b0f19' : '#f3f4f6', // Premium deep dark slate / light gray-blue
+        default: mode === 'dark' ? '#0b0f19' : '#f8fafc', // Ultra-clean luminous light slate / deep dark
         paper: mode === 'dark' ? '#111827' : '#ffffff', // Card paper elements
       },
       text: {
-        primary: mode === 'dark' ? '#f3f4f6' : '#111827',
-        secondary: mode === 'dark' ? '#9ca3af' : '#4b5563', 
+        primary: mode === 'dark' ? '#f3f4f6' : '#0f172a',
+        secondary: mode === 'dark' ? '#9ca3af' : '#475569', 
       },
       divider: mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
       success: {
