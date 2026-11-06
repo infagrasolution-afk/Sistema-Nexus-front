@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Grid, TextField, Button, Checkbox, 
   FormControlLabel, Card, CardContent, Divider, Chip, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow,
-  InputAdornment, Alert, Stack, Switch
+  InputAdornment, Alert, Stack, Switch, IconButton, Tooltip
 } from '@mui/material';
 import {
   PictureAsPdf as PdfIcon,
@@ -12,7 +12,10 @@ import {
   AttachMoney as MoneyIcon,
   CloudDone as CloudDoneIcon,
   Calculate as CalculateIcon,
-  EditNote as NoteIcon
+  EditNote as NoteIcon,
+  Refresh as RefreshIcon,
+  InfoOutlined as InfoIcon,
+  CurrencyExchange as CurrencyIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -116,24 +119,53 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
     'Acuerdo comercial: 50% de anticipo al firmar la propuesta y 50% contra entrega de la plataforma parametrizada con capacitación del personal.'
   );
 
-  // Exchange rate BCV
-  const { data: bcvData } = useQuery({
+  // Exchange rate BCV en tiempo real
+  const { data: bcvData, isLoading: isLoadingBcv, refetch: refetchBcv } = useQuery({
     queryKey: ['exchange-rate-bcv-proposal'],
     queryFn: async () => {
+      // 1. Intento directo con API oficial en tiempo real
       try {
-        const res = await api.get('/inventory/exchange-rate/latest');
-        return res.data?.rate || 36.5;
-      } catch {
-        return 36.5;
+        const directRes = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+        if (directRes.ok) {
+          const d = await directRes.json();
+          const r = Number(d?.promedio || d?.valor || 0);
+          if (r > 0) {
+            return {
+              rate: r,
+              date: d?.fechaActualizacion,
+              source: 'BCV Oficial'
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Fallo consulta directa DolarAPI, consultando backend interno...', err);
       }
-    }
+
+      // 2. Fallback al endpoint interno del backend
+      try {
+        const res = await api.get('/inventory/exchange-rate');
+        const r = Number(res.data?.rate || 896.12);
+        return {
+          rate: r > 0 ? r : 896.12,
+          date: new Date().toISOString(),
+          source: 'BCV Oficial'
+        };
+      } catch {
+        return {
+          rate: 896.12,
+          date: new Date().toISOString(),
+          source: 'BCV Oficial'
+        };
+      }
+    },
+    staleTime: 1000 * 60 * 30 // 30 minutos
   });
 
-  const [customBcvRate, setCustomBcvRate] = useState<number>(36.5);
+  const [customBcvRate, setCustomBcvRate] = useState<number>(896.12);
 
   useEffect(() => {
-    if (bcvData) {
-      setCustomBcvRate(Number(bcvData));
+    if (bcvData?.rate) {
+      setCustomBcvRate(Number(bcvData.rate));
     }
   }, [bcvData]);
 
@@ -295,6 +327,13 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                   <td style="padding: 4px 0; font-size: 11px; color: #64748b;">Equivalente Oficial (Tasa BCV ${customBcvRate.toFixed(2)} Bs/$):</td>
                   <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #0f172a; font-size: 12px;">Bs. ${totalInBsInitial.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
+                <tr>
+                  <td colspan="2" style="padding-top: 6px;">
+                    <div style="font-size: 10px; color: #0369a1; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 5px; padding: 5px 8px; font-style: italic; line-height: 1.3;">
+                      ℹ️ <strong>Nota:</strong> Los pagos en Bolívares (Bs.) son calculados a la tasa oficial del Banco Central de Venezuela (BCV) vigente a la fecha de pago.
+                    </div>
+                  </td>
+                </tr>
                 <tr><td colspan="2"><hr style="border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0;"/></td></tr>
                 <tr>
                   <td style="padding: 4px 0; font-weight: 600; color: #059669;">Renovación Anual (a partir del Año 2):</td>
@@ -312,6 +351,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
 
           <div class="clauses">
             <strong>Garantías, Propiedad y Nivel de Servicio (SLA):</strong><br/>
+            • <strong>Moneda y Liquidación de Pagos:</strong> Los precios están fijados en Dólares ($ USD). Los pagos en Bolívares (Bs.) se liquidarán a la tasa de cambio oficial publicada por el Banco Central de Venezuela (BCV) vigente al momento de la transferencia o pago.<br/>
             • <strong>Arquitectura en la Nube y Aislamiento:</strong> Base de datos PostgreSQL dedicada e independiente alojada en la nube con disponibilidad garantizada del 99.9% uptime.<br/>
             • <strong>Vigencia de la Licencia:</strong> La licencia inicial tiene una vigencia contractual de 365 días a partir de la firma y activación.<br/>
             • <strong>Propiedad Absoluta de Datos:</strong> Todos los registros, clientes, ventas y stock son propiedad exclusiva del cliente, con exportación y resguardo en cualquier momento.<br/>
@@ -508,28 +548,58 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
               aplique promociones o acuerdos especiales y descargue al instante la <strong>Propuesta Comercial en PDF</strong> y la <strong>Nota de Entrega de Licencia</strong>.
             </Typography>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
-            <Paper sx={{ p: 1.5, bgcolor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', borderRadius: 2, display: 'inline-block', textAlign: 'left' }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', opacity: 0.9 }}>
-                Tasa de Cambio Oficial (BCV)
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                  {customBcvRate.toFixed(2)} Bs / $
+          <Grid size={{ xs: 12, md: 5 }} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
+            <Paper sx={{ 
+              p: 2, 
+              bgcolor: 'rgba(255,255,255,0.15)', 
+              backdropFilter: 'blur(12px)', 
+              borderRadius: 3, 
+              display: 'inline-block', 
+              textAlign: 'left',
+              border: '1px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, mb: 0.8 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                  <CurrencyIcon sx={{ fontSize: 18, color: '#38bdf8' }} />
+                  <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'white' }}>
+                    Tasa Oficial BCV del Día
+                  </Typography>
+                </Box>
+                <Tooltip title="Actualizar tasa BCV en tiempo real">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => refetchBcv()} 
+                    disabled={isLoadingBcv}
+                    sx={{ color: 'white', p: 0.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+                  >
+                    <RefreshIcon fontSize="small" sx={{ animation: isLoadingBcv ? 'spin 1s linear infinite' : 'none' }} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: 'white', letterSpacing: '-0.5px' }}>
+                  {customBcvRate.toFixed(2)} <span style={{ fontSize: '0.85rem', fontWeight: 600, opacity: 0.9 }}>Bs / $</span>
                 </Typography>
                 <TextField 
                   size="small"
                   type="number"
                   value={customBcvRate}
                   onChange={(e) => setCustomBcvRate(Number(e.target.value))}
+                  placeholder="Tasa Bs"
                   sx={{ 
-                    width: 90,
+                    width: 105,
                     bgcolor: 'white', 
-                    borderRadius: 1,
+                    borderRadius: 1.5,
                     '& .MuiInputBase-input': { p: '4px 8px', fontSize: '0.85rem', fontWeight: 800 }
                   }}
                 />
               </Box>
+
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.92)', fontSize: '0.72rem', display: 'block', mt: 0.8, fontStyle: 'italic', borderTop: '1px dashed rgba(255,255,255,0.25)', pt: 0.6 }}>
+                📌 Pagos en Bs. a la tasa oficial del BCV del día de pago.
+              </Typography>
             </Paper>
           </Grid>
         </Grid>
@@ -841,6 +911,22 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                       ≈ Bs. {totalInBsRenewal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </Typography>
                   </Box>
+                </Box>
+
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 1.25, 
+                  bgcolor: '#f0f9ff', 
+                  borderRadius: 2, 
+                  border: '1px solid #bae6fd', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1 
+                }}>
+                  <InfoIcon sx={{ fontSize: 18, color: '#0284c7', flexShrink: 0 }} />
+                  <Typography variant="caption" sx={{ color: '#0369a1', fontWeight: 600, fontSize: '0.74rem', lineHeight: 1.35 }}>
+                    Nota: Los pagos en Bolívares (Bs.) se calculan a la tasa oficial del BCV vigente a la fecha de pago.
+                  </Typography>
                 </Box>
               </Box>
 
