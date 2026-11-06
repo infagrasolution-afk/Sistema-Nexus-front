@@ -82,9 +82,13 @@ export default function AdminPage() {
     queryFn: async () => (await api.get('/admin/dashboard')).data
   });
 
-  const { data: tenants = [] } = useQuery({
+  const { data: tenants = [], isLoading: tenantsLoading, refetch: refetchTenants } = useQuery({
     queryKey: ['tenants'],
-    queryFn: async () => (await api.get('/admin/tenants')).data
+    queryFn: async () => {
+      const res = await api.get('/admin/tenants');
+      // Handle both array and paginated responses
+      return Array.isArray(res.data) ? res.data : (res.data?.items || res.data?.data || []);
+    }
   });
 
   const { data: errorLogs = [], refetch: refetchLogs } = useQuery({
@@ -258,6 +262,14 @@ export default function AdminPage() {
 
           {/* Tenants Table */}
           <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2.5, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary' }}>
+                {tenantsLoading ? 'Cargando...' : `${tenants.length} empresa${tenants.length !== 1 ? 's' : ''} registrada${tenants.length !== 1 ? 's' : ''}`}
+              </Typography>
+              <Button size="small" startIcon={<RefreshIcon />} onClick={() => refetchTenants()} sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
+                Actualizar
+              </Button>
+            </Box>
             <TableContainer>
               <Table>
                 <TableHead sx={{ bgcolor: 'action.hover' }}>
@@ -270,65 +282,97 @@ export default function AdminPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {tenants.map((tenant: any) => (
-                    <TableRow key={tenant.id} hover>
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{tenant.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">{tenant.email}</Typography>
+                  {tenantsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary', fontWeight: 600 }}>
+                        ⏳ Cargando empresas...
                       </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={tenant.license_key} 
-                          size="small" 
-                          icon={<LicenseIcon fontSize="small" />} 
-                          sx={{ borderRadius: '6px', fontWeight: 600, fontFamily: 'monospace' }} 
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {tenant.id === 1 || tenant.name.toLowerCase().includes('master') || tenant.name.toLowerCase().includes('demo') ? (
-                          <Chip 
-                            label="Ilimitada / Vitalicia" 
-                            color="primary" 
-                            size="small"
-                            variant="outlined" 
-                            sx={{ borderRadius: '6px', fontWeight: 800 }} 
-                          />
-                        ) : (
-                          new Date(tenant.subscription_end).toLocaleDateString()
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={tenant.is_active ? t('Active') : t('Suspended')} 
-                          color={tenant.is_active ? 'success' : 'error'}
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <Button 
-                            startIcon={<LoginIcon />} 
-                            size="small"
-                            color="success"
-                            variant="outlined"
-                            onClick={() => handleAccessTenant(tenant.id, tenant.name)}
-                            sx={{ borderRadius: 2, fontWeight: 600 }}
-                          >
-                            Acceder
-                          </Button>
-                          <Button 
-                            startIcon={<RefreshIcon />} 
-                            size="small" 
-                            onClick={() => renewMutation.mutate(tenant.id)}
-                            disabled={renewMutation.isPending}
-                          >
-                            {t('Renew')}
+                    </TableRow>
+                  ) : tenants.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                          <BusinessIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.4 }} />
+                          <Typography color="text.secondary" sx={{ fontWeight: 600 }}>No hay empresas registradas aún</Typography>
+                          <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => setOpen(true)} sx={{ borderRadius: '10px', mt: 0.5, fontWeight: 700 }}>
+                            Crear Primera Empresa
                           </Button>
                         </Box>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    tenants.map((tenant: any) => {
+                      const tenantNameLower = (tenant.name || '').toLowerCase();
+                      const isLifetime = tenant.id === 1 || tenantNameLower.includes('master') || tenantNameLower.includes('demo');
+                      return (
+                        <TableRow key={tenant.id} hover>
+                          <TableCell>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{tenant.name || '—'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{tenant.email || 'Sin email'}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={tenant.license_key || 'Sin clave'} 
+                              size="small" 
+                              icon={<LicenseIcon fontSize="small" />} 
+                              sx={{ borderRadius: '6px', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.72rem' }} 
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {isLifetime ? (
+                              <Chip 
+                                label="Ilimitada / Vitalicia" 
+                                color="primary" 
+                                size="small"
+                                variant="outlined" 
+                                sx={{ borderRadius: '6px', fontWeight: 800 }} 
+                              />
+                            ) : tenant.subscription_end ? (
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {new Date(tenant.subscription_end).toLocaleDateString('es-VE')}
+                              </Typography>
+                            ) : (
+                              <Typography variant="caption" color="text.disabled">No definida</Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={tenant.is_active ? 'Activo' : 'Suspendido'} 
+                              color={tenant.is_active ? 'success' : 'error'}
+                              size="small"
+                              sx={{ fontWeight: 700 }}
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <Button 
+                                startIcon={<LoginIcon />} 
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                                onClick={() => handleAccessTenant(tenant.id, tenant.name)}
+                                sx={{ borderRadius: '10px', fontWeight: 700, fontSize: '0.78rem' }}
+                              >
+                                Acceder
+                              </Button>
+                              {!isLifetime && (
+                                <Button 
+                                  startIcon={<RefreshIcon />} 
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => renewMutation.mutate(tenant.id)}
+                                  disabled={renewMutation.isPending}
+                                  sx={{ borderRadius: '10px', fontWeight: 700, fontSize: '0.78rem' }}
+                                >
+                                  Renovar
+                                </Button>
+                              )}
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
