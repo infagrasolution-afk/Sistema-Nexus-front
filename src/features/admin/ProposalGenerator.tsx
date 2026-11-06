@@ -3,7 +3,8 @@ import {
   Box, Typography, Paper, Grid, TextField, Button, Checkbox, 
   FormControlLabel, Card, CardContent, Divider, Chip, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow,
-  InputAdornment, Alert, Stack, Switch, IconButton, Tooltip
+  InputAdornment, Alert, Stack, Switch, IconButton, Tooltip,
+  ToggleButtonGroup, ToggleButton, Collapse
 } from '@mui/material';
 import {
   PictureAsPdf as PdfIcon,
@@ -15,7 +16,11 @@ import {
   EditNote as NoteIcon,
   Refresh as RefreshIcon,
   InfoOutlined as InfoIcon,
-  CurrencyExchange as CurrencyIcon
+  CurrencyExchange as CurrencyIcon,
+  Tune as TuneIcon,
+  LocalOffer as OfferIcon,
+  RestartAlt as ResetIcon,
+  Percent as PercentIcon
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -31,7 +36,7 @@ interface ModuleOption {
   renewalPrice: number;
 }
 
-const MODULES_CONFIG: ModuleOption[] = [
+const DEFAULT_MODULES_CONFIG: ModuleOption[] = [
   {
     id: 'admin_inventory',
     name: 'Módulo Administrativo + Inventario & Almacenes (WMS)',
@@ -40,7 +45,7 @@ const MODULES_CONFIG: ModuleOption[] = [
     required: true,
     description: 'Núcleo del sistema: multi-almacén (soporta 2 o más depósitos externos), transferencias, control de stock mínimo con alarmas dinámicas, catálogo con fotos y códigos de barra, productos a granel (decimales), control de clientes y proveedores, emisión de notas de entrega y despacho, facturación en forma libre / manual, bimonetario USD/Bs con tasa BCV y configuración cloud.',
     initialPrice: 700,
-    renewalPrice: 400
+    renewalPrice: 300
   },
   {
     id: 'sales',
@@ -48,7 +53,7 @@ const MODULES_CONFIG: ModuleOption[] = [
     badge: 'Módulo Adicional',
     description: 'Facturación rápida de mostrador, cálculo automático de vueltos multimoneda, compatibilidad con impresoras térmicas (58mm / 80mm) y fiscales SENIAT (HKA, Bematech, Aclas), lectores de códigos de barra USB/Bluetooth y operación física y online.',
     initialPrice: 350,
-    renewalPrice: 250
+    renewalPrice: 200
   },
   {
     id: 'treasury',
@@ -56,7 +61,7 @@ const MODULES_CONFIG: ModuleOption[] = [
     badge: 'Módulo Adicional',
     description: 'Control de créditos y límites por cliente (CxC), compromisos de pago a proveedores (CxP), gestión de cuentas bancarias en bolívares y divisas, arqueos de caja y reporte de antigüedad de saldos.',
     initialPrice: 350,
-    renewalPrice: 250
+    renewalPrice: 200
   },
   {
     id: 'purchases',
@@ -64,7 +69,7 @@ const MODULES_CONFIG: ModuleOption[] = [
     badge: 'Módulo Adicional',
     description: 'Gestión de órdenes de compra a proveedores, recepción de mercancía en depósitos, cálculo automático de costo promedio ponderado y control de retenciones fiscales.',
     initialPrice: 350,
-    renewalPrice: 250
+    renewalPrice: 200
   },
   {
     id: 'accounting',
@@ -72,7 +77,7 @@ const MODULES_CONFIG: ModuleOption[] = [
     badge: 'Módulo Adicional',
     description: 'Generación automática de Libros de Compras y Ventas según providencias del SENIAT, asientos de diario contables automáticos generados desde ventas, soporte de IGTF (3%) y plan de cuentas.',
     initialPrice: 350,
-    renewalPrice: 250
+    renewalPrice: 200
   },
   {
     id: 'hr',
@@ -80,7 +85,7 @@ const MODULES_CONFIG: ModuleOption[] = [
     badge: 'Módulo Adicional',
     description: 'Expedientes de colaboradores, cálculo de nómina quincenal/mensual bajo legislación laboral venezolana (IVSS, FAOV, INCES), horas extras y emisión de recibos en PDF.',
     initialPrice: 350,
-    renewalPrice: 250
+    renewalPrice: 200
   }
 ];
 
@@ -107,14 +112,21 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
     date: new Date().toISOString().split('T')[0]
   });
 
+  // Modules Configuration state (allows Superadmin to customize prices anytime)
+  const [modulesConfig, setModulesConfig] = useState<ModuleOption[]>(DEFAULT_MODULES_CONFIG);
+  const [showPriceCustomizer, setShowPriceCustomizer] = useState(false);
+
   // Selected modules: Admin+Inventory is required/always selected
   const [selectedModules, setSelectedModules] = useState<string[]>([
     'admin_inventory', 'sales', 'treasury'
   ]);
 
-  // Special agreement & discounts
+  // Special agreement & discounts / promotions
   const [hasSpecialAgreement, setHasSpecialAgreement] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'fixed' | 'percent'>('fixed');
+  const [discountValue, setDiscountValue] = useState<number>(0);
+  const [promoTitle, setPromoTitle] = useState('Descuento Especial');
+  const [downPaymentPercent, setDownPaymentPercent] = useState<number>(60);
   const [specialAgreementNotes, setSpecialAgreementNotes] = useState(
     'Forma de pago acordada: 60% de anticipo al formalizar la propuesta y 40% al terminar contra entrega de la plataforma parametrizada con capacitación del personal.'
   );
@@ -177,15 +189,40 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
     );
   };
 
+  // Modify module price
+  const handleUpdatePrice = (id: string, field: 'initialPrice' | 'renewalPrice', val: number) => {
+    setModulesConfig(prev => prev.map(m => m.id === id ? { ...m, [field]: Math.max(0, val) } : m));
+  };
+
+  // Reset to suggested default prices
+  const handleResetDefaultPrices = () => {
+    setModulesConfig(DEFAULT_MODULES_CONFIG);
+  };
+
+  // Quick Promotion Presets
+  const applyPromoPreset = (preset: { title: string; type: 'fixed' | 'percent'; value: number }) => {
+    setHasSpecialAgreement(true);
+    setPromoTitle(preset.title);
+    setDiscountType(preset.type);
+    setDiscountValue(preset.value);
+  };
+
   // Calculations
-  const activeModulesList = MODULES_CONFIG.filter(m => selectedModules.includes(m.id));
+  const activeModulesList = modulesConfig.filter(m => selectedModules.includes(m.id));
   
   const rawInitialTotal = activeModulesList.reduce((acc, m) => acc + m.initialPrice, 0);
   const renewalTotal = activeModulesList.reduce((acc, m) => acc + m.renewalPrice, 0);
   
-  const finalInitialTotal = hasSpecialAgreement 
-    ? Math.max(0, rawInitialTotal - Number(discountAmount || 0))
-    : rawInitialTotal;
+  const calculatedDiscount = hasSpecialAgreement 
+    ? (discountType === 'percent' 
+        ? (rawInitialTotal * (Math.min(100, Math.max(0, discountValue)) / 100))
+        : Math.min(rawInitialTotal, Math.max(0, discountValue)))
+    : 0;
+
+  const finalInitialTotal = Math.max(0, rawInitialTotal - calculatedDiscount);
+  const safeDownPaymentPercent = Math.min(100, Math.max(0, downPaymentPercent));
+  const downPaymentAmount = finalInitialTotal * (safeDownPaymentPercent / 100);
+  const finalPaymentAmount = finalInitialTotal - downPaymentAmount;
 
   const totalInBsInitial = finalInitialTotal * (customBcvRate || 1);
   const totalInBsRenewal = renewalTotal * (customBcvRate || 1);
@@ -211,10 +248,12 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
       </tr>
     `).join('');
 
-    const discountHtml = (hasSpecialAgreement && discountAmount > 0) ? `
+    const discountHtml = (hasSpecialAgreement && calculatedDiscount > 0) ? `
       <tr>
-        <td colspan="2" style="padding: 8px 14px; text-align: right; color: #dc2626; font-weight: 700;">Descuento Especial / Promoción Acordada:</td>
-        <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-weight: 800;">-$${Number(discountAmount).toFixed(2)}</td>
+        <td colspan="2" style="padding: 8px 14px; text-align: right; color: #dc2626; font-weight: 700;">
+          🏷️ Descuento / Oferta Especial (${promoTitle || 'Promoción'}):
+        </td>
+        <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-weight: 800;">-$${calculatedDiscount.toFixed(2)}</td>
         <td></td>
       </tr>
     ` : '';
@@ -317,7 +356,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
           </table>
 
           <div style="margin-top: 15px; display: flex; justify-content: flex-end;">
-            <div style="width: 420px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
+            <div style="width: 440px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px;">
               <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 4px 0; font-weight: 600; color: #475569;">Inversión Inicial Primer Año (USD):</td>
@@ -354,20 +393,20 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
             <table style="width: 100%; font-size: 11.5px; border-collapse: collapse;">
               <tr>
                 <td style="padding: 3px 0; color: #1e293b; width: 55%;">
-                  • <strong>Anticipo Inicial (60%):</strong> Al formalizar la propuesta y firma:
+                  • <strong>Anticipo Inicial (${safeDownPaymentPercent}%):</strong> Al formalizar la propuesta y firma:
                 </td>
                 <td style="padding: 3px 0; text-align: right; font-weight: 800; color: #15803d; font-size: 12.5px;">
-                  $${(finalInitialTotal * 0.60).toFixed(2)} USD 
-                  <span style="font-size: 10.5px; color: #475569; font-weight: 600;">(≈ Bs. ${(totalInBsInitial * 0.60).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                  $${downPaymentAmount.toFixed(2)} USD 
+                  <span style="font-size: 10.5px; color: #475569; font-weight: 600;">(≈ Bs. ${(downPaymentAmount * customBcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
                 </td>
               </tr>
               <tr>
                 <td style="padding: 3px 0; color: #1e293b;">
-                  • <strong>Saldo Final (40%):</strong> Al terminar contra entrega de la plataforma e inducción:
+                  • <strong>Saldo Final (${100 - safeDownPaymentPercent}%):</strong> Al terminar contra entrega de la plataforma e inducción:
                 </td>
                 <td style="padding: 3px 0; text-align: right; font-weight: 800; color: #1e40af; font-size: 12.5px;">
-                  $${(finalInitialTotal * 0.40).toFixed(2)} USD 
-                  <span style="font-size: 10.5px; color: #475569; font-weight: 600;">(≈ Bs. ${(totalInBsInitial * 0.40).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
+                  $${finalPaymentAmount.toFixed(2)} USD 
+                  <span style="font-size: 10.5px; color: #475569; font-weight: 600;">(≈ Bs. ${(finalPaymentAmount * customBcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>
                 </td>
               </tr>
             </table>
@@ -377,7 +416,8 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
 
           <div class="clauses">
             <strong>Garantías, Propiedad y Nivel de Servicio (SLA):</strong><br/>
-            • <strong>Forma y Condiciones de Pago:</strong> La inversión del primer año se liquidará en un <strong>60% de anticipo</strong> al formalizar la propuesta y el <strong>40% restante al culminar</strong> contra entrega de la plataforma parametrizada y capacitación del personal. Precios fijados en Dólares ($ USD); los pagos en Bolívares (Bs.) se liquidarán a la tasa oficial del Banco Central de Venezuela (BCV) del día de pago.<br/>
+            • <strong>Forma y Condiciones de Pago:</strong> La inversión del primer año se liquidará en un <strong>${safeDownPaymentPercent}% de anticipo</strong> al formalizar la propuesta y el <strong>${100 - safeDownPaymentPercent}% restante al culminar</strong> contra entrega de la plataforma parametrizada y capacitación del personal. Precios fijados en Dólares ($ USD); los pagos en Bolívares (Bs.) se liquidarán a la tasa oficial del Banco Central de Venezuela (BCV) del día de pago.<br/>
+            • <strong>Renovación Anual:</strong> A partir del segundo año, el cliente cancelará el mantenimiento anual fijado en <strong>$${renewalTotal.toFixed(2)} USD/año</strong> ($300 base administrativa + $200 por cada módulo adicional activo, o valor acordado en contrato).<br/>
             • <strong>Arquitectura en la Nube y Aislamiento:</strong> Base de datos PostgreSQL dedicada e independiente alojada en la nube con disponibilidad garantizada del 99.9% uptime.<br/>
             • <strong>Vigencia de la Licencia:</strong> La licencia inicial tiene una vigencia contractual de 365 días a partir de la firma y activación.<br/>
             • <strong>Propiedad Absoluta de Datos:</strong> Todos los registros, clientes, ventas y stock son propiedad exclusiva del cliente, con exportación y resguardo en cualquier momento.<br/>
@@ -451,7 +491,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
         <body>
           <div class="no-print" style="margin-bottom: 20px; text-align: right;">
             <button onclick="window.print()" style="background: #059669; color: white; border: none; padding: 10px 20px; font-weight: 700; border-radius: 6px; cursor: pointer;">
-              🖨️ Imprimir / Guardar Nota de Entrega (PDF)
+              🖨️ Descargar como PDF / Imprimir
             </button>
           </div>
 
@@ -459,15 +499,18 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
             <tr>
               <td style="vertical-align: top;">
                 <div class="brand-name">APEX ERP</div>
-                <div style="font-size: 12px; color: #64748b; font-weight: 600;">Acta y Nota de Entrega Oficial de Software</div>
+                <div style="font-size: 12px; color: #64748b; font-weight: 600;">Entrega Oficial de Software & Licenciamiento en la Nube</div>
                 <div style="font-size: 11px; color: #64748b; margin-top: 5px;">
-                  <strong>InfaGraSolution</strong> · Contacto: Luis Infante · Telf: 0412-0161906 · infagrasolution@gmail.com
+                  <strong>Empresa Proveedora:</strong> InfaGraSolution<br/>
+                  <strong>Responsable Técnico:</strong> Luis Infante | <strong>Teléfono:</strong> 0412-0161906<br/>
+                  <strong>Email:</strong> infagrasolution@gmail.com
                 </div>
               </td>
               <td style="vertical-align: top; text-align: right;">
                 <span class="badge-doc">Nota de Entrega de Licencia</span>
                 <div style="font-size: 16px; font-weight: 900; color: #0f172a; margin-top: 8px;">${deliveryNoteNumber}</div>
-                <div style="font-size: 12px; color: #64748b;"><strong>Fecha de Despacho/Activación:</strong> ${clientData.date}</div>
+                <div style="font-size: 12px; color: #64748b;"><strong>Fecha de Entrega:</strong> ${clientData.date}</div>
+                <div style="font-size: 12px; color: #64748b;"><strong>Propuesta Relacionada:</strong> ${clientData.proposalNumber}</div>
               </td>
             </tr>
           </table>
@@ -478,20 +521,20 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
             </div>
             <div class="info-grid">
               <div>
-                <strong>Empresa / Razón Social:</strong> ${clientData.companyName || 'Empresa No Especificada'}<br/>
-                <strong>RIF / Documento:</strong> ${clientData.taxId || 'N/A'}<br/>
-                <strong>Contacto Autorizado:</strong> ${clientData.contactPerson || 'Representante'}
+                <strong>Razón Social / Empresa:</strong> ${clientData.companyName || 'Empresa No Especificada'}<br/>
+                <strong>RIF / Cédula:</strong> ${clientData.taxId || 'N/A'}<br/>
+                <strong>Contacto:</strong> ${clientData.contactPerson || 'Representante Legal'}
               </div>
               <div>
                 <strong>Teléfono:</strong> ${clientData.phone || 'N/A'}<br/>
-                <strong>Email de Notificación:</strong> ${clientData.email || 'N/A'}<br/>
-                <strong>Vigencia del Servicio:</strong> 1 Año Calendario (365 Días)
+                <strong>Correo:</strong> ${clientData.email || 'N/A'}<br/>
+                <strong>Dirección:</strong> ${clientData.address || 'Venezuela'}
               </div>
             </div>
           </div>
 
           <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 5px;">
-            Activos Digitales y Módulos Entregados
+            Detalle de Módulos Habilitados en la Nube
           </div>
           <table class="table-custom">
             <thead>
@@ -562,7 +605,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
         boxShadow: '0 10px 30px rgba(37,99,235,0.2)' 
       }}>
         <Grid container spacing={2} sx={{ alignItems: 'center' }}>
-          <Grid size={{ xs: 12, md: 8 }}>
+          <Grid size={{ xs: 12, md: 7 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
               <CalculateIcon sx={{ fontSize: 32 }} />
               <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.5px' }}>
@@ -570,8 +613,8 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
               </Typography>
             </Box>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
-              Herramienta exclusiva para el administrador dueño del sistema. Configure cotizaciones a la medida, 
-              aplique promociones o acuerdos especiales y descargue al instante la <strong>Propuesta Comercial en PDF</strong> y la <strong>Nota de Entrega de Licencia</strong>.
+              Herramienta exclusiva para el administrador. Configure cotizaciones a la medida, 
+              personalice precios de licenciamiento y renovación, aplique promociones u ofertas y descargue al instante la <strong>Propuesta Comercial en PDF</strong> y la <strong>Nota de Entrega</strong>.
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, md: 5 }} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
@@ -618,7 +661,10 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                     width: 105,
                     bgcolor: 'white', 
                     borderRadius: 1.5,
-                    '& .MuiInputBase-input': { p: '4px 8px', fontSize: '0.85rem', fontWeight: 800 }
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 1.5,
+                      '& input': { p: '4px 8px', fontSize: '0.85rem', fontWeight: 800 }
+                    }
                   }}
                 />
               </Box>
@@ -716,26 +762,105 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
               </Grid>
             </Paper>
 
-            {/* Step 2: Modules Selection */}
+            {/* Step 2: Modules Selection & Price Customizer */}
             <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
-                  <CloudDoneIcon /> 2. Selección de Módulos a Cotizar
-                </Typography>
-                <Chip 
-                  label={`${selectedModules.length} de ${MODULES_CONFIG.length} Módulos Activos`} 
-                  color="primary" 
-                  size="small" 
-                  sx={{ fontWeight: 700 }}
-                />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
+                    <CloudDoneIcon /> 2. Selección de Módulos & Precios
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Seleccione módulos a cotizar o modifique los montos de licencia y renovación anual.
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Button 
+                    variant={showPriceCustomizer ? "contained" : "outlined"}
+                    size="small"
+                    startIcon={<TuneIcon />}
+                    onClick={() => setShowPriceCustomizer(!showPriceCustomizer)}
+                    sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none' }}
+                  >
+                    {showPriceCustomizer ? "Cerrar Editor de Montos" : "⚙️ Personalizar Montos"}
+                  </Button>
+                  <Chip 
+                    label={`${selectedModules.length} de ${modulesConfig.length} Módulos`} 
+                    color="primary" 
+                    size="small" 
+                    sx={{ fontWeight: 700 }}
+                  />
+                </Box>
               </Box>
 
               <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2 }}>
-                <strong>Regla de Precios Oficial:</strong> El <em>Módulo Administrativo y de Inventario</em> se venden juntos de forma obligatoria como base a <strong>$700 USD</strong> el primer año (incluye setup en la nube y 1 año de licencia) y <strong>$400 USD</strong> de renovación. Los demás módulos tienen un costo de <strong>$350 USD</strong> el primer año y <strong>$250 USD</strong> de renovación cada uno.
+                <strong>Regla de Precios Oficial:</strong> El <em>Módulo Administrativo + Inventario</em> se contrata de forma obligatoria como base a <strong>$700 USD</strong> el primer año y <strong>$300 USD</strong> de renovación anual a partir del 2do año. Los demás módulos tienen un costo de <strong>$350 USD</strong> el primer año y <strong>$200 USD</strong> de renovación anual cada uno.
               </Alert>
 
+              {/* Collapsible Price Customizer Panel */}
+              <Collapse in={showPriceCustomizer}>
+                <Paper variant="outlined" sx={{ p: 2, mb: 2.5, borderRadius: 3, bgcolor: '#f8fafc', borderColor: '#cbd5e1' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                      <TuneIcon fontSize="small" /> Editor de Tarifas Personalizadas por Módulo
+                    </Typography>
+                    <Button 
+                      size="small" 
+                      color="inherit" 
+                      startIcon={<ResetIcon />} 
+                      onClick={handleResetDefaultPrices}
+                      sx={{ textTransform: 'none', fontSize: '0.75rem', fontWeight: 700 }}
+                    >
+                      Restablecer Sugeridos ($700/$300 y $350/$200)
+                    </Button>
+                  </Box>
+
+                  <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                    <Table size="small">
+                      <TableHead sx={{ bgcolor: '#f1f5f9' }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Módulo</TableCell>
+                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', width: 140 }} align="center">Año 1 ($ USD)</TableCell>
+                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', width: 140 }} align="center">Año 2+ ($ USD / año)</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {modulesConfig.map((mod) => (
+                          <TableRow key={mod.id}>
+                            <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                              {mod.name}
+                              {mod.required && <Chip label="Base Obligatoria" size="small" color="warning" sx={{ ml: 1, height: 18, fontSize: '0.65rem' }} />}
+                            </TableCell>
+                            <TableCell align="center">
+                              <TextField 
+                                size="small"
+                                type="number"
+                                value={mod.initialPrice}
+                                onChange={(e) => handleUpdatePrice(mod.id, 'initialPrice', Number(e.target.value))}
+                                slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+                                sx={{ width: 110, '& input': { p: '4px 6px', fontSize: '0.82rem', fontWeight: 800 } }}
+                              />
+                            </TableCell>
+                            <TableCell align="center">
+                              <TextField 
+                                size="small"
+                                type="number"
+                                value={mod.renewalPrice}
+                                onChange={(e) => handleUpdatePrice(mod.id, 'renewalPrice', Number(e.target.value))}
+                                slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+                                sx={{ width: 110, '& input': { p: '4px 6px', fontSize: '0.82rem', fontWeight: 800, color: '#059669' } }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              </Collapse>
+
+              {/* Module Cards List */}
               <Stack spacing={2}>
-                {MODULES_CONFIG.map((mod) => {
+                {modulesConfig.map((mod) => {
                   const isChecked = selectedModules.includes(mod.id);
                   return (
                     <Card 
@@ -796,7 +921,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
 
                           <Box sx={{ 
                             textAlign: { xs: 'left', sm: 'right' }, 
-                            minWidth: { xs: 'auto', sm: 130 },
+                            minWidth: { xs: 'auto', sm: 135 },
                             pl: { xs: 5, sm: 0 },
                             pt: { xs: 0.5, sm: 0 }
                           }}>
@@ -804,7 +929,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                               ${mod.initialPrice} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b' }}>Año 1</span>
                             </Typography>
                             <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', display: 'block' }}>
-                              ${mod.renewalPrice} <span style={{ color: '#64748b' }}>/ año</span>
+                              ${mod.renewalPrice} <span style={{ color: '#64748b' }}>/ año (2+)</span>
                             </Typography>
                           </Box>
                         </Box>
@@ -815,12 +940,17 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
               </Stack>
             </Paper>
 
-            {/* Step 3: Special Agreements & Promotions */}
+            {/* Step 3: Promotions, Offers & Special Agreements */}
             <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1, color: 'warning.dark' }}>
-                  <MoneyIcon /> 3. Descuento, Promoción y Acuerdos Especiales
-                </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                <Box>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1, color: 'warning.dark' }}>
+                    <OfferIcon /> 3. Promociones, Ofertas y Acuerdos Especiales
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Configure bonificaciones, porcentajes de descuento y plan de pago por hitos.
+                  </Typography>
+                </Box>
                 <FormControlLabel
                   control={
                     <Switch 
@@ -829,30 +959,156 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                       color="warning"
                     />
                   }
-                  label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Aplicar Promoción / Descuento</Typography>}
+                  label={<Typography variant="body2" sx={{ fontWeight: 800 }}>Aplicar Promoción u Oferta</Typography>}
                 />
               </Box>
 
               {hasSpecialAgreement && (
-                <Box sx={{ mt: 2, mb: 2 }}>
-                  <TextField 
-                    label="Monto de Descuento Promocional (USD)" 
-                    type="number"
-                    fullWidth 
-                    size="small"
-                    value={discountAmount}
-                    onChange={(e) => setDiscountAmount(Number(e.target.value))}
-                    slotProps={{
-                      input: {
-                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                        endAdornment: <InputAdornment position="end">USD</InputAdornment>
-                      }
-                    }}
-                    helperText={`Total original: $${rawInitialTotal} USD | Total con descuento: $${finalInitialTotal} USD`}
-                    sx={{ mb: 2 }}
-                  />
+                <Box sx={{ mt: 2, mb: 2.5, p: 2, bgcolor: '#fffbeb', borderRadius: 3, border: '1px solid #fde68a' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: '#92400e', textTransform: 'uppercase', display: 'block', mb: 1.5, letterSpacing: '0.5px' }}>
+                    🏷️ Ofertas y Promociones Rápidas (Presets con 1 Clic):
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                    <Chip 
+                      label="Combo 3 Módulos (-10%)" 
+                      clickable 
+                      color="warning" 
+                      variant={promoTitle.includes('10%') ? 'filled' : 'outlined'}
+                      onClick={() => applyPromoPreset({ title: 'Oferta Especial Combo PyME (-10%)', type: 'percent', value: 10 })}
+                      sx={{ fontWeight: 700 }}
+                    />
+                    <Chip 
+                      label="Paquete Completo Suite (-20%)" 
+                      clickable 
+                      color="warning" 
+                      variant={promoTitle.includes('20%') ? 'filled' : 'outlined'}
+                      onClick={() => applyPromoPreset({ title: 'Promo Suite Integral Todos los Módulos (-20%)', type: 'percent', value: 20 })}
+                      sx={{ fontWeight: 700 }}
+                    />
+                    <Chip 
+                      label="Bono Descuento ($100 USD)" 
+                      clickable 
+                      color="warning" 
+                      variant={discountValue === 100 && discountType === 'fixed' ? 'filled' : 'outlined'}
+                      onClick={() => applyPromoPreset({ title: 'Bono Promocional de Apertura ($100 OFF)', type: 'fixed', value: 100 })}
+                      sx={{ fontWeight: 700 }}
+                    />
+                    <Chip 
+                      label="Bono Descuento ($200 USD)" 
+                      clickable 
+                      color="warning" 
+                      variant={discountValue === 200 && discountType === 'fixed' ? 'filled' : 'outlined'}
+                      onClick={() => applyPromoPreset({ title: 'Bono Especial Corporativo ($200 OFF)', type: 'fixed', value: 200 })}
+                      sx={{ fontWeight: 700 }}
+                    />
+                  </Box>
+
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <TextField 
+                        label="Nombre / Concepto de la Oferta" 
+                        fullWidth 
+                        size="small"
+                        placeholder="ej: Descuento de Lanzamiento Q4"
+                        value={promoTitle}
+                        onChange={(e) => setPromoTitle(e.target.value)}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 3 }}>
+                      <ToggleButtonGroup
+                        value={discountType}
+                        exclusive
+                        size="small"
+                        fullWidth
+                        onChange={(_, val) => val && setDiscountType(val)}
+                      >
+                        <ToggleButton value="fixed" sx={{ fontWeight: 800 }}>$ Fijo</ToggleButton>
+                        <ToggleButton value="percent" sx={{ fontWeight: 800 }}>% Porc.</ToggleButton>
+                      </ToggleButtonGroup>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 3 }}>
+                      <TextField 
+                        label={discountType === 'percent' ? "Porcentaje (%)" : "Monto ($ USD)"}
+                        type="number"
+                        fullWidth 
+                        size="small"
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(Number(e.target.value))}
+                        slotProps={{
+                          input: {
+                            startAdornment: <InputAdornment position="start">{discountType === 'percent' ? '%' : '$'}</InputAdornment>
+                          }
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+
+                  <Box sx={{ mt: 1.5, p: 1, bgcolor: 'rgba(255,255,255,0.7)', borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#78350f' }}>
+                      Ahorro para el cliente: <strong>-${calculatedDiscount.toFixed(2)} USD</strong> (≈ Bs. {(calculatedDiscount * customBcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#15803d' }}>
+                      Inversión Año 1 Final: <strong>${finalInitialTotal.toFixed(2)} USD</strong>
+                    </Typography>
+                  </Box>
                 </Box>
               )}
+
+              {/* Down payment control */}
+              <Box sx={{ mb: 2, p: 2, bgcolor: '#f0fdf4', borderRadius: 3, border: '1px solid #bbf7d0' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#166534' }}>
+                    💳 Condiciones y Porcentajes de Pago (Año 1)
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.8 }}>
+                    <Chip 
+                      label="60% / 40%" 
+                      size="small" 
+                      color={downPaymentPercent === 60 ? "success" : "default"}
+                      onClick={() => setDownPaymentPercent(60)}
+                      clickable
+                      sx={{ fontWeight: 700 }}
+                    />
+                    <Chip 
+                      label="50% / 50%" 
+                      size="small" 
+                      color={downPaymentPercent === 50 ? "success" : "default"}
+                      onClick={() => setDownPaymentPercent(50)}
+                      clickable
+                      sx={{ fontWeight: 700 }}
+                    />
+                    <Chip 
+                      label="100% Contado" 
+                      size="small" 
+                      color={downPaymentPercent === 100 ? "success" : "default"}
+                      onClick={() => setDownPaymentPercent(100)}
+                      clickable
+                      sx={{ fontWeight: 700 }}
+                    />
+                  </Box>
+                </Box>
+
+                <Grid container spacing={2} sx={{ alignItems: 'center' }}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <TextField 
+                      label="Anticipo Inicial (%)" 
+                      type="number"
+                      size="small"
+                      fullWidth
+                      value={downPaymentPercent}
+                      onChange={(e) => setDownPaymentPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                      slotProps={{ input: { endAdornment: <InputAdornment position="end">%</InputAdornment> } }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Typography variant="caption" sx={{ color: '#166534', fontWeight: 600, display: 'block' }}>
+                      • Anticipo: <strong>{safeDownPaymentPercent}%</strong> (${downPaymentAmount.toFixed(2)} USD)<br/>
+                      • Saldo Final: <strong>{100 - safeDownPaymentPercent}%</strong> (${finalPaymentAmount.toFixed(2)} USD)
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Box>
 
               <TextField 
                 label="Observaciones y Acuerdos Especiales (Se incluirán en el contrato y propuesta PDF)" 
@@ -912,10 +1168,12 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>${rawInitialTotal.toFixed(2)} USD</Typography>
                 </Box>
 
-                {hasSpecialAgreement && discountAmount > 0 && (
+                {hasSpecialAgreement && calculatedDiscount > 0 && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: 'error.main' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>Descuento / Precio Especial:</Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 800 }}>-${discountAmount.toFixed(2)} USD</Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      🏷️ {promoTitle || 'Descuento / Oferta'}:
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 800 }}>-${calculatedDiscount.toFixed(2)} USD</Typography>
                   </Box>
                 )}
 
@@ -944,7 +1202,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                       Renovación a partir del Año 2:
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Mantenimiento de Servidores + Soporte
+                      Mantenimiento de Servidores + Soporte ($300 base + $200 extras)
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
@@ -957,25 +1215,25 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                   </Box>
                 </Box>
 
-                {/* Forma de Pago 60% adelante y 40% al terminar */}
+                {/* Forma de Pago configurable (ej: 60% adelante y 40% al terminar) */}
                 <Paper variant="outlined" sx={{ mt: 2.5, p: 1.5, borderRadius: 2.5, bgcolor: '#f0fdf4', borderColor: '#86efac' }}>
                   <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', color: '#166534', display: 'block', mb: 1, letterSpacing: '0.3px', fontSize: '0.72rem' }}>
-                    💳 Modalidad de Pago: 60% Adelanto y 40% al Culminar
+                    💳 Modalidad de Pago: {safeDownPaymentPercent}% Anticipo y {100 - safeDownPaymentPercent}% al Culminar
                   </Typography>
 
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.8 }}>
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 700, color: '#14532d', fontSize: '0.8rem' }}>
-                        1. Anticipo Inicial (60%):
+                        1. Anticipo Inicial ({safeDownPaymentPercent}%):
                       </Typography>
                       <Typography variant="caption" color="text.secondary">Al firmar propuesta</Typography>
                     </Box>
                     <Box sx={{ textAlign: 'right' }}>
                       <Typography variant="body2" sx={{ fontWeight: 900, color: '#15803d' }}>
-                        ${(finalInitialTotal * 0.60).toFixed(2)} USD
+                        ${downPaymentAmount.toFixed(2)} USD
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#475569', display: 'block', fontSize: '0.7rem' }}>
-                        ≈ Bs. {(totalInBsInitial * 0.60).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ≈ Bs. {(downPaymentAmount * customBcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </Typography>
                     </Box>
                   </Box>
@@ -985,16 +1243,16 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e3a8a', fontSize: '0.8rem' }}>
-                        2. Saldo Final (40%):
+                        2. Saldo Final ({100 - safeDownPaymentPercent}%):
                       </Typography>
                       <Typography variant="caption" color="text.secondary">Contra entrega e inducción</Typography>
                     </Box>
                     <Box sx={{ textAlign: 'right' }}>
                       <Typography variant="body2" sx={{ fontWeight: 900, color: '#1e40af' }}>
-                        ${(finalInitialTotal * 0.40).toFixed(2)} USD
+                        ${finalPaymentAmount.toFixed(2)} USD
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#475569', display: 'block', fontSize: '0.7rem' }}>
-                        ≈ Bs. {(totalInBsInitial * 0.40).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ≈ Bs. {(finalPaymentAmount * customBcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </Typography>
                     </Box>
                   </Box>
