@@ -17,11 +17,13 @@ import {
   Login as LoginIcon,
   BugReport as ErrorIcon,
   Terminal as TerminalIcon,
-  Delete as DeleteIcon
+  Delete as DeleteIcon,
+  Calculate as CalculateIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import api from '../../api/axiosConfig';
+import ProposalGenerator from './ProposalGenerator';
 
 export default function AdminPage() {
   const { t } = useTranslation();
@@ -154,6 +156,22 @@ export default function AdminPage() {
     }
   };
 
+  const handleProvisionFromProposal = (tenantData: {
+    name: string;
+    email: string;
+    tax_id: string;
+    modules: string[];
+  }) => {
+    setNewCompany(prev => ({
+      ...prev,
+      name: tenantData.name || '',
+      email: tenantData.email || '',
+      tax_id: tenantData.tax_id || '',
+      modules: tenantData.modules
+    }));
+    setOpen(true);
+  };
+
   const dashboardCards = [
     { title: t('Total Companies'), value: metrics?.total_tenants || 0, icon: <BusinessIcon />, color: '#2563eb' },
     { title: t('Active Users'), value: metrics?.total_users || 0, icon: <PeopleIcon />, color: '#059669' },
@@ -214,6 +232,7 @@ export default function AdminPage() {
       >
         <Tab icon={<BusinessIcon fontSize="small" />} iconPosition="start" label="Control de Inquilinos" />
         <Tab icon={<ErrorIcon fontSize="small" />} iconPosition="start" label="Diagnóstico de Errores y Soporte" />
+        <Tab icon={<CalculateIcon fontSize="small" />} iconPosition="start" label="Cotizador & Propuestas (PDF)" />
       </Tabs>
 
       {tabValue === 0 && (
@@ -419,6 +438,10 @@ export default function AdminPage() {
             </TableContainer>
           </Paper>
         </Box>
+      )}
+
+      {tabValue === 2 && (
+        <ProposalGenerator onProvisionTenant={handleProvisionFromProposal} />
       )}
 
       {/* Create Tenant Dialog */}
