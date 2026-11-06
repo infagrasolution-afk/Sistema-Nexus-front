@@ -82,7 +82,7 @@ export default function AdminPage() {
     queryFn: async () => (await api.get('/admin/dashboard')).data
   });
 
-  const { data: tenants = [], isLoading: tenantsLoading, refetch: refetchTenants } = useQuery({
+  const { data: tenants = [], isLoading: tenantsLoading, isError: tenantsError, refetch: refetchTenants } = useQuery({
     queryKey: ['tenants'],
     queryFn: async () => {
       const res = await api.get('/admin/tenants');
@@ -223,15 +223,18 @@ export default function AdminPage() {
         )}
       </Box>
 
-      {/* Tabs Menu */}
+      {/* Tabs Menu Responsive */}
       <Tabs 
         value={tabValue} 
         onChange={(_, val) => setTabValue(val)} 
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{ 
           mb: 4, 
           borderBottom: 1, 
           borderColor: 'divider',
-          '& .MuiTab-root': { fontWeight: 700, textTransform: 'none', fontSize: '1rem' }
+          '& .MuiTab-root': { fontWeight: 700, textTransform: 'none', fontSize: '0.95rem', minHeight: 48 }
         }}
       >
         <Tab icon={<BusinessIcon fontSize="small" />} iconPosition="start" label="Control de Inquilinos" />
@@ -286,6 +289,17 @@ export default function AdminPage() {
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary', fontWeight: 600 }}>
                         ⏳ Cargando empresas...
+                      </TableCell>
+                    </TableRow>
+                  ) : tenantsError ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                        <Typography color="error" sx={{ fontWeight: 700, mb: 1.5 }}>
+                          ⚠️ Error al consultar la lista de empresas. Puede que el servidor se esté reiniciando.
+                        </Typography>
+                        <Button variant="outlined" size="small" onClick={() => refetchTenants()} startIcon={<RefreshIcon />} sx={{ borderRadius: 2, fontWeight: 700 }}>
+                          Reintentar Carga
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ) : tenants.length === 0 ? (

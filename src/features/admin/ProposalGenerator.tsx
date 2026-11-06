@@ -715,30 +715,43 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                     <Card 
                       key={mod.id} 
                       variant="outlined" 
-                      onClick={() => !mod.required && toggleModule(mod.id)}
+                      onClick={() => {
+                        if (!mod.required) toggleModule(mod.id);
+                      }}
                       sx={{ 
                         borderRadius: 3, 
                         cursor: mod.required ? 'default' : 'pointer',
                         borderColor: isChecked ? 'primary.main' : 'divider',
-                        bgcolor: isChecked ? 'rgba(37,99,235,0.03)' : 'background.paper',
+                        bgcolor: isChecked ? 'rgba(37,99,235,0.04)' : 'background.paper',
+                        boxShadow: isChecked ? '0 2px 10px rgba(37,99,235,0.08)' : 'none',
                         transition: 'all 0.2s ease',
                         '&:hover': {
                           borderColor: 'primary.main',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
                         }
                       }}
                     >
                       <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          flexDirection: { xs: 'column', sm: 'row' }, 
+                          alignItems: { xs: 'flex-start', sm: 'center' }, 
+                          justifyContent: 'space-between',
+                          gap: 1.5 
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, flex: 1 }}>
                             <Checkbox 
                               checked={isChecked}
                               disabled={mod.required}
-                              onChange={() => toggleModule(mod.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                if (!mod.required) toggleModule(mod.id);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
                               sx={{ p: 0.5, mt: 0.2 }}
                             />
-                            <Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ flex: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
                                   {mod.name}
                                 </Typography>
@@ -755,9 +768,14 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                             </Box>
                           </Box>
 
-                          <Box sx={{ textAlign: 'right', minWidth: 120 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 900, color: 'primary.main' }}>
-                              ${mod.initialPrice} <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b' }}>Año 1</span>
+                          <Box sx={{ 
+                            textAlign: { xs: 'left', sm: 'right' }, 
+                            minWidth: { xs: 'auto', sm: 130 },
+                            pl: { xs: 5, sm: 0 },
+                            pt: { xs: 0.5, sm: 0 }
+                          }}>
+                            <Typography variant="body2" sx={{ fontWeight: 900, color: 'primary.main', fontSize: '0.95rem' }}>
+                              ${mod.initialPrice} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b' }}>Año 1</span>
                             </Typography>
                             <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', display: 'block' }}>
                               ${mod.renewalPrice} <span style={{ color: '#64748b' }}>/ año</span>
