@@ -17,6 +17,7 @@ export interface User {
   id: number;
   email: string;
   is_superuser: boolean;
+  is_tenant_admin?: boolean;
   tenant_id: number;
   modules?: string;
   username?: string;

@@ -23,13 +23,13 @@ const ALL_MODULES = [
     gradient: 'linear-gradient(135deg, #2563eb, #3b82f6)',
     reqId: 'sales',
     subModules: [
-      { id: 'pos', title: 'Punto de Venta (POS)', path: '/sales', icon: PointOfSale },
-      { id: 'manual_billing', title: 'Facturación Manual', path: '/sales/manual-billing', icon: Receipt },
-      { id: 'budgets', title: 'Presupuestos', path: '/sales/budgets', icon: RequestQuote },
+      { id: 'pos', title: 'Punto de Venta (Caja Rápida)', path: '/sales', icon: PointOfSale },
+      { id: 'manual_billing', title: 'Facturación Legal (SENIAT)', path: '/sales/manual-billing', icon: Receipt },
+      { id: 'budgets', title: 'Presupuestos / Cotizaciones', path: '/sales/budgets', icon: RequestQuote },
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
-      { id: 'customers', title: 'Clientes', path: '/sales/customers', icon: People },
+      { id: 'customers', title: 'Clientes y Contactos', path: '/sales/customers', icon: People },
       { id: 'debit_notes', title: 'Notas de Débito', path: '/sales/debit-notes', icon: Receipt },
-      { id: 'credit_notes', title: 'Notas de Crédito (SENIAT)', path: '/sales/credit-notes', icon: Receipt },
+      { id: 'credit_notes', title: 'Notas de Crédito (Anulaciones)', path: '/sales/credit-notes', icon: Receipt },
     ]
   },
   { 
@@ -41,13 +41,13 @@ const ALL_MODULES = [
     reqId: 'inventory',
     subModules: [
       { id: 'catalog', title: 'Catálogo de Productos', path: '/catalog', icon: ViewModule },
-      { id: 'warehouses', title: 'Almacenes y Ubicaciones', path: '/warehouses', icon: Warehouse },
-      { id: 'movements', title: 'Movimientos de Stock', path: '/inventory', icon: CompareArrows },
-      { id: 'audits', title: 'Auditoría Física', path: '/inventory/audits', icon: Inventory },
+      { id: 'warehouses', title: 'Almacenes y Depósitos', path: '/warehouses', icon: Warehouse },
+      { id: 'movements', title: 'Kardex y Movimientos', path: '/inventory', icon: CompareArrows },
+      { id: 'audits', title: 'Conteo Físico / Auditoría', path: '/inventory/audits', icon: Inventory },
       { id: 'adjustments', title: 'Ajustes de Inventario', path: '/inventory/adjustments', icon: Assessment },
-      { id: 'charges', title: 'Cargos de Inventario', path: '/inventory/charges', icon: CompareArrows },
-      { id: 'discharges', title: 'Descargos de Inventario', path: '/inventory/discharges', icon: CompareArrows },
-      { id: 'transfers', title: 'Transferencias', path: '/transfers', icon: CompareArrows },
+      { id: 'charges', title: 'Cargos (Entradas por Ajuste)', path: '/inventory/charges', icon: CompareArrows },
+      { id: 'discharges', title: 'Descargos (Mermas / Pérdidas)', path: '/inventory/discharges', icon: CompareArrows },
+      { id: 'transfers', title: 'Transferencias entre Almacenes', path: '/transfers', icon: CompareArrows },
       { id: 'dispatch_notes', title: 'Notas de Despacho', path: '/inventory/dispatch-notes', icon: LocalShipping },
     ]
   },
@@ -59,8 +59,8 @@ const ALL_MODULES = [
     gradient: 'linear-gradient(135deg, #d97706, #f59e0b)',
     reqId: 'accounting',
     subModules: [
-      { id: 'accounts', title: 'Plan de Cuentas', path: '/accounting/accounts', icon: AccountBalance },
-      { id: 'journal', title: 'Asientos de Diario', path: '/accounting/journal', icon: Description },
+      { id: 'accounts', title: 'Plan Único de Cuentas', path: '/accounting/accounts', icon: AccountBalance },
+      { id: 'journal', title: 'Libro Diario y Asientos', path: '/accounting/journal', icon: Description },
       { id: 'reconciliation', title: 'Conciliación Bancaria', path: '/accounting/reconciliation', icon: Sync },
     ]
   },
@@ -72,10 +72,10 @@ const ALL_MODULES = [
     gradient: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
     reqId: 'treasury',
     subModules: [
-      { id: 'cxc', title: 'Cuentas por Cobrar', path: '/ar', icon: AccountBalanceWallet },
-      { id: 'cxp', title: 'Cuentas por Pagar', path: '/ap', icon: PointOfSale },
-      { id: 'bank_accounts', title: 'Cuentas Bancarias', path: '/treasury/bank-accounts', icon: AccountBalance },
-      { id: 'cash', title: 'Caja y Arqueo', path: '/cash', icon: AccountBalanceWallet },
+      { id: 'cxc', title: 'Cuentas por Cobrar (Clientes)', path: '/ar', icon: AccountBalanceWallet },
+      { id: 'cxp', title: 'Cuentas por Pagar (Proveedores)', path: '/ap', icon: PointOfSale },
+      { id: 'bank_accounts', title: 'Cuentas Bancarias (VES / USD)', path: '/treasury/bank-accounts', icon: AccountBalance },
+      { id: 'cash', title: 'Caja Chica y Arqueo Diario', path: '/cash', icon: AccountBalanceWallet },
     ]
   },
   {
@@ -86,29 +86,29 @@ const ALL_MODULES = [
     gradient: 'linear-gradient(135deg, #db2777, #ec4899)',
     reqId: 'payroll',
     subModules: [
-      { id: 'employees', title: 'Expediente de Trabajadores', path: '/payroll', icon: People },
-      { id: 'payroll_periods', title: 'Cálculo de Nómina y Leyes', path: '/payroll', icon: Badge },
+      { id: 'employees', title: 'Ficha de Trabajadores', path: '/payroll', icon: People },
+      { id: 'payroll_periods', title: 'Cálculo de Nómina y Leyes (IVSS/FAOV)', path: '/payroll', icon: Badge },
     ]
   },
   { 
     id: 'admin_group', 
-    title: 'Administrativo', 
+    title: 'Administración y Sistema', 
     icon: Settings, 
     color: '#64748b', // Slate
     gradient: 'linear-gradient(135deg, #475569, #64748b)',
-    reqId: 'users', // Use users as base requirement
+    reqId: 'users',
     subModules: [
       { id: 'payroll', title: 'Nómina y RRHH (LOTTT)', path: '/payroll', icon: Badge },
       { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
       { id: 'customers', title: 'Directorio de Clientes', path: '/sales/customers', icon: People },
       { id: 'purchases', title: 'Órdenes de Compra', path: '/purchases', icon: ShoppingCart },
-      { id: 'purchases', title: 'Proveedores', path: '/suppliers', icon: Business },
-      { id: 'treasury', title: 'Tesorería y Caja', path: '/cash', icon: AccountBalanceWallet },
-      { id: 'users', title: 'Directorio de Usuarios', path: '/users', icon: People },
+      { id: 'suppliers', title: 'Directorio de Proveedores', path: '/suppliers', icon: Business },
+      { id: 'treasury', title: 'Caja y Movimientos', path: '/cash', icon: AccountBalanceWallet },
+      { id: 'users', title: 'Usuarios y Accesos', path: '/users', icon: People },
       { id: 'roles', title: 'Roles y Permisos', path: '/roles', icon: Security },
       { id: 'reports', title: 'Reportes y Estadísticas', path: '/reports', icon: Assessment },
-      { id: 'settings', title: 'Configuración General', path: '/settings', icon: Settings },
-      { id: 'manual', title: 'Manual de Usuario', path: '/manual', icon: Description },
+      { id: 'settings', title: 'Configuración de la Empresa', path: '/settings', icon: Settings },
+      { id: 'manual', title: 'Manual de Ayuda y SENIAT', path: '/manual', icon: Description },
     ]
   },
 ];

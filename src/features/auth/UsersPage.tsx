@@ -13,10 +13,8 @@ import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
-import { useAppStore } from '../../store/useAppStore';
 
 export default function UsersPage() {
-  const { user } = useAppStore();
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [username, setUsername] = useState('');
@@ -24,6 +22,7 @@ export default function UsersPage() {
   const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState<string | number>('');
   
+  const [isTenantAdmin, setIsTenantAdmin] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const queryClient = useQueryClient();
 
@@ -89,18 +88,19 @@ export default function UsersPage() {
     setUsername('');
     setEmail('');
     setPassword('');
-    setRoleId('basic');
+    setRoleId('');
+    setIsTenantAdmin(false);
     setErrorMsg('');
     setOpen(true);
   };
 
-  const handleOpenEdit = (user: any) => {
-    setEditingUser(user);
-    setUsername(user.username);
-    setEmail(user.email || '');
+  const handleOpenEdit = (targetUser: any) => {
+    setEditingUser(targetUser);
+    setUsername(targetUser.username);
+    setEmail(targetUser.email || '');
     setPassword(''); // No mostrar hashed_password por seguridad
-    const isUserAdmin = user.modules?.includes('users');
-    setRoleId(isUserAdmin ? 'admin' : 'basic');
+    setIsTenantAdmin(Boolean(targetUser.is_tenant_admin));
+    setRoleId(targetUser.role_id || '');
     setErrorMsg('');
     setOpen(true);
   };
@@ -113,44 +113,35 @@ export default function UsersPage() {
 
   const handleSubmit = () => {
     setErrorMsg('');
-    if (!username || (!editingUser && !password)) {
-      setErrorMsg('Usuario y contraseña son requeridos.');
+    const cleanUser = username.trim();
+    if (!cleanUser) {
+      setErrorMsg('El nombre de usuario es obligatorio.');
+      return;
+    }
+    if (!editingUser && (!password || password.trim().length < 8)) {
+      setErrorMsg('La contraseña es obligatoria y debe tener al menos 8 caracteres para proteger la seguridad de la empresa.');
+      return;
+    }
+    if (password && password.trim().length < 8) {
+      setErrorMsg('La nueva contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
-    // Current user's modules (defines what the tenant is licensed for)
-    const activeModules = user?.modules ? user.modules.split(',').map((m: string) => m.trim()) : [];
-
-    let selectedModulesList: string[] = [];
-    if (roleId === 'admin') {
-      // Admin gets all active modules contracted by the tenant
-      selectedModulesList = activeModules;
-    } else {
-      // Basic user gets only basic operational modules that the tenant has contracted
-      const basicDefaults = ['sales', 'inventory', 'purchases', 'treasury'];
-      selectedModulesList = activeModules.filter(m => basicDefaults.includes(m));
-      // If the list is empty, fall back to whatever they have
-      if (selectedModulesList.length === 0 && activeModules.length > 0) {
-        selectedModulesList = [activeModules[0]];
-      }
-    }
-    const selectedModules = selectedModulesList.join(',');
-
     const payload: any = {
-      username,
-      email: email || null,
-      modules: selectedModules,
-      role_id: null,
+      username: cleanUser,
+      email: email ? email.trim() : null,
+      is_tenant_admin: isTenantAdmin,
+      role_id: isTenantAdmin ? null : (roleId ? Number(roleId) : null),
     };
 
-    if (password) {
-      payload.password = password;
+    if (password && password.trim()) {
+      payload.password = password.trim();
     }
 
     if (editingUser) {
       updateMutation.mutate({ id: editingUser.id, data: payload });
     } else {
-      payload.is_superuser = false; // El admin de empresa no puede crear superadmins globales
+      payload.is_superuser = false;
       createMutation.mutate(payload);
     }
   };
@@ -163,17 +154,40 @@ export default function UsersPage() {
         <Typography variant="body2" sx={{ fontWeight: 700 }}>{params.value}</Typography>
       </Box>
     )},
-    { field: 'email', headerName: 'Correo', flex: 1.2 },
-    { field: 'role_id', headerName: 'Rol / Permisos', flex: 1.2, renderCell: (params) => {
+    { field: 'email', headerName: 'Correo Electrónico', flex: 1.2 },
+    { field: 'role_id', headerName: 'Nivel de Acceso / Rol', flex: 1.5, renderCell: (params) => {
+      if (params.row.is_superuser) {
+        return (
+          <Chip 
+            icon={<SecurityIcon fontSize="small" />} 
+            label="Súper Admin SaaS" 
+            color="secondary" 
+            variant="filled" 
+            size="small" 
+            sx={{ fontWeight: 800 }}
+          />
+        );
+      }
+      if (params.row.is_tenant_admin) {
+        return (
+          <Chip 
+            icon={<SecurityIcon fontSize="small" />} 
+            label="Administrador Empresa" 
+            color="primary" 
+            variant="filled" 
+            size="small" 
+            sx={{ fontWeight: 800 }}
+          />
+        );
+      }
       const role = roles.find((r: any) => r.id === params.row.role_id);
       return (
         <Chip 
-          icon={<SecurityIcon fontSize="small" />} 
-          label={role ? role.name : "Usuario Básico"} 
-          color={role?.is_system_role ? "primary" : "default"} 
-          variant="filled" 
+          label={role ? role.name : "Usuario Operativo"} 
+          color="default" 
+          variant="outlined" 
           size="small" 
-          sx={{ fontWeight: 700 }}
+          sx={{ fontWeight: 600 }}
         />
       );
     }},
@@ -350,10 +364,11 @@ export default function UsersPage() {
             </Grid>
             <Grid size={{ xs: 12 }}>
               <TextField
-                label={editingUser ? "Nueva Contraseña (dejar vacío para mantener)" : "Contraseña Temporal"}
+                label={editingUser ? "Nueva Contraseña (dejar vacío para mantener la actual)" : "Contraseña de Acceso"}
                 type="password"
                 fullWidth
                 required={!editingUser}
+                helperText="Mínimo 8 caracteres con letras y números para mayor seguridad."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
@@ -362,19 +377,39 @@ export default function UsersPage() {
             
             <Grid size={{ xs: 12 }}>
               <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}>
-                <InputLabel>Rol del Usuario</InputLabel>
+                <InputLabel>Nivel de Autorización en la Empresa</InputLabel>
                 <Select
-                  value={roleId}
-                  label="Rol del Usuario"
-                  onChange={(e) => setRoleId(e.target.value)}
+                  value={isTenantAdmin ? 'admin' : 'role'}
+                  label="Nivel de Autorización en la Empresa"
+                  onChange={(e) => {
+                    const isAdmin = e.target.value === 'admin';
+                    setIsTenantAdmin(isAdmin);
+                    if (isAdmin) setRoleId('');
+                  }}
                 >
-                  <MenuItem value="">Sin Rol Asignado</MenuItem>
-                  {roles.map((r: any) => (
-                    <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
-                  ))}
+                  <MenuItem value="admin">⭐ Administrador de Empresa (Acceso total y gestión)</MenuItem>
+                  <MenuItem value="role">👤 Usuario Operativo (Acceso restringido por rol)</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
+
+            {!isTenantAdmin && (
+              <Grid size={{ xs: 12 }}>
+                <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}>
+                  <InputLabel>Rol Operativo Asignado</InputLabel>
+                  <Select
+                    value={roleId}
+                    label="Rol Operativo Asignado"
+                    onChange={(e) => setRoleId(e.target.value)}
+                  >
+                    <MenuItem value="">Sin Rol Asignado (Solo lectura básica)</MenuItem>
+                    {roles.map((r: any) => (
+                      <MenuItem key={r.id} value={r.id}>{r.name} — {r.description || 'Sin descripción'}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
           </Grid>
 
         </DialogContent>
