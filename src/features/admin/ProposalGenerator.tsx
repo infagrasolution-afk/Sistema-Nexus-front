@@ -31,6 +31,7 @@ interface ModuleOption {
   required?: boolean;
   description: string;
   initialPrice: number;
+  promoPrice?: number | null;
   renewalPrice: number;
 }
 
@@ -119,6 +120,15 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
     'admin_inventory', 'sales', 'treasury'
   ]);
 
+  // Unselected modules observation / annex & Upsell bundle offer
+  const [includeUnselectedInProposal, setIncludeUnselectedInProposal] = useState<boolean>(true);
+  const [comboConditionText, setComboConditionText] = useState<string>(
+    'Por la adquisición del Módulo Administrativo + Inventario (WMS)'
+  );
+  const [unselectedObservationNote, setUnselectedObservationNote] = useState<string>(
+    'Los módulos listados en este anexo NO están incluidos en el monto total a pagar de esta cotización; se detallan de forma informativa para que el cliente conozca sus costos y el beneficio de tarifa preferencial disponible si decide incorporarlos junto con su compra.'
+  );
+
   // Special agreement & discounts / promotions
   const [hasSpecialAgreement, setHasSpecialAgreement] = useState(false);
   const [discountType, setDiscountType] = useState<'fixed' | 'percent'>('fixed');
@@ -192,9 +202,33 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
     setModulesConfig(prev => prev.map(m => m.id === id ? { ...m, [field]: Math.max(0, val) } : m));
   };
 
+  // Modify module promotional/combo price (for cross-sell or bundle offer)
+  const handleUpdatePromoPrice = (id: string, val: number | null) => {
+    setModulesConfig(prev =>
+      prev.map(m =>
+        m.id === id
+          ? { ...m, promoPrice: val === null || Number.isNaN(val) ? null : Math.max(0, val) }
+          : m
+      )
+    );
+  };
+
+  // Apply a special promo price to all additional (non-required) or unselected modules at once
+  const handleApplyPromoToUnselected = (price: number | null) => {
+    setModulesConfig(prev =>
+      prev.map(m => {
+        if (m.required) return m;
+        if (!selectedModules.includes(m.id)) {
+          return { ...m, promoPrice: price };
+        }
+        return m;
+      })
+    );
+  };
+
   // Reset to suggested default prices
   const handleResetDefaultPrices = () => {
-    setModulesConfig(DEFAULT_MODULES_CONFIG);
+    setModulesConfig(DEFAULT_MODULES_CONFIG.map(m => ({ ...m, promoPrice: null })));
   };
 
   // Quick Promotion Presets
@@ -205,10 +239,17 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
     setDiscountValue(preset.value);
   };
 
+  // Effective Year 1 price helper (takes promoPrice if configured on that module)
+  const getEffectiveInitialPrice = (m: ModuleOption) =>
+    m.promoPrice !== null && m.promoPrice !== undefined ? m.promoPrice : m.initialPrice;
+
   // Calculations
   const activeModulesList = modulesConfig.filter(m => selectedModules.includes(m.id));
+  const unselectedModulesList = modulesConfig.filter(m => !selectedModules.includes(m.id));
   
-  const rawInitialTotal = activeModulesList.reduce((acc, m) => acc + m.initialPrice, 0);
+  const listInitialTotal = activeModulesList.reduce((acc, m) => acc + m.initialPrice, 0);
+  const rawInitialTotal = activeModulesList.reduce((acc, m) => acc + getEffectiveInitialPrice(m), 0);
+  const modulePromoSavings = Math.max(0, listInitialTotal - rawInitialTotal);
   const renewalTotal = activeModulesList.reduce((acc, m) => acc + m.renewalPrice, 0);
   
   const calculatedDiscount = hasSpecialAgreement 
@@ -230,21 +271,33 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const moduleRows = activeModulesList.map((m, idx) => `
+    const moduleRows = activeModulesList.map((m, idx) => {
+      const hasModPromo = m.promoPrice !== null && m.promoPrice !== undefined && m.promoPrice < m.initialPrice;
+      const effectivePrice = getEffectiveInitialPrice(m);
+      return `
       <tr>
         <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
         <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">
           <div style="font-weight: 800; color: #0f172a; font-size: 14px;">${m.name}</div>
           <div style="font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.4;">${m.description}</div>
+          ${hasModPromo ? `
+            <div style="margin-top: 6px; display: inline-block; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 6px;">
+              🎁 Beneficio Aplicado (${comboConditionText || 'Por compra de Módulo Base'}): Te queda en $${effectivePrice.toFixed(2)} USD (Ahorro: $${(m.initialPrice - effectivePrice).toFixed(2)} USD)
+            </div>
+          ` : ''}
         </td>
         <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 800; color: #2563eb; font-size: 14px;">
-          $${m.initialPrice.toFixed(2)}
+          ${hasModPromo ? `
+            <div style="font-size: 11px; color: #94a3b8; text-decoration: line-through; font-weight: 600;">$${m.initialPrice.toFixed(2)}</div>
+            <div style="color: #d97706; font-weight: 900; font-size: 15px;">$${effectivePrice.toFixed(2)}</div>
+          ` : `$${effectivePrice.toFixed(2)}`}
         </td>
         <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #059669; font-size: 13px;">
           $${m.renewalPrice.toFixed(2)} / año
         </td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const discountHtml = (hasSpecialAgreement && calculatedDiscount > 0) ? `
       <tr>
@@ -256,8 +309,67 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
       </tr>
     ` : '';
 
+    const unselectedModulesHtml = (includeUnselectedInProposal && unselectedModulesList.length > 0) ? `
+      <div style="margin-top: 28px; page-break-inside: avoid; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 16px; background: #fcfcfd;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div style="font-size: 12.5px; font-weight: 900; color: #334155; text-transform: uppercase; letter-spacing: 0.3px;">
+            📋 Anexo Informativo: Módulos Adicionales No Incluidos en esta Cotización (Opcionales)
+          </div>
+          <span style="background: #e2e8f0; color: #475569; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 12px; text-transform: uppercase;">
+            No sumados al total actual
+          </span>
+        </div>
+        ${unselectedObservationNote ? `
+          <div style="font-size: 11px; color: #475569; margin-bottom: 10px; line-height: 1.45;">
+            ${unselectedObservationNote}
+          </div>
+        ` : ''}
+        ${unselectedModulesList.some(m => m.promoPrice !== null && m.promoPrice !== undefined) ? `
+          <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; font-size: 11.5px; color: #92400e; font-weight: 700;">
+            🔥 <strong>OFERTA ESPECIAL DE EXPANSIÓN:</strong> ${comboConditionText || 'Por la adquisición del Módulo Administrativo + Inventario'}, usted puede adicionar cualquiera de los módulos en oferta al monto preferencial indicado en la tabla.
+          </div>
+        ` : ''}
+        <table style="width: 100%; border-collapse: collapse; font-size: 11.5px;">
+          <thead>
+            <tr style="background: #f1f5f9;">
+              <th style="padding: 8px 10px; text-align: left; color: #475569; font-weight: 800; border-bottom: 1.5px solid #cbd5e1; width: 48%;">Módulo Opcional Disponible</th>
+              <th style="padding: 8px 10px; text-align: right; color: #475569; font-weight: 800; border-bottom: 1.5px solid #cbd5e1; width: 17%;">Precio Regular Año 1</th>
+              <th style="padding: 8px 10px; text-align: right; color: #b45309; font-weight: 800; border-bottom: 1.5px solid #cbd5e1; width: 20%;">Oferta por Compra de Base</th>
+              <th style="padding: 8px 10px; text-align: right; color: #475569; font-weight: 800; border-bottom: 1.5px solid #cbd5e1; width: 15%;">Renovación (Año 2+)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${unselectedModulesList.map(m => {
+              const hasPromo = m.promoPrice !== null && m.promoPrice !== undefined;
+              return `
+                <tr>
+                  <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0;">
+                    <div style="font-weight: 800; color: #1e293b;">${m.name}</div>
+                    <div style="font-size: 10.5px; color: #64748b; margin-top: 2px;">${m.description}</div>
+                  </td>
+                  <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: ${hasPromo ? '#94a3b8; text-decoration: line-through' : '#334155'};">
+                    $${m.initialPrice.toFixed(2)} USD
+                  </td>
+                  <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                    ${hasPromo ? `
+                      <span style="background: #fef3c7; color: #b45309; font-weight: 900; padding: 3px 8px; border-radius: 6px; border: 1px solid #fcd34d; display: inline-block;">
+                        🎁 Te queda en $${Number(m.promoPrice).toFixed(2)} USD
+                      </span>
+                    ` : `<span style="color: #94a3b8; font-size: 10.5px;">Tarifa estándar ($${m.initialPrice.toFixed(2)})</span>`}
+                  </td>
+                  <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #059669;">
+                    $${m.renewalPrice.toFixed(2)} / año
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '';
+
     const observationBoxHtml = specialAgreementNotes ? `
-      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-top: 25px;">
+      <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-top: 20px;">
         <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0284c7; margin-bottom: 5px;">
           📌 Acuerdos Especiales, Términos Comerciales & Observaciones:
         </div>
@@ -409,6 +521,8 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
               </tr>
             </table>
           </div>
+
+          ${unselectedModulesHtml}
 
           ${observationBoxHtml}
 
@@ -797,9 +911,9 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
               {/* Collapsible Price Customizer Panel */}
               <Collapse in={showPriceCustomizer}>
                 <Paper variant="outlined" sx={{ p: 2, mb: 2.5, borderRadius: 3, bgcolor: '#f8fafc', borderColor: '#cbd5e1' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                      <TuneIcon fontSize="small" /> Editor de Tarifas Personalizadas por Módulo
+                      <TuneIcon fontSize="small" /> Editor de Tarifas y Ofertas por Módulo
                     </Typography>
                     <Button 
                       size="small" 
@@ -817,8 +931,9 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                       <TableHead sx={{ bgcolor: '#f1f5f9' }}>
                         <TableRow>
                           <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Módulo</TableCell>
-                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', width: 140 }} align="center">Año 1 ($ USD)</TableCell>
-                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', width: 140 }} align="center">Año 2+ ($ USD / año)</TableCell>
+                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', width: 120 }} align="center">Precio Regular Año 1</TableCell>
+                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', width: 150, color: '#b45309' }} align="center">🎁 Oferta por Compra Base</TableCell>
+                          <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem', width: 120 }} align="center">Año 2+ (Renov.)</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -835,8 +950,30 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                                 value={mod.initialPrice}
                                 onChange={(e) => handleUpdatePrice(mod.id, 'initialPrice', Number(e.target.value))}
                                 slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
-                                sx={{ width: 110, '& input': { p: '4px 6px', fontSize: '0.82rem', fontWeight: 800 } }}
+                                sx={{ width: 100, '& input': { p: '4px 6px', fontSize: '0.82rem', fontWeight: 800 } }}
                               />
+                            </TableCell>
+                            <TableCell align="center">
+                              {mod.required ? (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>Módulo Base</Typography>
+                              ) : (
+                                <TextField 
+                                  size="small"
+                                  type="number"
+                                  placeholder="Sin oferta"
+                                  value={mod.promoPrice !== null && mod.promoPrice !== undefined ? mod.promoPrice : ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    handleUpdatePromoPrice(mod.id, raw === '' ? null : Number(raw));
+                                  }}
+                                  slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+                                  sx={{ 
+                                    width: 115, 
+                                    bgcolor: mod.promoPrice !== null && mod.promoPrice !== undefined ? '#fffbeb' : 'white',
+                                    '& input': { p: '4px 6px', fontSize: '0.82rem', fontWeight: 800, color: '#b45309' } 
+                                  }}
+                                />
+                              )}
                             </TableCell>
                             <TableCell align="center">
                               <TextField 
@@ -845,7 +982,7 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                                 value={mod.renewalPrice}
                                 onChange={(e) => handleUpdatePrice(mod.id, 'renewalPrice', Number(e.target.value))}
                                 slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
-                                sx={{ width: 110, '& input': { p: '4px 6px', fontSize: '0.82rem', fontWeight: 800, color: '#059669' } }}
+                                sx={{ width: 100, '& input': { p: '4px 6px', fontSize: '0.82rem', fontWeight: 800, color: '#059669' } }}
                               />
                             </TableCell>
                           </TableRow>
@@ -860,6 +997,8 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
               <Stack spacing={2}>
                 {modulesConfig.map((mod) => {
                   const isChecked = selectedModules.includes(mod.id);
+                  const hasModPromo = mod.promoPrice !== null && mod.promoPrice !== undefined;
+                  const effectivePrice = getEffectiveInitialPrice(mod);
                   return (
                     <Card 
                       key={mod.id} 
@@ -870,8 +1009,8 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                       sx={{ 
                         borderRadius: 3, 
                         cursor: mod.required ? 'default' : 'pointer',
-                        borderColor: isChecked ? 'primary.main' : 'divider',
-                        bgcolor: isChecked ? 'rgba(37,99,235,0.04)' : 'background.paper',
+                        borderColor: isChecked ? 'primary.main' : (hasModPromo ? '#f59e0b' : 'divider'),
+                        bgcolor: isChecked ? 'rgba(37,99,235,0.04)' : (hasModPromo ? 'rgba(245,158,11,0.03)' : 'background.paper'),
                         boxShadow: isChecked ? '0 2px 10px rgba(37,99,235,0.08)' : 'none',
                         transition: 'all 0.2s ease',
                         '&:hover': {
@@ -905,15 +1044,86 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                                   {mod.name}
                                 </Typography>
                                 <Chip 
-                                  label={mod.badge} 
+                                  label={isChecked ? (mod.isBundle ? mod.badge : 'Adquirido') : 'No Adquirido (Anexo)'} 
                                   size="small" 
-                                  color={mod.isBundle ? 'warning' : 'default'} 
+                                  color={mod.isBundle ? 'warning' : (isChecked ? 'primary' : 'default')} 
+                                  variant={isChecked ? 'filled' : 'outlined'}
                                   sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700 }}
                                 />
+                                {hasModPromo && (
+                                  <Chip 
+                                    label={`🎁 En Oferta: $${mod.promoPrice} USD`}
+                                    size="small"
+                                    color="warning"
+                                    sx={{ height: 20, fontSize: '0.68rem', fontWeight: 800 }}
+                                  />
+                                )}
                               </Box>
                               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, lineHeight: 1.4 }}>
                                 {mod.description}
                               </Typography>
+
+                              {/* Quick per-module Offer Input ("Por la compra de Base te queda en tal monto") */}
+                              {!mod.required && (
+                                <Box 
+                                  onClick={(e) => e.stopPropagation()} 
+                                  sx={{ 
+                                    mt: 1.2, 
+                                    pt: 1, 
+                                    borderTop: '1px dashed', 
+                                    borderColor: 'divider',
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    flexWrap: 'wrap', 
+                                    gap: 1 
+                                  }}
+                                >
+                                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#b45309', fontSize: '0.73rem' }}>
+                                    🎁 Precio especial por compra de Admin+Inventario:
+                                  </Typography>
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    placeholder={`Ej: 200 (Reg. $${mod.initialPrice})`}
+                                    value={mod.promoPrice !== null && mod.promoPrice !== undefined ? mod.promoPrice : ''}
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      handleUpdatePromoPrice(mod.id, raw === '' ? null : Number(raw));
+                                    }}
+                                    slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+                                    sx={{
+                                      width: 145,
+                                      bgcolor: hasModPromo ? '#fffbeb' : 'background.paper',
+                                      '& .MuiOutlinedInput-root': {
+                                        borderRadius: 1.5,
+                                        '& input': { p: '3px 6px', fontSize: '0.78rem', fontWeight: 800, color: '#b45309' }
+                                      }
+                                    }}
+                                  />
+                                  {[250, 200, 150].map(presetVal => (
+                                    <Chip
+                                      key={presetVal}
+                                      label={`$${presetVal}`}
+                                      size="small"
+                                      clickable
+                                      color={mod.promoPrice === presetVal ? 'warning' : 'default'}
+                                      variant={mod.promoPrice === presetVal ? 'filled' : 'outlined'}
+                                      onClick={() => handleUpdatePromoPrice(mod.id, mod.promoPrice === presetVal ? null : presetVal)}
+                                      sx={{ height: 22, fontSize: '0.7rem', fontWeight: 700 }}
+                                    />
+                                  ))}
+                                  {hasModPromo && (
+                                    <Button
+                                      size="small"
+                                      color="inherit"
+                                      onClick={() => handleUpdatePromoPrice(mod.id, null)}
+                                      sx={{ minWidth: 'auto', p: '1px 6px', fontSize: '0.68rem', textTransform: 'none', color: 'text.secondary' }}
+                                    >
+                                      Quitar oferta
+                                    </Button>
+                                  )}
+                                </Box>
+                              )}
                             </Box>
                           </Box>
 
@@ -923,9 +1133,20 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                             pl: { xs: 5, sm: 0 },
                             pt: { xs: 0.5, sm: 0 }
                           }}>
-                            <Typography variant="body2" sx={{ fontWeight: 900, color: 'primary.main', fontSize: '0.95rem' }}>
-                              ${mod.initialPrice} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b' }}>Año 1</span>
-                            </Typography>
+                            {hasModPromo ? (
+                              <>
+                                <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.disabled', fontWeight: 700, display: 'block' }}>
+                                  Reg: ${mod.initialPrice} USD
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 900, color: '#d97706', fontSize: '1rem' }}>
+                                  ${effectivePrice} <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Oferta Año 1</span>
+                                </Typography>
+                              </>
+                            ) : (
+                              <Typography variant="body2" sx={{ fontWeight: 900, color: 'primary.main', fontSize: '0.95rem' }}>
+                                ${mod.initialPrice} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b' }}>Año 1</span>
+                              </Typography>
+                            )}
                             <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.main', display: 'block' }}>
                               ${mod.renewalPrice} <span style={{ color: '#64748b' }}>/ año (2+)</span>
                             </Typography>
@@ -936,6 +1157,182 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                   );
                 })}
               </Stack>
+
+              {/* Step 2.B: Unselected Modules Annex & Cross-Sell Offer ("Módulos que no se van a adquirir aparte + Oferta por compra de Base") */}
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  mt: 3, 
+                  p: 2.5, 
+                  borderRadius: 3, 
+                  bgcolor: includeUnselectedInProposal ? '#f8fafc' : 'background.paper',
+                  borderColor: includeUnselectedInProposal ? '#3b82f6' : 'divider',
+                  borderStyle: 'dashed',
+                  borderWidth: 1.5
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                      📋 Anexo de Módulos No Adquiridos y Oferta Cruzada (Cross-Sell)
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Muestre aparte los módulos no contratados para que el cliente conozca su precio y ofrézcale un monto especial por comprar el Módulo Administrativo + Inventario.
+                    </Typography>
+                  </Box>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={includeUnselectedInProposal}
+                        onChange={(e) => setIncludeUnselectedInProposal(e.target.checked)}
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Typography variant="caption" sx={{ fontWeight: 800 }}>
+                        Anexar No Adquiridos ({unselectedModulesList.length})
+                      </Typography>
+                    }
+                  />
+                </Box>
+
+                {includeUnselectedInProposal && (
+                  <Stack spacing={2} sx={{ mt: 1.5 }}>
+                    <Grid container spacing={2} sx={{ alignItems: 'center' }}>
+                      <Grid size={{ xs: 12, sm: 7 }}>
+                        <TextField
+                          label="Condición del Beneficio / Oferta por Compra"
+                          size="small"
+                          fullWidth
+                          value={comboConditionText}
+                          onChange={(e) => setComboConditionText(e.target.value)}
+                          placeholder="Por la adquisición del Módulo Administrativo + Inventario (WMS)"
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 5 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#b45309', display: 'block', mb: 0.5 }}>
+                          ⚡ Dejar todos los NO adquiridos en oferta a:
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                          {[250, 200, 150].map(price => (
+                            <Chip
+                              key={price}
+                              label={`$${price} USD`}
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              clickable
+                              onClick={() => handleApplyPromoToUnselected(price)}
+                              sx={{ fontWeight: 800 }}
+                            />
+                          ))}
+                          <Chip
+                            label="Precio Regular ($350)"
+                            size="small"
+                            variant="outlined"
+                            clickable
+                            onClick={() => handleApplyPromoToUnselected(null)}
+                            sx={{ fontWeight: 600 }}
+                          />
+                        </Box>
+                      </Grid>
+                    </Grid>
+
+                    {unselectedModulesList.length === 0 ? (
+                      <Alert severity="success" sx={{ py: 0.5, borderRadius: 2 }}>
+                        Todos los módulos del sistema están seleccionados en la cotización principal. Desmarque algún módulo arriba si desea mostrarlo aparte como observación/anexo.
+                      </Alert>
+                    ) : (
+                      <Box sx={{ bgcolor: 'white', p: 1.5, borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', display: 'block', mb: 1 }}>
+                          Módulos que aparecerán aparte como Observación Informativa ({unselectedModulesList.length}):
+                        </Typography>
+                        <Stack spacing={1}>
+                          {unselectedModulesList.map(m => {
+                            const hasPromo = m.promoPrice !== null && m.promoPrice !== undefined;
+                            return (
+                              <Box 
+                                key={m.id} 
+                                sx={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between', 
+                                  alignItems: 'center', 
+                                  flexWrap: 'wrap', 
+                                  gap: 1,
+                                  p: 1,
+                                  borderRadius: 1.5,
+                                  bgcolor: hasPromo ? '#fffbeb' : '#f8fafc',
+                                  border: '1px solid',
+                                  borderColor: hasPromo ? '#fde68a' : '#e2e8f0'
+                                }}
+                              >
+                                <Box sx={{ flex: 1, minWidth: 200 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 800, fontSize: '0.82rem' }}>
+                                    {m.name}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Precio Regular: <strong>${m.initialPrice} USD</strong> (Año 1) | Renovación: <strong>${m.renewalPrice} USD/año</strong>
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    label="Te queda en ($)"
+                                    placeholder="Sin oferta"
+                                    value={hasPromo ? m.promoPrice : ''}
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      handleUpdatePromoPrice(m.id, raw === '' ? null : Number(raw));
+                                    }}
+                                    slotProps={{ input: { startAdornment: <InputAdornment position="start">$</InputAdornment> } }}
+                                    sx={{ width: 130, bgcolor: 'white', '& input': { p: '5px 8px', fontSize: '0.8rem', fontWeight: 800, color: '#b45309' } }}
+                                  />
+                                </Box>
+                              </Box>
+                            );
+                          })}
+                        </Stack>
+                      </Box>
+                    )}
+
+                    <TextField
+                      label="Nota / Observación del Anexo de Módulos No Adquiridos"
+                      multiline
+                      rows={2}
+                      size="small"
+                      fullWidth
+                      value={unselectedObservationNote}
+                      onChange={(e) => setUnselectedObservationNote(e.target.value)}
+                    />
+
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="warning"
+                        onClick={() => {
+                          const modulesWithPromo = modulesConfig.filter(
+                            m => !m.required && m.promoPrice !== null && m.promoPrice !== undefined
+                          );
+                          const offerLines = modulesWithPromo.length > 0
+                            ? modulesWithPromo
+                                .map(m => `${m.name} te queda en $${m.promoPrice} USD (precio regular $${m.initialPrice} USD)`)
+                                .join('; ')
+                            : 'cualquier módulo adicional como Punto de Venta (POS), Tesorería o Contabilidad cuenta con tarifa preferencial';
+                          const textToAppend = `\n\n🎁 OFERTA ESPECIAL POR ADQUISICIÓN: ${comboConditionText}, ${offerLines}.`;
+                          if (!specialAgreementNotes.includes('OFERTA ESPECIAL POR ADQUISICIÓN')) {
+                            setSpecialAgreementNotes(prev => `${prev.trim()}${textToAppend}`);
+                          }
+                        }}
+                        sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+                      >
+                        ✍️ Redactar también esta oferta en la caja de Observaciones
+                      </Button>
+                    </Box>
+                  </Stack>
+                )}
+              </Paper>
             </Paper>
 
             {/* Step 3: Promotions, Offers & Special Agreements */}
@@ -1140,27 +1537,97 @@ export default function ProposalGenerator({ onProvisionTenant }: ProposalGenerat
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'action.hover' }}>
-                      <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Módulo</TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }}>Módulo Adquirido</TableCell>
                       <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }} align="right">Año 1</TableCell>
                       <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem' }} align="right">Año 2+</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {activeModulesList.map((m) => (
-                      <TableRow key={m.id}>
-                        <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600 }}>{m.name}</TableCell>
-                        <TableCell sx={{ fontSize: '0.8rem', fontWeight: 800 }} align="right">${m.initialPrice}</TableCell>
-                        <TableCell sx={{ fontSize: '0.8rem', color: 'success.main', fontWeight: 700 }} align="right">${m.renewalPrice}</TableCell>
-                      </TableRow>
-                    ))}
+                    {activeModulesList.map((m) => {
+                      const hasPromo = m.promoPrice !== null && m.promoPrice !== undefined && m.promoPrice < m.initialPrice;
+                      const effectivePrice = getEffectiveInitialPrice(m);
+                      return (
+                        <TableRow key={m.id}>
+                          <TableCell sx={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                            {m.name}
+                            {hasPromo && (
+                              <Typography variant="caption" sx={{ display: 'block', color: '#b45309', fontWeight: 700, fontSize: '0.68rem' }}>
+                                🎁 Oferta por compra de Base
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.8rem', fontWeight: 800 }} align="right">
+                            {hasPromo ? (
+                              <Box>
+                                <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.disabled', display: 'block', fontSize: '0.68rem' }}>
+                                  ${m.initialPrice}
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 900, color: '#d97706', fontSize: '0.82rem' }}>
+                                  ${effectivePrice}
+                                </Typography>
+                              </Box>
+                            ) : (
+                              `$${effectivePrice}`
+                            )}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.8rem', color: 'success.main', fontWeight: 700 }} align="right">${m.renewalPrice}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              {/* Unselected modules annex preview in right column */}
+              {includeUnselectedInProposal && unselectedModulesList.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2.5, bgcolor: '#fcfcfd', borderStyle: 'dashed', borderColor: '#cbd5e1' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                      📋 Anexo: Módulos No Adquiridos (Informativo)
+                    </Typography>
+                    <Chip label="No sumados al total" size="small" sx={{ height: 18, fontSize: '0.62rem', fontWeight: 700 }} />
+                  </Box>
+                  <Stack spacing={0.6}>
+                    {unselectedModulesList.map(m => {
+                      const hasPromo = m.promoPrice !== null && m.promoPrice !== undefined;
+                      return (
+                        <Box key={m.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', py: 0.3, borderBottom: '1px solid #f1f5f9' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', pr: 1 }}>
+                            • {m.name}
+                          </Typography>
+                          <Box sx={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {hasPromo ? (
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: '#b45309' }}>
+                                <span style={{ textDecoration: 'line-through', color: '#94a3b8', marginRight: 4 }}>${m.initialPrice}</span>
+                                🎁 ${m.promoPrice} USD
+                              </Typography>
+                            ) : (
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                                ${m.initialPrice} USD
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Paper>
+              )}
 
               <Divider sx={{ my: 2 }} />
 
               {/* Totals Summary */}
               <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 3, mb: 3 }}>
+                {modulePromoSavings > 0 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8, color: '#b45309' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                      🎁 Ahorro por Oferta en Módulos (Compra de Base):
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontWeight: 800 }}>
+                      -${modulePromoSavings.toFixed(2)} USD
+                    </Typography>
+                  </Box>
+                )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Subtotal Inicial (Servicios Cloud + Licencia):</Typography>
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>${rawInitialTotal.toFixed(2)} USD</Typography>
