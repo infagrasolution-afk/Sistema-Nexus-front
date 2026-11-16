@@ -301,15 +301,8 @@ export default function SystemWizard() {
         text: res.data?.message || '¡Datos de demostración cargados con éxito!',
         severity: 'success',
       });
-      // Refresh all queries so data appears immediately on screen
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['purchases'] });
-      queryClient.invalidateQueries({ queryKey: ['budgets'] });
-      queryClient.invalidateQueries({ queryKey: ['warehouses'] });
-      queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
+      // Refresh ALL queries so KPIs, live movements, stock alarms and modules appear immediately
+      await queryClient.invalidateQueries();
       if (voiceEnabled) {
         speakText(
           'He cargado exitosamente toda la información de demostración en tu empresa: productos con tres precios, clientes, proveedores, facturas fiscales SENIAT, órdenes de compra y nómina.'
