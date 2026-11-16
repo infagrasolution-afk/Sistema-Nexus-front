@@ -34,6 +34,10 @@ export interface CashSession {
 export interface TenantInfo {
   id?: number;
   name: string;
+  tax_id?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
   logo_url?: string;
   primary_color?: string;
   secondary_color?: string;

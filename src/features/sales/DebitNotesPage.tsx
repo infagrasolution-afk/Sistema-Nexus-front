@@ -4,9 +4,10 @@ import {
   TableHead, TableRow, Button, Chip, Dialog, DialogTitle, DialogContent, 
   DialogActions, Grid, TextField, MenuItem, CircularProgress
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Print as PrintIcon } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function DebitNotesPage() {
   const queryClient = useQueryClient();
@@ -63,6 +64,84 @@ export default function DebitNotesPage() {
       ...formData,
       amount: parseFloat(formData.amount)
     });
+  };
+
+  const handlePrintNote = (note: any) => {
+    const tenant = useAppStore.getState().tenant;
+    const brandColor = tenant?.primary_color || '#1e3a8a';
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    const cust = customers.find((c: any) => c.id === note.customer_id) || {};
+    const logoHtml = tenant?.logo_url
+      ? `<img src="${tenant.logo_url}" alt="Logo Empresa" style="max-height:75px;max-width:190px;object-fit:contain;margin-bottom:6px;" />`
+      : `<div style="font-size:24px;font-weight:900;color:${brandColor};">${(tenant?.name || 'EMPRESA S.A.').toUpperCase()}</div>`;
+
+    const amount = Number(note.amount || 0);
+    const base = amount / 1.16;
+    const tax = amount - base;
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Nota de ${note.type || 'Débito'} ${note.number || `N-${note.id}`}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; margin: 32px 40px; font-size: 12px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px; }
+            .box { border: 2px solid ${brandColor}; border-radius: 10px; padding: 12px 18px; background: #f8fafc; min-width: 240px; }
+            .client-box { border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 18px; background: #f8fafc; margin-bottom: 20px; }
+            @media print { body { margin: 16px 22px; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              ${logoHtml}
+              <div style="font-size:15px;font-weight:900;color:${brandColor};">${(tenant?.name || 'EMPRESA S.A.').toUpperCase()}</div>
+              <div><strong>R.I.F.:</strong> ${tenant?.tax_id || 'J-00000000-0'}</div>
+              <div><strong>Domicilio Fiscal:</strong> ${tenant?.address || 'Venezuela'}</div>
+              ${tenant?.phone ? `<div><strong>Teléfono:</strong> ${tenant.phone}</div>` : ''}
+            </div>
+            <div class="box">
+              <div style="font-size:14px;font-weight:900;color:${brandColor};text-align:center;margin-bottom:8px;">NOTA DE ${(note.type || 'DÉBITO').toUpperCase()} FISCAL</div>
+              <div><strong>N° Documento:</strong> <span style="color:#dc2626;font-weight:900;">${note.number || `ND-${String(note.id).padStart(6, '0')}`}</span></div>
+              <div><strong>N° Control SENIAT:</strong> 00-${String(note.id).padStart(8, '0')}</div>
+              <div><strong>Fecha Emisión:</strong> ${new Date(note.created_at).toLocaleDateString('es-VE')}</div>
+            </div>
+          </div>
+          <div class="client-box">
+            <div style="font-weight:800;color:${brandColor};margin-bottom:6px;text-transform:uppercase;">Datos del Cliente</div>
+            <div><strong>Razón Social:</strong> ${cust.name || 'Cliente Fiscal'}</div>
+            <div><strong>R.I.F. / C.I.:</strong> ${cust.tax_id || 'N/A'} | <strong>Teléfono:</strong> ${cust.phone || 'N/A'}</div>
+            <div><strong>Dirección Fiscal:</strong> ${cust.address || 'Venezuela'}</div>
+          </div>
+          <div class="client-box">
+            <div style="font-weight:800;color:#0f172a;margin-bottom:6px;">CONCEPTO / MOTIVO LEGAL:</div>
+            <div>${note.reason}</div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+            <table style="width:280px;border-collapse:collapse;">
+              <tr>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><strong>Base Imponible:</strong></td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">$${base.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><strong>I.V.A. (16%):</strong></td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">$${tax.toFixed(2)}</td>
+              </tr>
+              <tr style="background:${brandColor};color:#fff;font-weight:900;font-size:14px;">
+                <td style="padding:8px;">MONTO TOTAL:</td>
+                <td style="padding:8px;text-align:right;">$${amount.toFixed(2)}</td>
+              </tr>
+            </table>
+          </div>
+          <script>window.onload = function() { setTimeout(function() { window.print(); }, 250); };</script>
+        </body>
+      </html>
+    `);
+    win.document.close();
   };
 
   return (
@@ -124,7 +203,9 @@ export default function DebitNotesPage() {
                       <Chip label={note.status} size="small" color={note.status === 'PAID' ? 'success' : 'warning'} />
                     </TableCell>
                     <TableCell align="right">
-                      <Button size="small">Ver PDF</Button>
+                      <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={() => handlePrintNote(note)}>
+                        Ver PDF
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

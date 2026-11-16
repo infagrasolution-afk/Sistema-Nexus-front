@@ -13,6 +13,7 @@ import {
   DarkMode as DarkModeIcon,
   LightMode as LightModeIcon,
   KeyboardArrowDown as ArrowDownIcon,
+  RecordVoiceOver as VoiceAgentIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -349,6 +350,26 @@ export default function Layout() {
             )}
 
             {/* Theme Toggle */}
+            <Tooltip title="Iniciar Agente Virtual de Inducción con Audio" arrow>
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                startIcon={<VoiceAgentIcon fontSize="small" />}
+                onClick={() => window.dispatchEvent(new CustomEvent('open-apex-induction-agent'))}
+                sx={{
+                  borderRadius: '10px',
+                  fontWeight: 800,
+                  textTransform: 'none',
+                  fontSize: '0.78rem',
+                  px: { xs: 1, sm: 1.5 },
+                  py: 0.6,
+                }}
+              >
+                Inducción (Audio)
+              </Button>
+            </Tooltip>
+
             <Tooltip title={themeMode === 'dark' ? 'Modo Claro' : 'Modo Oscuro'} arrow>
               <IconButton 
                 onClick={() => setThemeMode(themeMode === 'light' ? 'dark' : 'light')} 

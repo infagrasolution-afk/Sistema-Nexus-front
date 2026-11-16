@@ -15,6 +15,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function DispatchNotesPage() {
   const queryClient = useQueryClient();
@@ -153,7 +154,12 @@ export default function DispatchNotesPage() {
       </tr>
     `).join('');
 
-    const formattedDate = new Date(note.created_at || new Date()).toLocaleDateString();
+    const formattedDate = new Date(note.created_at || new Date()).toLocaleDateString('es-VE');
+    const tenant = useAppStore.getState().tenant;
+    const brandColor = tenant?.primary_color || '#2563eb';
+    const logoBlock = tenant?.logo_url
+      ? `<img src="${tenant.logo_url}" alt="Logo Empresa" style="max-height: 75px; max-width: 190px; object-fit: contain; margin-bottom: 6px;" />`
+      : `<div class="company-logo">${(tenant?.name || 'EMPRESA S.A.').toUpperCase()}</div>`;
 
     const htmlContent = `
       <html>
@@ -161,8 +167,8 @@ export default function DispatchNotesPage() {
         <title>Nota de Entrega #${note.id.toString().padStart(6, '0')}</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 40px; line-height: 1.5; }
-          .header-container { display: flex; justify-content: space-between; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
-          .company-logo { font-size: 32px; font-weight: 900; color: #2563eb; letter-spacing: -1.5px; }
+          .header-container { display: flex; justify-content: space-between; border-bottom: 3px solid ${brandColor}; padding-bottom: 20px; margin-bottom: 30px; }
+          .company-logo { font-size: 28px; font-weight: 900; color: ${brandColor}; letter-spacing: -1px; }
           .company-info { text-align: right; font-size: 12px; color: #475569; line-height: 1.6; }
           .document-title { font-size: 24px; font-weight: 800; margin-bottom: 25px; color: #0f172a; text-transform: uppercase; letter-spacing: -0.5px; }
           .metadata-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
@@ -170,7 +176,7 @@ export default function DispatchNotesPage() {
           .meta-card h4 { margin: 0 0 10px 0; color: #1e293b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; }
           .meta-card p { margin: 6px 0; color: #334155; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 40px; margin-top: 10px; }
-          th { background: #2563eb; color: #ffffff; text-align: left; padding: 12px 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+          th { background: ${brandColor}; color: #ffffff; text-align: left; padding: 12px 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
           .signatures { display: flex; justify-content: space-between; margin-top: 90px; }
           .sig-line { width: 45%; border-top: 2px dashed #94a3b8; text-align: center; padding-top: 12px; font-size: 12px; color: #475569; font-weight: 600; }
           @media print {
@@ -181,14 +187,15 @@ export default function DispatchNotesPage() {
       <body>
         <div class="header-container">
           <div>
-            <div class="company-logo">KPRISHOP</div>
-            <div style="font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Sistema de Gestión ERP</div>
+            ${logoBlock}
+            <div style="font-size: 14px; color: #0f172a; margin-top: 4px; font-weight: 800; text-transform: uppercase;">${tenant?.name || 'EMPRESA S.A.'}</div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 700;">DOCUMENTO DE DESPACHO E INVENTARIO</div>
           </div>
           <div class="company-info">
-            <strong>R.I.F:</strong> J-40899123-5<br/>
-            <strong>Dirección:</strong> Av. Principal Las Mercedes, Edif. Kprishop, Caracas<br/>
-            <strong>Teléfono:</strong> +58 (212) 993-4567<br/>
-            <strong>Email:</strong> contacto@kprishop.com
+            <strong>R.I.F.:</strong> ${tenant?.tax_id || 'J-00000000-0'}<br/>
+            <strong>Domicilio Fiscal:</strong> ${tenant?.address || 'Venezuela'}<br/>
+            ${tenant?.phone ? `<strong>Teléfono:</strong> ${tenant.phone}<br/>` : ''}
+            ${tenant?.email ? `<strong>Email:</strong> ${tenant.email}` : ''}
           </div>
         </div>
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { 
   Box, Typography, Paper, Grid, TextField, Button, 
-  Avatar, Divider, Alert, CircularProgress, FormControl, InputLabel, Select, MenuItem
+  Avatar, Divider, Alert, CircularProgress, FormControl, InputLabel, Select, MenuItem,
+  Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox, Chip
 } from '@mui/material';
 import { 
   Business as BusinessIcon, 
@@ -10,7 +11,9 @@ import {
   Help as HelpIcon,
   Print as PrintIcon,
   FileDownload as DownloadIcon,
-  AccountBalance as AccountBalanceIcon
+  AccountBalance as AccountBalanceIcon,
+  CloudUpload as CloudApiIcon,
+  Code as JsonIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -61,6 +64,8 @@ export default function SettingsPage() {
     settings: { session_timeout: 5 } as any
   });
   const [success, setSuccess] = useState(false);
+  const [testingApi, setTestingApi] = useState(false);
+  const [apiTestResult, setApiTestResult] = useState<any>(null);
   const [wizardEnabled, setWizardEnabled] = useState(() => {
     return localStorage.getItem('apex_wizard_enabled') !== 'false' ? 'true' : 'false';
   });
@@ -104,6 +109,45 @@ export default function SettingsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate(formData);
+  };
+
+  const digitalApiCfg = formData.settings?.digital_invoice_api || {
+    enabled: false,
+    provider_name: 'custom_rest',
+    environment: 'sandbox',
+    endpoint_url: '',
+    auth_type: 'bearer',
+    api_header_name: 'X-API-Key',
+    api_token: '',
+    auto_send_on_sale: true,
+  };
+
+  const updateDigitalApiCfg = (patch: Record<string, any>) => {
+    setFormData((prev) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        digital_invoice_api: {
+          ...(prev.settings?.digital_invoice_api || digitalApiCfg),
+          ...patch,
+        },
+      },
+    }));
+  };
+
+  const handleTestDigitalInvoiceApi = async () => {
+    setTestingApi(true);
+    try {
+      const res = await api.post('/sales/digital-invoice/test-connection', digitalApiCfg);
+      setApiTestResult(res.data);
+    } catch (err: any) {
+      setApiTestResult({
+        status: 'error',
+        message: err.response?.data?.detail || 'Error al probar la conexión con la API de Facturación Digital',
+      });
+    } finally {
+      setTestingApi(false);
+    }
   };
 
   if (isLoading) return <CircularProgress />;
@@ -343,6 +387,34 @@ export default function SettingsPage() {
                 <MenuItem value="false">Oculto definitivo (Desactivado)</MenuItem>
               </Select>
             </FormControl>
+
+            <Button
+              variant="contained"
+              color="info"
+              fullWidth
+              sx={{ mt: 2, borderRadius: '12px', textTransform: 'none', fontWeight: 800 }}
+              onClick={() => window.dispatchEvent(new CustomEvent('open-apex-induction-agent'))}
+            >
+              🎙️ Iniciar Agente de Inducción con Audio Ahora
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="success"
+              fullWidth
+              sx={{ mt: 1.2, borderRadius: '12px', textTransform: 'none', fontWeight: 800 }}
+              onClick={async () => {
+                try {
+                  const res = await api.post('/tenants/seed-demo');
+                  queryClient.invalidateQueries();
+                  alert(res.data?.message || 'Datos de demostración cargados exitosamente.');
+                } catch (err: any) {
+                  alert(err.response?.data?.detail || 'Error al cargar datos de demostración.');
+                }
+              }}
+            >
+              🏢 Cargar / Restaurar Datos de Empresa Demo (Venezuela)
+            </Button>
           </Paper>
 
           {/* Card 4: Impresión Fiscal SENIAT */}
@@ -447,8 +519,197 @@ export default function SettingsPage() {
               Descargar Agente Fiscal (Windows)
             </Button>
           </Paper>
+
+          {/* Card 5: Integración API REST — Facturación Digital (Imprenta Digital SENIAT) */}
+          <Paper sx={{ p: 4, borderRadius: 4, mt: 3, border: '1.5px solid', borderColor: 'primary.200' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ bgcolor: 'secondary.main', width: 40, height: 40 }}>
+                  <CloudApiIcon sx={{ fontSize: 20 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+                    API Facturación Digital
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    Imprenta Digital Autorizada SENIAT (JSON / REST)
+                  </Typography>
+                </Box>
+              </Box>
+              <Chip
+                size="small"
+                label={digitalApiCfg.enabled ? 'ACTIVA' : 'INACTIVA'}
+                color={digitalApiCfg.enabled ? 'success' : 'default'}
+                sx={{ fontWeight: 800 }}
+              />
+            </Box>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Configura la API REST de la empresa proveedora de Facturación Digital para enviar automáticamente el JSON de cada factura según la normativa del SENIAT.
+            </Typography>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={Boolean(digitalApiCfg.enabled)}
+                  onChange={(e) => updateDigitalApiCfg({ enabled: e.target.checked })}
+                />
+              }
+              label={<Typography variant="body2" sx={{ fontWeight: 700 }}>Habilitar Integración API REST de Factura Digital</Typography>}
+              sx={{ mb: 1.5 }}
+            />
+
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Proveedor / Imprenta Digital</InputLabel>
+              <Select
+                label="Proveedor / Imprenta Digital"
+                value={digitalApiCfg.provider_name || 'custom_rest'}
+                onChange={(e) => updateDigitalApiCfg({ provider_name: e.target.value })}
+              >
+                <MenuItem value="custom_rest">API REST Estándar / Proveedor Personalizado (JSON)</MenuItem>
+                <MenuItem value="tfhka">The Factory HKA Digital (TFHKA Venezuela)</MenuItem>
+                <MenuItem value="unidigital">Unidigital Imprenta Digital SENIAT</MenuItem>
+                <MenuItem value="imprenta_seniat">Servycal / Imprenta Digital Homologada</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Entorno de Emisión</InputLabel>
+              <Select
+                label="Entorno de Emisión"
+                value={digitalApiCfg.environment || 'sandbox'}
+                onChange={(e) => updateDigitalApiCfg({ environment: e.target.value })}
+              >
+                <MenuItem value="sandbox">🛠️ Sandbox / Homologación (Pruebas)</MenuItem>
+                <MenuItem value="production">🚀 Producción (Emisión Fiscal Oficial SENIAT)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="URL del Endpoint API REST (POST)"
+              placeholder="https://api.imprentadigital.com.ve/v1/facturas/emitir"
+              fullWidth
+              size="small"
+              value={digitalApiCfg.endpoint_url || ''}
+              onChange={(e) => updateDigitalApiCfg({ endpoint_url: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+              <InputLabel>Tipo de Autenticación</InputLabel>
+              <Select
+                label="Tipo de Autenticación"
+                value={digitalApiCfg.auth_type || 'bearer'}
+                onChange={(e) => updateDigitalApiCfg({ auth_type: e.target.value })}
+              >
+                <MenuItem value="bearer">Bearer Token (Authorization: Bearer ...)</MenuItem>
+                <MenuItem value="api_key">API Key en Cabecera (X-API-Key)</MenuItem>
+                <MenuItem value="basic">Basic Auth</MenuItem>
+              </Select>
+            </FormControl>
+
+            {digitalApiCfg.auth_type === 'api_key' && (
+              <TextField
+                label="Nombre del Header API Key"
+                placeholder="X-API-Key"
+                fullWidth
+                size="small"
+                value={digitalApiCfg.api_header_name || 'X-API-Key'}
+                onChange={(e) => updateDigitalApiCfg({ api_header_name: e.target.value })}
+                sx={{ mb: 2 }}
+              />
+            )}
+
+            <TextField
+              label="Token / API Key del Proveedor"
+              type="password"
+              placeholder="Ingrese el token o credencial provista por la imprenta digital"
+              fullWidth
+              size="small"
+              value={digitalApiCfg.api_token || ''}
+              onChange={(e) => updateDigitalApiCfg({ api_token: e.target.value })}
+              sx={{ mb: 1.5 }}
+            />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={digitalApiCfg.auto_send_on_sale !== false}
+                  onChange={(e) => updateDigitalApiCfg({ auto_send_on_sale: e.target.checked })}
+                />
+              }
+              label={<Typography variant="caption" sx={{ fontWeight: 600 }}>Enviar JSON automáticamente al emitir factura en POS / Facturación Manual</Typography>}
+              sx={{ mb: 2 }}
+            />
+
+            <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+              <Button
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                startIcon={<JsonIcon />}
+                onClick={handleTestDigitalInvoiceApi}
+                disabled={testingApi}
+                sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700 }}
+              >
+                {testingApi ? 'Probando API y generando JSON...' : 'Probar Envío JSON / Ver Estructura SENIAT'}
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                startIcon={<SaveIcon />}
+                onClick={() => updateMutation.mutate(formData)}
+                disabled={updateMutation.isPending}
+                sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700 }}
+              >
+                Guardar Configuración API Digital
+              </Button>
+            </Box>
+          </Paper>
         </Grid>
       </Grid>
+
+      {/* Modal de Prueba y Previsualización del JSON Fiscal SENIAT */}
+      <Dialog open={Boolean(apiTestResult)} onClose={() => setApiTestResult(null)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Resultado de Prueba API REST — Facturación Digital SENIAT
+        </DialogTitle>
+        <DialogContent dividers>
+          {apiTestResult && (
+            <Box>
+              <Alert
+                severity={apiTestResult.status === 'error' ? 'error' : apiTestResult.status === 'warning' ? 'warning' : 'success'}
+                sx={{ mb: 2, fontWeight: 600 }}
+              >
+                {apiTestResult.message}
+              </Alert>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                Estructura JSON Estándar Enviada a la Proveedora de Facturación Digital:
+              </Typography>
+              <Box
+                component="pre"
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: '#0f172a',
+                  color: '#e2e8f0',
+                  fontSize: '0.75rem',
+                  overflowX: 'auto',
+                  maxHeight: 380,
+                }}
+              >
+                {JSON.stringify(apiTestResult.sample_json || apiTestResult, null, 2)}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setApiTestResult(null)} variant="contained">
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

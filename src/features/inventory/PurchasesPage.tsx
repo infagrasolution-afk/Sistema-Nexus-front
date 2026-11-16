@@ -9,11 +9,13 @@ import {
   Delete as DeleteIcon, 
   ShoppingCart as ShoppingCartIcon,
   Receipt as ReceiptIcon,
-  Business as BusinessIcon
+  Business as BusinessIcon,
+  Print as PrintIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function PurchasesPage() {
   const navigate = useNavigate();
@@ -97,6 +99,142 @@ export default function PurchasesPage() {
     } catch (err) {
       alert('Error al generar el comprobante de retención.');
     }
+  };
+
+  const handlePrintPurchaseOrder = (purchase: any) => {
+    const tenant = useAppStore.getState().tenant;
+    const brandColor = tenant?.primary_color || '#1e3a8a';
+    const win = window.open('', '_blank');
+    if (!win) {
+      window.open(`${api.defaults.baseURL}/purchases/${purchase.id}/pdf`, '_blank');
+      return;
+    }
+
+    const logoHtml = tenant?.logo_url
+      ? `<img src="${tenant.logo_url}" alt="Logo Empresa" style="max-height:75px;max-width:190px;object-fit:contain;margin-bottom:6px;" />`
+      : `<div style="font-size:24px;font-weight:900;color:${brandColor};">${(tenant?.name || 'EMPRESA S.A.').toUpperCase()}</div>`;
+
+    const supplier = purchase.supplier || suppliers.find((s: any) => s.id === purchase.supplier_id) || {};
+    const details = purchase.details || [];
+    const rowsHtml = details.map((det: any, idx: number) => {
+      const prod = det.product || products.find((p: any) => p.id === det.product_id) || {};
+      const qty = Number(det.quantity || 0);
+      const cost = Number(det.cost_price || 0);
+      const sub = Number(det.subtotal || qty * cost);
+      return `
+        <tr>
+          <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center;">${idx + 1}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-family:monospace;">${prod.sku || `ID-${det.product_id}`}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;font-weight:600;">${prod.name || `Producto #${det.product_id}`}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center;">${qty.toFixed(2)}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">$${cost.toFixed(2)}</td>
+          <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;">$${sub.toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const subtotal = Number(purchase.subtotal || purchase.total || 0);
+    const taxTotal = Number(purchase.tax_total || 0);
+    const total = Number(purchase.total || subtotal + taxTotal);
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Orden de Compra OC-${String(purchase.id).padStart(6, '0')}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #0f172a; margin: 32px 40px; font-size: 12px; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid ${brandColor}; padding-bottom: 16px; margin-bottom: 20px; }
+            .order-box { border: 2px solid ${brandColor}; border-radius: 10px; padding: 12px 18px; background: #f8fafc; min-width: 240px; }
+            .supplier-box { border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 18px; background: #f8fafc; margin-bottom: 20px; }
+            table.items { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+            table.items th { background: ${brandColor}; color: #fff; padding: 10px 8px; font-size: 11px; text-transform: uppercase; }
+            .signatures { display: flex; justify-content: space-between; margin-top: 80px; }
+            .sig-line { width: 42%; border-top: 2px dashed #64748b; text-align: center; padding-top: 10px; font-weight: 700; color: #334155; }
+            .no-print { margin-bottom: 14px; display: flex; gap: 10px; }
+            @media print { .no-print { display: none; } body { margin: 16px 22px; } }
+          </style>
+        </head>
+        <body>
+          <div class="no-print">
+            <button onclick="window.print()" style="background:${brandColor};color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:700;cursor:pointer;">
+              🖨️ Imprimir Orden de Compra
+            </button>
+            <a href="${api.defaults.baseURL}/purchases/${purchase.id}/pdf" target="_blank" style="text-decoration:none;background:#e2e8f0;color:#0f172a;padding:8px 14px;border-radius:6px;font-weight:700;">
+              📄 Descargar PDF Oficial
+            </a>
+          </div>
+          <div class="header">
+            <div>
+              ${logoHtml}
+              <div style="font-size:15px;font-weight:900;color:${brandColor};">${(tenant?.name || 'EMPRESA S.A.').toUpperCase()}</div>
+              <div><strong>R.I.F.:</strong> ${tenant?.tax_id || 'J-00000000-0'}</div>
+              <div><strong>Domicilio Fiscal:</strong> ${tenant?.address || 'Venezuela'}</div>
+              ${tenant?.phone ? `<div><strong>Teléfono:</strong> ${tenant.phone}</div>` : ''}
+            </div>
+            <div class="order-box">
+              <div style="font-size:15px;font-weight:900;color:${brandColor};text-align:center;margin-bottom:8px;">ORDEN DE COMPRA</div>
+              <div><strong>N° Orden:</strong> <span style="color:#dc2626;font-weight:900;">OC-${String(purchase.id).padStart(6, '0')}</span></div>
+              <div><strong>Fecha Emisión:</strong> ${new Date(purchase.created_at).toLocaleDateString('es-VE')}</div>
+              <div><strong>Factura Prov.:</strong> ${purchase.invoice_number || purchase.reference || 'S/N'}</div>
+              <div><strong>N° Control:</strong> ${purchase.control_number || 'N/A'}</div>
+              <div><strong>Estado:</strong> ${purchase.status}</div>
+            </div>
+          </div>
+
+          <div class="supplier-box">
+            <div style="font-weight:800;color:${brandColor};margin-bottom:6px;text-transform:uppercase;">Datos del Proveedor</div>
+            <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:6px 16px;">
+              <div><strong>Razón Social:</strong> ${supplier.name || `Proveedor #${purchase.supplier_id}`}</div>
+              <div><strong>R.I.F.:</strong> ${supplier.tax_id || 'N/A'}</div>
+              <div><strong>Dirección:</strong> ${supplier.address || 'Venezuela'}</div>
+              <div><strong>Teléfono / Contacto:</strong> ${supplier.phone || 'N/A'}</div>
+            </div>
+          </div>
+
+          <table class="items">
+            <thead>
+              <tr>
+                <th style="width:6%;">#</th>
+                <th style="width:18%;text-align:left;">SKU / Código</th>
+                <th style="text-align:left;">Descripción del Artículo / Insumo</th>
+                <th style="width:12%;">Cantidad</th>
+                <th style="width:16%;text-align:right;">Costo Unit.</th>
+                <th style="width:16%;text-align:right;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div style="display:flex;justify-content:flex-end;">
+            <table style="width:280px;border-collapse:collapse;">
+              <tr>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><strong>Base Imponible:</strong></td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">$${subtotal.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><strong>I.V.A. (16%):</strong></td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:right;">$${taxTotal.toFixed(2)}</td>
+              </tr>
+              <tr style="background:${brandColor};color:#fff;font-weight:900;font-size:14px;">
+                <td style="padding:8px;">TOTAL ORDEN:</td>
+                <td style="padding:8px;text-align:right;">$${total.toFixed(2)}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="signatures">
+            <div class="sig-line">Elaborado / Solicitado por (Compras)</div>
+            <div class="sig-line">Autorizado / Aprobado por (Gerencia)</div>
+          </div>
+          <script>window.onload = function() { setTimeout(function() { window.print(); }, 250); };</script>
+        </body>
+      </html>
+    `);
+    win.document.close();
   };
 
   const addItem = () => {
@@ -235,19 +373,29 @@ export default function PurchasesPage() {
                   </TableCell>
                   <TableCell sx={{ color: 'text.secondary' }}>{new Date(row.created_at).toLocaleDateString()}</TableCell>
                   <TableCell align="center">
-                    {Number(row.iva_withholding || 0) > 0 ? (
+                    <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center', flexWrap: 'wrap' }}>
                       <Button
                         size="small"
                         variant="outlined"
-                        color="secondary"
-                        onClick={() => handleDownloadVoucher(row.id)}
-                        sx={{ fontSize: '0.72rem', py: 0.2, borderRadius: 1.5 }}
+                        color="primary"
+                        startIcon={<PrintIcon fontSize="small" />}
+                        onClick={() => handlePrintPurchaseOrder(row)}
+                        sx={{ fontSize: '0.72rem', py: 0.2, borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
                       >
-                        PDF Retención
+                        Orden Compra
                       </Button>
-                    ) : (
-                      <Typography variant="caption" color="text.disabled">—</Typography>
-                    )}
+                      {Number(row.iva_withholding || 0) > 0 && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="secondary"
+                          onClick={() => handleDownloadVoucher(row.id)}
+                          sx={{ fontSize: '0.72rem', py: 0.2, borderRadius: 1.5, textTransform: 'none', fontWeight: 700 }}
+                        >
+                          PDF Retención
+                        </Button>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}

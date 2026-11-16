@@ -10,24 +10,76 @@ import {
   Delete as DeleteIcon,
   Search as SearchIcon,
   Save as SaveIcon,
-  Download as DownloadIcon
+  Download as DownloadIcon,
+  Print as PrintIcon,
+  ReceiptLong as ThermalIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
+import { useAppStore } from '../../store/useAppStore';
+import {
+  type PriceTier,
+  type EmissionMode,
+  getProductPriceByTier,
+  executeFiscalEmission,
+  printThermalTicketVenezuela,
+  printDigitalInvoiceVenezuela,
+  fetchSaleDigitalInvoiceJson,
+  sendSaleToDigitalProviderApi,
+  type PrintableSaleData
+} from '../../utils/venezuelaFiscalPrint';
 
 export default function ManualBillingPage() {
   const queryClient = useQueryClient();
+  const tenant = useAppStore((state: any) => state.tenant);
   const [items, setItems] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
   const [openBudgetDialog, setOpenBudgetDialog] = useState(false);
   const [budgetId, setBudgetId] = useState('');
 
-  // New local states for discounts, currency, and payment methods
+  // New local states for discounts, currency, payment methods, 3 prices & SENIAT emission
   const [paymentMethod, setPaymentMethod] = useState('credit');
   const [currency, setCurrency] = useState('USD');
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [exchangeRate, setExchangeRate] = useState(36.5);
+  const [defaultPriceTier, setDefaultPriceTier] = useState<PriceTier>(1);
+  const [emissionMode, setEmissionMode] = useState<EmissionMode>('ambos');
+  const [thermalWidth, setThermalWidth] = useState<80 | 58>(80);
+  const [customInvoiceNumber, setCustomInvoiceNumber] = useState('');
+  const [customControlNumber, setCustomControlNumber] = useState('');
+  const [lastEmittedSale, setLastEmittedSale] = useState<PrintableSaleData | null>(null);
+  const [jsonModalData, setJsonModalData] = useState<any>(null);
+  const [sendingToApi, setSendingToApi] = useState(false);
+
+  const handleViewSeniatJson = async () => {
+    if (!lastEmittedSale) return;
+    const payload = await fetchSaleDigitalInvoiceJson(lastEmittedSale, tenant);
+    setJsonModalData({ title: `JSON Fiscal SENIAT — Factura #${lastEmittedSale.invoiceNumber}`, data: payload });
+  };
+
+  const handleTransmitDigitalInvoice = async () => {
+    if (!lastEmittedSale) return;
+    setSendingToApi(true);
+    try {
+      const res = await sendSaleToDigitalProviderApi(lastEmittedSale.id);
+      if (res.control_number) {
+        setLastEmittedSale({
+          ...lastEmittedSale,
+          controlNumber: res.control_number,
+          invoiceNumber: res.fiscal_invoice_number || lastEmittedSale.invoiceNumber
+        });
+      }
+      setJsonModalData({
+        title: `Transmisión API REST Imprenta Digital — Factura #${lastEmittedSale.invoiceNumber}`,
+        data: res
+      });
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Error al enviar el JSON a la API del proveedor');
+    } finally {
+      setSendingToApi(false);
+    }
+  };
 
   useEffect(() => {
     const fetchRate = async () => {
@@ -82,15 +134,42 @@ export default function ManualBillingPage() {
   const createSaleMutation = useMutation({
     mutationFn: (saleData: any) => api.post('/sales/', saleData),
     onSuccess: (response) => {
-      alert('Factura emitida con éxito!');
+      const selectedCust = customers.find((c: any) => c.id === customerId) || null;
+      const printableSale: PrintableSaleData = {
+        id: response.data.id,
+        invoiceNumber: response.data.fiscal_invoice_number || customInvoiceNumber || String(response.data.id).padStart(8, '0'),
+        controlNumber: response.data.control_number || customControlNumber || `00-${String(response.data.id).padStart(8, '0')}`,
+        createdAt: response.data.created_at || new Date().toISOString(),
+        currency,
+        exchangeRate,
+        paymentMethod,
+        customer: selectedCust,
+        items: items.map((i: any) => ({
+          sku: i.sku,
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.unit_price * (1 - globalDiscount / 100),
+          discount: i.discount || 0,
+          taxExempt: Boolean(i.tax_exempt),
+          priceTier: i.price_tier || 1
+        })),
+        subtotalUsd: subtotal,
+        taxUsd: tax,
+        igtfUsd: igtf,
+        totalUsd: total
+      };
+      setLastEmittedSale(printableSale);
+      executeFiscalEmission(emissionMode, printableSale, tenant, thermalWidth);
+
       setItems([]);
       setCustomerId(null);
+      setCustomInvoiceNumber('');
+      setCustomControlNumber('');
       if (budgetId) {
         api.put(`/sales/budgets/${budgetId}/approve`).catch(e => console.error(e));
       }
       setBudgetId('');
       queryClient.invalidateQueries({ queryKey: ['sales'] });
-      window.open(`${api.defaults.baseURL}/sales/${response.data.id}/invoice`, '_blank');
     },
   });
 
@@ -100,8 +179,48 @@ export default function ManualBillingPage() {
     if (exists) {
       setItems(items.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
     } else {
-      setItems([...items, { product_id: product.id, name: product.name, quantity: 1, unit_price: product.price, discount: 0 }]);
+      const selectedPrice = getProductPriceByTier(product, defaultPriceTier);
+      setItems([
+        ...items,
+        {
+          product_id: product.id,
+          sku: product.sku,
+          name: product.name,
+          quantity: 1,
+          price_1: Number(product.price || 0),
+          price_2: Number(product.price_2 || 0),
+          price_3: Number(product.price_3 || 0),
+          price_tier: defaultPriceTier,
+          unit_price: selectedPrice,
+          tax_exempt: Boolean(product.tax_exempt),
+          discount: 0
+        }
+      ]);
     }
+  };
+
+  const handleGlobalPriceTierChange = (tier: PriceTier) => {
+    setDefaultPriceTier(tier);
+    setItems(prev => prev.map(item => {
+      const prodObj = { price: item.price_1, price_2: item.price_2, price_3: item.price_3 };
+      return {
+        ...item,
+        price_tier: tier,
+        unit_price: getProductPriceByTier(prodObj, tier)
+      };
+    }));
+  };
+
+  const handleItemPriceTierChange = (index: number, tier: PriceTier) => {
+    const newItems = [...items];
+    const item = newItems[index];
+    const prodObj = { price: item.price_1, price_2: item.price_2, price_3: item.price_3 };
+    newItems[index] = {
+      ...item,
+      price_tier: tier,
+      unit_price: getProductPriceByTier(prodObj, tier)
+    };
+    setItems(newItems);
   };
 
   const handleLoadBudget = async () => {
@@ -136,9 +255,11 @@ export default function ManualBillingPage() {
       warehouse_id: warehouseId,
       payment_method: paymentMethod,
       currency: currency,
-      exchange_rate: currency === 'USD' ? 1.0 : exchangeRate,
+      exchange_rate: currency === 'USD' ? exchangeRate : exchangeRate,
       cash_session_id: null,
       status: "COMPLETED",
+      fiscal_invoice_number: customInvoiceNumber.trim() || null,
+      control_number: customControlNumber.trim() || null,
       details: items.map(i => ({
         product_id: i.product_id,
         quantity: i.quantity,
@@ -280,12 +401,26 @@ export default function ManualBillingPage() {
             <Divider sx={{ mb: 4 }} />
 
             <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Renglones de Factura</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Renglones de Factura</Typography>
+                  <TextField
+                    select
+                    size="small"
+                    label="Tarifa / Precio Activo"
+                    value={defaultPriceTier}
+                    onChange={(e) => handleGlobalPriceTierChange(Number(e.target.value) as PriceTier)}
+                    sx={{ minWidth: 215, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                  >
+                    <MenuItem value={1}>🏷️ Precio 1 (Por Defecto / Detal)</MenuItem>
+                    <MenuItem value={2}>📦 Precio 2 (Mayor / Especial)</MenuItem>
+                    <MenuItem value={3}>💎 Precio 3 (Distribuidor / VIP)</MenuItem>
+                  </TextField>
+                </Box>
                 <Autocomplete
                   options={products}
-                  getOptionLabel={(option: any) => `${option.sku} - ${option.name}`}
-                  sx={{ width: 350 }}
+                  getOptionLabel={(option: any) => `${option.sku} - ${option.name} (P1:$${Number(option.price || 0).toFixed(2)}${Number(option.price_2) > 0 ? ` | P2:$${Number(option.price_2).toFixed(2)}` : ''}${Number(option.price_3) > 0 ? ` | P3:$${Number(option.price_3).toFixed(2)}` : ''})`}
+                  sx={{ width: { xs: '100%', sm: 360 } }}
                   onChange={(_, newValue) => handleAddItem(newValue)}
                   renderInput={(params) => (
                     <TextField 
@@ -304,7 +439,8 @@ export default function ManualBillingPage() {
                     <TableRow>
                       <TableCell sx={{ fontWeight: 700, py: 2 }}>Producto</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700 }}>Cant.</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Precio</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>Nivel Precio</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>Precio ($)</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700 }}>Desc %</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>Subtotal</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700 }}>Acción</TableCell>
@@ -313,7 +449,7 @@ export default function ManualBillingPage() {
                   <TableBody>
                     {items.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                        <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                           <Typography color="text.disabled" variant="body2">No hay productos en la lista</Typography>
                         </TableCell>
                       </TableRow>
@@ -338,6 +474,19 @@ export default function ManualBillingPage() {
                             }}
                             sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                           />
+                        </TableCell>
+                        <TableCell align="center">
+                          <TextField
+                            select
+                            size="small"
+                            value={item.price_tier || 1}
+                            onChange={(e) => handleItemPriceTierChange(index, Number(e.target.value) as PriceTier)}
+                            sx={{ minWidth: 92, '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700 } }}
+                          >
+                            <MenuItem value={1}>P1 (${Number(item.price_1 || item.unit_price || 0).toFixed(2)})</MenuItem>
+                            <MenuItem value={2}>P2 (${Number(item.price_2 > 0 ? item.price_2 : (item.price_1 || item.unit_price || 0)).toFixed(2)})</MenuItem>
+                            <MenuItem value={3}>P3 (${Number(item.price_3 > 0 ? item.price_3 : (item.price_1 || item.unit_price || 0)).toFixed(2)})</MenuItem>
+                          </TextField>
                         </TableCell>
                         <TableCell align="right">
                           <TextField 
@@ -443,7 +592,7 @@ export default function ManualBillingPage() {
               </Box>
 
               {/* Global Discount input */}
-              <Box sx={{ mb: 3 }}>
+              <Box sx={{ mb: 2 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -453,6 +602,66 @@ export default function ManualBillingPage() {
                   onChange={(e) => setGlobalDiscount(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
                 />
+              </Box>
+
+              {/* Modo de Emisión Fiscal SENIAT (Térmica + Digital en Paralelo) */}
+              <Box sx={{ mb: 2, p: 1.5, borderRadius: '12px', bgcolor: 'primary.50', border: '1px solid', borderColor: 'primary.200' }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: 'primary.main', display: 'block', mb: 1 }}>
+                  🇻🇪 MODALIDAD DE EMISIÓN SENIAT
+                </Typography>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Salida de Facturación"
+                  value={emissionMode}
+                  onChange={(e) => setEmissionMode(e.target.value as EmissionMode)}
+                  sx={{ mb: 1.5, bgcolor: 'background.paper', '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '0.82rem', fontWeight: 700 } }}
+                >
+                  <MenuItem value="ambos">⚡ En Paralelo (Térmica + Factura Digital)</MenuItem>
+                  <MenuItem value="termica">🧾 Impresora Térmica (Ticket POS)</MenuItem>
+                  <MenuItem value="digital">📄 Factura Digital SENIAT (Carta / PDF)</MenuItem>
+                </TextField>
+
+                {(emissionMode === 'ambos' || emissionMode === 'termica') && (
+                  <TextField
+                    select
+                    fullWidth
+                    size="small"
+                    label="Ancho Impresora Térmica"
+                    value={thermalWidth}
+                    onChange={(e) => setThermalWidth(Number(e.target.value) as 80 | 58)}
+                    sx={{ mb: 1.5, bgcolor: 'background.paper', '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '0.8rem' } }}
+                  >
+                    <MenuItem value={80}>Impresora Térmica 80mm (Estándar)</MenuItem>
+                    <MenuItem value={58}>Impresora Térmica 58mm (Compacta)</MenuItem>
+                  </TextField>
+                )}
+
+                <Grid container spacing={1}>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="N° Factura (Opc.)"
+                      placeholder="Auto"
+                      value={customInvoiceNumber}
+                      onChange={(e) => setCustomInvoiceNumber(e.target.value)}
+                      sx={{ bgcolor: 'background.paper', '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.78rem' } }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      label="N° Control SENIAT"
+                      placeholder="00-Auto"
+                      value={customControlNumber}
+                      onChange={(e) => setCustomControlNumber(e.target.value)}
+                      sx={{ bgcolor: 'background.paper', '& .MuiOutlinedInput-root': { borderRadius: '8px', fontSize: '0.78rem' } }}
+                    />
+                  </Grid>
+                </Grid>
               </Box>
 
               <Divider sx={{ mb: 2.5 }} />
@@ -521,8 +730,61 @@ export default function ManualBillingPage() {
                   '&:hover': { boxShadow: '0 12px 30px rgba(37, 99, 235, 0.35)' }
                 }}
               >
-                Emitir Factura
+                {emissionMode === 'ambos'
+                  ? 'Emitir (Térmica + Digital SENIAT)'
+                  : emissionMode === 'termica'
+                    ? 'Emitir e Imprimir Ticket Térmico'
+                    : 'Emitir Factura Digital SENIAT'}
               </Button>
+
+              {lastEmittedSale && (
+                <Box sx={{ mt: 2, p: 1.5, borderRadius: '12px', bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'success.dark', display: 'block', mb: 1 }}>
+                    ✅ Última Factura #{lastEmittedSale.invoiceNumber} (Control: {lastEmittedSale.controlNumber})
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<ThermalIcon />}
+                      onClick={() => printThermalTicketVenezuela(lastEmittedSale, tenant, thermalWidth)}
+                      sx={{ flex: 1, fontSize: '0.72rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      Ticket Térmico
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<PrintIcon />}
+                      onClick={() => printDigitalInvoiceVenezuela(lastEmittedSale, tenant)}
+                      sx={{ flex: 1, fontSize: '0.72rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      Factura Digital
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="secondary"
+                      disabled={sendingToApi}
+                      onClick={handleTransmitDigitalInvoice}
+                      sx={{ flex: 1, fontSize: '0.7rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      {sendingToApi ? 'Enviando JSON...' : '🚀 Enviar a Proveedor (API)'}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      onClick={handleViewSeniatJson}
+                      sx={{ flex: 1, fontSize: '0.7rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      🧩 Ver JSON SENIAT
+                    </Button>
+                  </Box>
+                </Box>
+              )}
             </Paper>
           </Grid>
         </Grid>
@@ -629,6 +891,40 @@ export default function ManualBillingPage() {
             sx={{ borderRadius: '10px', px: 3, fontWeight: 700 }}
           >
             Registrar Cliente
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(jsonModalData)} onClose={() => setJsonModalData(null)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>{jsonModalData?.title}</DialogTitle>
+        <DialogContent dividers>
+          <Box
+            component="pre"
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: '#0f172a',
+              color: '#e2e8f0',
+              fontSize: '0.75rem',
+              overflowX: 'auto',
+              maxHeight: 420,
+            }}
+          >
+            {JSON.stringify(jsonModalData?.data, null, 2)}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              navigator.clipboard.writeText(JSON.stringify(jsonModalData?.data, null, 2));
+              alert('JSON copiado al portapapeles');
+            }}
+          >
+            Copiar JSON
+          </Button>
+          <Button variant="contained" onClick={() => setJsonModalData(null)}>
+            Cerrar
           </Button>
         </DialogActions>
       </Dialog>

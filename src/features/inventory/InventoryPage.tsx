@@ -19,10 +19,13 @@ const defaultFormData = {
   sku: '',
   description: '',
   price: 0,
+  price_2: 0,
+  price_3: 0,
   cost: 0,
   min_stock: 0,
   max_stock: 0,
   unit_of_measure: 'unit',
+  tax_exempt: false,
   track_batches: false,
   track_expiry: false,
   image_url: ''
@@ -145,10 +148,13 @@ export default function InventoryPage() {
       sku: product.sku || '',
       description: product.description || '',
       price: product.price || 0,
+      price_2: product.price_2 || 0,
+      price_3: product.price_3 || 0,
       cost: product.cost || 0,
       min_stock: product.min_stock || 0,
       max_stock: product.max_stock || 0,
       unit_of_measure: product.unit_of_measure || 'unit',
+      tax_exempt: product.tax_exempt || false,
       track_batches: product.track_batches || false,
       track_expiry: product.track_expiry || false,
       image_url: product.image_url || ''
@@ -248,7 +254,7 @@ export default function InventoryPage() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : 
-              (name === 'price' || name === 'cost' || name === 'min_stock' || name === 'max_stock') ? Number(value) : value
+              (name === 'price' || name === 'price_2' || name === 'price_3' || name === 'cost' || name === 'min_stock' || name === 'max_stock') ? Number(value) : value
     }));
   };
 
@@ -415,7 +421,7 @@ export default function InventoryPage() {
                   <TableCell sx={{ fontWeight: 700 }}>SKU</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Nombre</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Costo</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Precio</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Precios (P1 / P2 / P3)</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Utilidad Bruta</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Stock Actual</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>U.M.</TableCell>
@@ -445,7 +451,14 @@ export default function InventoryPage() {
                       <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>{row.sku}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
                       <TableCell sx={{ color: 'text.secondary' }}>${row.cost.toFixed(2)}</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>${row.price.toFixed(2)}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        <Box>P1: <strong>${Number(row.price || 0).toFixed(2)}</strong></Box>
+                        {(Number(row.price_2) > 0 || Number(row.price_3) > 0) && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                            P2: ${Number(row.price_2 || row.price).toFixed(2)} | P3: ${Number(row.price_3 || row.price).toFixed(2)}
+                          </Typography>
+                        )}
+                      </TableCell>
                       <TableCell sx={{ color: profit >= 0 ? 'success.main' : 'error.main', fontWeight: 700 }}>
                         {profit >= 0 ? '+' : ''}${profit.toFixed(2)} <span style={{ fontSize: '0.75rem', opacity: 0.8, marginLeft: '4px' }}>({margin.toFixed(1)}%)</span>
                       </TableCell>
@@ -558,12 +571,38 @@ export default function InventoryPage() {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
-                  label="Precio de Venta ($)"
+                  label="Precio 1 - Por Defecto ($)"
                   name="price"
                   type="number"
                   value={formData.price}
                   onChange={handleChange}
                   required
+                  slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
+                  variant="outlined"
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Precio 2 - Mayor / Especial ($)"
+                  name="price_2"
+                  type="number"
+                  value={formData.price_2}
+                  onChange={handleChange}
+                  slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
+                  variant="outlined"
+                  size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Precio 3 - Distribuidor / VIP ($)"
+                  name="price_3"
+                  type="number"
+                  value={formData.price_3}
+                  onChange={handleChange}
                   slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
                   variant="outlined"
                   size="small"

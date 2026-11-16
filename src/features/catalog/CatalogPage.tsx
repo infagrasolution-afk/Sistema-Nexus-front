@@ -22,10 +22,13 @@ const defaultFormData = {
   sku: '',
   description: '',
   price: 0,
+  price_2: 0,
+  price_3: 0,
   cost: 0,
   min_stock: 0,
   max_stock: 0,
   unit_of_measure: 'unid',
+  tax_exempt: false,
   track_batches: false,
   track_expiry: false,
   image_url: ''
@@ -162,10 +165,13 @@ export default function CatalogPage() {
       sku: product.sku || '',
       description: product.description || '',
       price: price,
+      price_2: product.price_2 || 0,
+      price_3: product.price_3 || 0,
       cost: cost,
       min_stock: product.min_stock || 0,
       max_stock: product.max_stock || 0,
       unit_of_measure: product.unit_of_measure || 'unid',
+      tax_exempt: product.tax_exempt || false,
       track_batches: product.track_batches || false,
       track_expiry: product.track_expiry || false,
       image_url: product.image_url || ''
@@ -200,12 +206,18 @@ export default function CatalogPage() {
       const updated = {
         ...prev,
         [name]: type === 'checkbox' ? checked : 
-                (name === 'price' || name === 'cost' || name === 'min_stock' || name === 'max_stock') ? Number(value) : value
+                (name === 'price' || name === 'price_2' || name === 'price_3' || name === 'cost' || name === 'min_stock' || name === 'max_stock') ? Number(value) : value
       };
       
       if (name === 'cost') {
         const costVal = Number(value);
         updated.price = Number((costVal * (1 + formMargin / 100)).toFixed(2));
+        if (!prev.price_2 || prev.price_2 === 0) {
+          updated.price_2 = Number((costVal * (1 + Math.max(5, formMargin - 5) / 100)).toFixed(2));
+        }
+        if (!prev.price_3 || prev.price_3 === 0) {
+          updated.price_3 = Number((costVal * (1 + Math.max(2, formMargin - 10) / 100)).toFixed(2));
+        }
       } else if (name === 'price') {
         const priceVal = Number(value);
         if (updated.cost > 0) {
@@ -447,13 +459,22 @@ export default function CatalogPage() {
                     </Box>
                   )}
                   <CardContent sx={{ flexGrow: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
                       <Typography gutterBottom variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
                         {product.name}
                       </Typography>
-                      <Typography variant="subtitle1" color="primary.main" sx={{ fontWeight: 800 }}>
-                        ${product.price.toFixed(2)}
-                      </Typography>
+                      <Box sx={{ textAlign: 'right' }}>
+                        <Typography variant="subtitle1" color="primary.main" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+                          P1: ${Number(product.price || 0).toFixed(2)}
+                        </Typography>
+                        {(Number(product.price_2) > 0 || Number(product.price_3) > 0) && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.68rem', fontWeight: 600 }}>
+                            {Number(product.price_2) > 0 ? `P2: $${Number(product.price_2).toFixed(2)}` : ''}
+                            {Number(product.price_2) > 0 && Number(product.price_3) > 0 ? ' | ' : ''}
+                            {Number(product.price_3) > 0 ? `P3: $${Number(product.price_3).toFixed(2)}` : ''}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                       SKU: {product.sku}
@@ -579,7 +600,7 @@ export default function CatalogPage() {
               <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
-                  label="Precio de Venta ($)"
+                  label="Precio 1 (Por Defecto) ($)"
                   name="price"
                   type="number"
                   value={formData.price}
@@ -588,6 +609,34 @@ export default function CatalogPage() {
                   slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
                   variant="outlined"
                   size="small"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Precio 2 (Mayor / Especial) ($)"
+                  name="price_2"
+                  type="number"
+                  value={formData.price_2}
+                  onChange={handleChange}
+                  slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
+                  variant="outlined"
+                  size="small"
+                  helperText="Opcional para ventas al mayor o clientes frecuentes"
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Precio 3 (Distribuidor / VIP) ($)"
+                  name="price_3"
+                  type="number"
+                  value={formData.price_3}
+                  onChange={handleChange}
+                  slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
+                  variant="outlined"
+                  size="small"
+                  helperText="Opcional para tarifas preferenciales o corporativas"
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>

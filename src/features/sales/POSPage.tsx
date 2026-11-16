@@ -20,7 +20,9 @@ import {
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
   CloudDone as OnlineIcon,
-  CloudOff as OfflineIcon
+  CloudOff as OfflineIcon,
+  Print as PrintIcon,
+  ReceiptLong as ThermalIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +30,17 @@ import { Autocomplete } from '@mui/material';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
 import { saveOfflineSale, getOfflineSales, syncOfflineSales } from '../../utils/offlineQueue';
+import {
+  type PriceTier,
+  type EmissionMode,
+  getProductPriceByTier,
+  executeFiscalEmission,
+  printThermalTicketVenezuela,
+  printDigitalInvoiceVenezuela,
+  fetchSaleDigitalInvoiceJson,
+  sendSaleToDigitalProviderApi,
+  type PrintableSaleData
+} from '../../utils/venezuelaFiscalPrint';
 
 function Clock() {
   const [time, setTime] = useState(new Date());
@@ -46,7 +59,56 @@ import { RegisterOpenDialog, RegisterCloseDialog } from './RegisterDialogs';
 
 export default function POSPage() {
   const { t } = useTranslation();
-  const [cart, setCart] = useState<{id: number, name: string, price: number, qty: number, discount: number}[]>([]);
+  const [cart, setCart] = useState<{
+    id: number;
+    sku?: string;
+    name: string;
+    price: number;
+    price_1: number;
+    price_2: number;
+    price_3: number;
+    price_tier: PriceTier;
+    tax_exempt?: boolean;
+    qty: number;
+    discount: number;
+  }[]>([]);
+  const [defaultPriceTier, setDefaultPriceTier] = useState<PriceTier>(1);
+  const [emissionMode, setEmissionMode] = useState<EmissionMode>('ambos');
+  const [thermalWidth, setThermalWidth] = useState<80 | 58>(80);
+  const [customInvoiceNumber, setCustomInvoiceNumber] = useState('');
+  const [customControlNumber, setCustomControlNumber] = useState('');
+  const [lastEmittedSale, setLastEmittedSale] = useState<PrintableSaleData | null>(null);
+  const [jsonModalData, setJsonModalData] = useState<any>(null);
+  const [sendingToApi, setSendingToApi] = useState(false);
+
+  const handleViewSeniatJson = async () => {
+    if (!lastEmittedSale) return;
+    const payload = await fetchSaleDigitalInvoiceJson(lastEmittedSale, useAppStore.getState().tenant);
+    setJsonModalData({ title: `JSON Fiscal SENIAT — Factura #${lastEmittedSale.invoiceNumber}`, data: payload });
+  };
+
+  const handleTransmitDigitalInvoice = async () => {
+    if (!lastEmittedSale) return;
+    setSendingToApi(true);
+    try {
+      const res = await sendSaleToDigitalProviderApi(lastEmittedSale.id);
+      if (res.control_number) {
+        setLastEmittedSale({
+          ...lastEmittedSale,
+          controlNumber: res.control_number,
+          invoiceNumber: res.fiscal_invoice_number || lastEmittedSale.invoiceNumber
+        });
+      }
+      setJsonModalData({
+        title: `Transmisión API REST Imprenta Digital — Factura #${lastEmittedSale.invoiceNumber}`,
+        data: res
+      });
+    } catch (err: any) {
+      alert(err.response?.data?.detail || 'Error al enviar el JSON a la API del proveedor');
+    } finally {
+      setSendingToApi(false);
+    }
+  };
   const [globalDiscount, setGlobalDiscount] = useState(0); // global discount %
   const [warehouseId, setWarehouseId] = useState<number | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -211,10 +273,42 @@ export default function POSPage() {
         alert(t('Venta puesta en espera'));
         setCart([]);
       } else {
-        alert(t('Sale completed successfully!'));
+        const tenantObj = useAppStore.getState().tenant;
+        const printableSale: PrintableSaleData = {
+          id: response.data.id,
+          invoiceNumber: response.data.fiscal_invoice_number || customInvoiceNumber || String(response.data.id).padStart(8, '0'),
+          controlNumber: response.data.control_number || customControlNumber || `00-${String(response.data.id).padStart(8, '0')}`,
+          createdAt: response.data.created_at || new Date().toISOString(),
+          currency,
+          exchangeRate,
+          paymentMethod,
+          customer: {
+            name: fiscalData.name || 'CONSUMIDOR FINAL',
+            tax_id: fiscalData.tax_id || 'V-00000000-0',
+            phone: fiscalData.phone || '',
+            address: fiscalData.address || ''
+          },
+          items: cart.map(item => ({
+            sku: item.sku,
+            name: item.name,
+            quantity: item.qty,
+            unitPrice: item.price * (1 - globalDiscount / 100),
+            discount: item.discount || 0,
+            taxExempt: Boolean(item.tax_exempt),
+            priceTier: item.price_tier || 1
+          })),
+          subtotalUsd: subtotalUSD,
+          taxUsd: taxUSD,
+          igtfUsd: igtfUSD,
+          totalUsd: totalUSD
+        };
+        setLastEmittedSale(printableSale);
+        executeFiscalEmission(emissionMode, printableSale, tenantObj, thermalWidth);
+
         setCart([]);
+        setCustomInvoiceNumber('');
+        setCustomControlNumber('');
         queryClient.invalidateQueries({ queryKey: ['sales'] });
-        window.open(`${api.defaults.baseURL}/sales/${response.data.id}/invoice`, '_blank');
       }
     },
     onError: (_error: any, variables: any) => {
@@ -258,8 +352,48 @@ export default function POSPage() {
     if (existing) {
       setCart(cart.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
     } else {
-      setCart([...cart, { id: product.id, name: product.name, price: product.price, qty: 1, discount: 0 }]);
+      const selectedPrice = getProductPriceByTier(product, defaultPriceTier);
+      setCart([
+        ...cart,
+        {
+          id: product.id,
+          sku: product.sku,
+          name: product.name,
+          price: selectedPrice,
+          price_1: Number(product.price || 0),
+          price_2: Number(product.price_2 || 0),
+          price_3: Number(product.price_3 || 0),
+          price_tier: defaultPriceTier,
+          tax_exempt: Boolean(product.tax_exempt),
+          qty: 1,
+          discount: 0
+        }
+      ]);
     }
+  };
+
+  const handleGlobalPriceTierChange = (tier: PriceTier) => {
+    setDefaultPriceTier(tier);
+    setCart(prev => prev.map(item => {
+      const prodObj = { price: item.price_1, price_2: item.price_2, price_3: item.price_3 };
+      return {
+        ...item,
+        price_tier: tier,
+        price: getProductPriceByTier(prodObj, tier)
+      };
+    }));
+  };
+
+  const handleCartItemTierChange = (idx: number, tier: PriceTier) => {
+    setCart(prev => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const prodObj = { price: item.price_1, price_2: item.price_2, price_3: item.price_3 };
+      return {
+        ...item,
+        price_tier: tier,
+        price: getProductPriceByTier(prodObj, tier)
+      };
+    }));
   };
 
   const handleInitiateCheckout = () => {
@@ -347,10 +481,11 @@ export default function POSPage() {
       warehouse_id: warehouseId,
       payment_method: paymentMethod,
       currency: currency,
-      exchange_rate: currency === 'USD' ? 1 : exchangeRate,
+      exchange_rate: currency === 'USD' ? exchangeRate : exchangeRate,
       cash_session_id: cashSession?.id,
       status: "COMPLETED",
-      fiscal_invoice_number: fiscalInvoiceNumber,
+      fiscal_invoice_number: fiscalInvoiceNumber || customInvoiceNumber.trim() || null,
+      control_number: customControlNumber.trim() || null,
       printer_serial: printerSerial,
       details: cart.map(item => ({
         product_id: item.id,
@@ -602,14 +737,27 @@ export default function POSPage() {
       
       <Grid container spacing={4}>
         <Grid size={{ xs: 12, md: 8 }}>
-          <Paper elevation={1} sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+          <Paper elevation={1} sx={{ p: 2.5, borderRadius: 3, mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <TextField 
-              fullWidth 
+              sx={{ flex: 1, minWidth: 220 }}
+              size="small"
               placeholder={t('Search products') + "..."} 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               slotProps={{ input: { startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} /> } }}
             />
+            <TextField
+              select
+              size="small"
+              label="Nivel de Precio Activo"
+              value={defaultPriceTier}
+              onChange={(e) => handleGlobalPriceTierChange(Number(e.target.value) as PriceTier)}
+              sx={{ minWidth: 230 }}
+            >
+              <MenuItem value={1}>🏷️ Precio 1 (Por Defecto / Detal)</MenuItem>
+              <MenuItem value={2}>📦 Precio 2 (Mayor / Especial)</MenuItem>
+              <MenuItem value={3}>💎 Precio 3 (Distribuidor / VIP)</MenuItem>
+            </TextField>
           </Paper>
 
           <Grid container spacing={2.5}>
@@ -675,11 +823,21 @@ export default function POSPage() {
                     
                     <Box sx={{ mt: 'auto' }}>
                       <Typography variant="h6" color="primary.main" sx={{ fontWeight: 850, lineHeight: 1.1, fontSize: '1.15rem' }}>
-                        ${prod.price.toFixed(2)}
+                        ${getProductPriceByTier(prod, defaultPriceTier).toFixed(2)}
+                        {defaultPriceTier > 1 && (
+                          <Chip label={`P${defaultPriceTier}`} size="small" color="secondary" sx={{ ml: 1, height: 18, fontSize: '0.65rem', fontWeight: 800 }} />
+                        )}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
-                        ≈ {(prod.price * exchangeRate).toFixed(2)} VES
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.75rem', display: 'block' }}>
+                        ≈ {(getProductPriceByTier(prod, defaultPriceTier) * exchangeRate).toFixed(2)} VES
                       </Typography>
+                      {(Number(prod.price_2) > 0 || Number(prod.price_3) > 0) && (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem', display: 'block', mt: 0.3 }}>
+                          P1: ${Number(prod.price || 0).toFixed(2)}
+                          {Number(prod.price_2) > 0 ? ` | P2: $${Number(prod.price_2).toFixed(2)}` : ''}
+                          {Number(prod.price_3) > 0 ? ` | P3: $${Number(prod.price_3).toFixed(2)}` : ''}
+                        </Typography>
+                      )}
                     </Box>
                   </CardContent>
                 </Card>
@@ -734,9 +892,22 @@ export default function POSPage() {
                           >
                             +
                           </Button>
-                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
                             x ${item.price.toFixed(2)}
                           </Typography>
+
+                          <TextField
+                            select
+                            size="small"
+                            variant="standard"
+                            value={item.price_tier || 1}
+                            onChange={(e) => handleCartItemTierChange(idx, Number(e.target.value) as PriceTier)}
+                            sx={{ ml: 1, minWidth: 48, '& .MuiInputBase-root': { fontSize: '0.72rem', fontWeight: 800, color: 'primary.main' } }}
+                          >
+                            <MenuItem value={1}>P1 (${Number(item.price_1 || item.price).toFixed(2)})</MenuItem>
+                            <MenuItem value={2}>P2 (${Number(item.price_2 > 0 ? item.price_2 : (item.price_1 || item.price)).toFixed(2)})</MenuItem>
+                            <MenuItem value={3}>P3 (${Number(item.price_3 > 0 ? item.price_3 : (item.price_1 || item.price)).toFixed(2)})</MenuItem>
+                          </TextField>
                           
                           <TextField
                             size="small"
@@ -886,10 +1057,63 @@ export default function POSPage() {
                 onClick={handleInitiateCheckout}
                 disabled={cart.length === 0 || !warehouseId}
                 loading={createSaleMutation.isPending && !openFiscalDialog}
-                sx={{ py: 1.5, fontSize: '1.2rem', borderRadius: '12px', boxShadow: '0 8px 16px rgba(96, 165, 250, 0.2)' }}
+                sx={{ py: 1.5, fontSize: '1.1rem', borderRadius: '12px', boxShadow: '0 8px 16px rgba(96, 165, 250, 0.2)' }}
               >
-                {t('Complete Sale')}
+                {emissionMode === 'ambos'
+                  ? 'Facturar (Térmica + Digital)'
+                  : emissionMode === 'termica'
+                    ? 'Facturar (Impresora Térmica)'
+                    : 'Facturar (Digital SENIAT)'}
               </Button>
+
+              {lastEmittedSale && (
+                <Box sx={{ mt: 1.5, p: 1.2, borderRadius: '10px', bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'success.dark', display: 'block', mb: 0.8 }}>
+                    ✅ Factura #{lastEmittedSale.invoiceNumber} | Control: {lastEmittedSale.controlNumber}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<ThermalIcon />}
+                      onClick={() => printThermalTicketVenezuela(lastEmittedSale, useAppStore.getState().tenant, thermalWidth)}
+                      sx={{ flex: 1, fontSize: '0.7rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      Ticket ({thermalWidth}mm)
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<PrintIcon />}
+                      onClick={() => printDigitalInvoiceVenezuela(lastEmittedSale, useAppStore.getState().tenant)}
+                      sx={{ flex: 1, fontSize: '0.7rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      Factura Digital
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 0.8 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="secondary"
+                      disabled={sendingToApi}
+                      onClick={handleTransmitDigitalInvoice}
+                      sx={{ flex: 1, fontSize: '0.68rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      {sendingToApi ? 'Enviando...' : '🚀 Enviar API Digital'}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      onClick={handleViewSeniatJson}
+                      sx={{ flex: 1, fontSize: '0.68rem', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      🧩 JSON SENIAT
+                    </Button>
+                  </Box>
+                </Box>
+              )}
 
               <Grid container spacing={2} sx={{ mt: 1 }}>
                 <Grid size={12}>
@@ -1038,6 +1262,55 @@ export default function POSPage() {
                 slotProps={{ input: { sx: { borderRadius: '10px' } } }}
               />
             </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                select
+                fullWidth
+                label="Modalidad de Emisión SENIAT"
+                value={emissionMode}
+                onChange={(e) => setEmissionMode(e.target.value as EmissionMode)}
+                slotProps={{ input: { sx: { borderRadius: '10px', fontWeight: 700 } } }}
+              >
+                <MenuItem value="ambos">⚡ En Paralelo: Térmica + Factura Digital</MenuItem>
+                <MenuItem value="termica">🧾 Solo Impresora Térmica ({thermalWidth}mm)</MenuItem>
+                <MenuItem value="digital">📄 Solo Factura Digital SENIAT</MenuItem>
+              </TextField>
+            </Grid>
+            {(emissionMode === 'ambos' || emissionMode === 'termica') && (
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  select
+                  fullWidth
+                  size="small"
+                  label="Formato Papel Térmico"
+                  value={thermalWidth}
+                  onChange={(e) => setThermalWidth(Number(e.target.value) as 80 | 58)}
+                >
+                  <MenuItem value={80}>80mm (Estándar POS)</MenuItem>
+                  <MenuItem value={58}>58mm (Compacta)</MenuItem>
+                </TextField>
+              </Grid>
+            )}
+            <Grid size={{ xs: 12, md: (emissionMode === 'ambos' || emissionMode === 'termica') ? 4 : 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="N° Factura (Opcional)"
+                placeholder="Automático"
+                value={customInvoiceNumber}
+                onChange={(e) => setCustomInvoiceNumber(e.target.value)}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: (emissionMode === 'ambos' || emissionMode === 'termica') ? 4 : 6 }}>
+              <TextField
+                fullWidth
+                size="small"
+                label="N° Control SENIAT (Opcional)"
+                placeholder="00-Automático"
+                value={customControlNumber}
+                onChange={(e) => setCustomControlNumber(e.target.value)}
+              />
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 2.5, gap: 1 }}>
@@ -1087,6 +1360,40 @@ export default function POSPage() {
         onClose={() => setCloseRegisterDialog(false)} 
         session={cashSession}
       />
+
+      <Dialog open={Boolean(jsonModalData)} onClose={() => setJsonModalData(null)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800 }}>{jsonModalData?.title}</DialogTitle>
+        <DialogContent dividers>
+          <Box
+            component="pre"
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              bgcolor: '#0f172a',
+              color: '#e2e8f0',
+              fontSize: '0.75rem',
+              overflowX: 'auto',
+              maxHeight: 420,
+            }}
+          >
+            {JSON.stringify(jsonModalData?.data, null, 2)}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              navigator.clipboard.writeText(JSON.stringify(jsonModalData?.data, null, 2));
+              alert('JSON copiado al portapapeles');
+            }}
+          >
+            Copiar JSON
+          </Button>
+          <Button variant="contained" onClick={() => setJsonModalData(null)}>
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

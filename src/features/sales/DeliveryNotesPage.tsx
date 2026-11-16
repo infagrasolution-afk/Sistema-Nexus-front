@@ -220,9 +220,10 @@ export default function DeliveryNotesPage() {
               <td style="vertical-align: top;">
                 ${logoHtml}
                 <div style="font-size: 12px; color: #64748b; margin-top: 5px;">
-                  <strong>${tenant?.name || 'APEX Corp'}</strong><br/>
-                  Email: ${tenant?.email || 'admin@apexerp.com'}<br/>
-                  Rif / ID: J-00000000-0
+                  <strong>${tenant?.name || 'EMPRESA S.A.'}</strong><br/>
+                  <strong>R.I.F.:</strong> ${tenant?.tax_id || 'J-00000000-0'}<br/>
+                  <strong>Domicilio Fiscal:</strong> ${tenant?.address || 'Venezuela'}<br/>
+                  ${tenant?.phone ? `<strong>Teléfono:</strong> ${tenant.phone} | ` : ''}Email: ${tenant?.email || 'contacto@empresa.com'}
                 </div>
               </td>
               <td style="text-align: right; vertical-align: top;">
