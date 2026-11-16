@@ -1,23 +1,31 @@
 import { useState, useEffect } from 'react';
 import { 
   Box, AppBar, Toolbar, Typography, IconButton, Avatar, Button, Menu, MenuItem, 
-  Divider, ListItemIcon, ListItemText, Tooltip, Chip, Fade
+  Divider, ListItemIcon, ListItemText, Tooltip, Chip, Fade, Drawer, List, ListItemButton, Badge
 } from '@mui/material';
 import { 
-  Dashboard as DashboardIcon,
-  Business as BusinessIcon,
-  Settings as SettingsIcon,
-  AdminPanelSettings as AdminIcon,
-  Logout as LogoutIcon,
-  Home as HomeIcon,
-  DarkMode as DarkModeIcon,
-  LightMode as LightModeIcon,
-  KeyboardArrowDown as ArrowDownIcon,
-  RecordVoiceOver as VoiceAgentIcon,
-  CloudDone as OnlineIcon,
-  CloudOff as OfflineIcon,
-  Sync as SyncIcon,
-  NotificationsActive as AlarmIcon,
+  SpaceDashboardRounded as DashboardIcon,
+  StorefrontRounded as BusinessIcon,
+  SettingsSuggestRounded as SettingsIcon,
+  AdminPanelSettingsRounded as AdminIcon,
+  LogoutRounded as LogoutIcon,
+  HomeRounded as HomeIcon,
+  DarkModeRounded as DarkModeIcon,
+  LightModeRounded as LightModeIcon,
+  KeyboardArrowDownRounded as ArrowDownIcon,
+  RecordVoiceOverRounded as VoiceAgentIcon,
+  CloudDoneRounded as OnlineIcon,
+  CloudOffRounded as OfflineIcon,
+  SyncRounded as SyncIcon,
+  NotificationsActiveRounded as AlarmIcon,
+  MenuRounded as MenuIcon,
+  PointOfSaleRounded as PosIcon,
+  ReceiptLongRounded as BillingIcon,
+  Inventory2Rounded as InventoryIcon,
+  WarehouseRounded as WarehouseIcon,
+  InsightsRounded as ReportsIcon,
+  ShoppingCartCheckoutRounded as PurchasesIcon,
+  RequestQuoteRounded as BudgetsIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -42,7 +50,7 @@ function Clock() {
           fontWeight: 800, 
           color: 'text.primary', 
           fontFamily: '"Outfit", monospace', 
-          fontSize: '0.95rem',
+          fontSize: '0.92rem',
           lineHeight: 1,
           letterSpacing: '0.5px'
         }}
@@ -65,6 +73,7 @@ export default function Layout() {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [alarmAnchorEl, setAlarmAnchorEl] = useState<null | HTMLElement>(null);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [pendingOfflineCount, setPendingOfflineCount] = useState<number>(getTotalPendingOfflineCount());
   const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
@@ -121,6 +130,7 @@ export default function Layout() {
 
   const handleLogout = () => {
     setAnchorEl(null);
+    setMobileDrawerOpen(false);
     
     const refreshToken = localStorage.getItem('refresh_token');
     if (refreshToken) {
@@ -149,8 +159,8 @@ export default function Layout() {
       setUser(response.data);
       return response.data;
     },
-    refetchInterval: 12000, // Polling de seguridad: verifica cada 12s si la sesión sigue activa o se abrió en otra máquina
-    refetchOnWindowFocus: true, // Si el usuario vuelve a esta ventana o pestaña, valida de inmediato
+    refetchInterval: 12000,
+    refetchOnWindowFocus: true,
     retry: false
   });
 
@@ -238,16 +248,27 @@ export default function Layout() {
   const isDashboard = location.pathname === '/dashboard';
   const isPOS = location.pathname === '/sales';
 
+  const quickNavLinks = [
+    { label: 'Panel Principal', path: '/dashboard', icon: DashboardIcon, color: '#2563eb' },
+    { label: 'Punto de Venta (POS)', path: '/sales', icon: PosIcon, color: '#10b981' },
+    { label: 'Facturación SENIAT', path: '/sales/manual-billing', icon: BillingIcon, color: '#3b82f6' },
+    { label: 'Presupuestos', path: '/sales/budgets', icon: BudgetsIcon, color: '#6366f1' },
+    { label: 'Inventario y Kardex', path: '/inventory', icon: InventoryIcon, color: '#059669' },
+    { label: 'Almacenes y Stock Mín.', path: '/warehouses', icon: WarehouseIcon, color: '#f59e0b' },
+    { label: 'Órdenes de Compra', path: '/purchases', icon: PurchasesIcon, color: '#ec4899' },
+    { label: 'Reportes y Auditoría IP', path: '/reports', icon: ReportsIcon, color: '#8b5cf6' },
+  ];
+
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Top AppBar - Premium Glassmorphism */}
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default', width: '100%', overflowX: 'hidden' }}>
+      {/* Top AppBar - Premium Responsive Glassmorphism */}
       <AppBar 
         position="fixed" 
         sx={{ 
           zIndex: (theme) => theme.zIndex.drawer + 1,
           bgcolor: (theme) => theme.palette.mode === 'dark' 
             ? 'rgba(11, 15, 25, 0.9)' 
-            : 'rgba(255, 255, 255, 0.9)',
+            : 'rgba(255, 255, 255, 0.92)',
           color: 'text.primary',
           borderBottom: '1px solid',
           borderColor: 'divider',
@@ -265,7 +286,7 @@ export default function Layout() {
               textAlign: 'center', 
               py: 0.6, 
               px: 2,
-              fontSize: '0.82rem', 
+              fontSize: { xs: '0.75rem', sm: '0.82rem' }, 
               fontWeight: 700,
               letterSpacing: '0.2px',
             }}>
@@ -274,7 +295,23 @@ export default function Layout() {
           </Fade>
         )}
 
-        <Toolbar sx={{ gap: 1, minHeight: { xs: 60, sm: 68 }, px: { xs: 2, sm: 3 } }}>
+        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.5 }, minHeight: { xs: 58, sm: 68 }, px: { xs: 1.5, sm: 3 } }}>
+          {/* Mobile Quick Menu Trigger */}
+          <IconButton
+            onClick={() => setMobileDrawerOpen(true)}
+            size="small"
+            sx={{
+              display: { xs: 'inline-flex', md: 'none' },
+              p: 1,
+              borderRadius: '10px',
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+            aria-label="Abrir menú rápido"
+          >
+            <MenuIcon fontSize="small" />
+          </IconButton>
+
           {/* Logo / Brand */}
           <Box 
             onClick={() => navigate('/dashboard')}
@@ -282,44 +319,46 @@ export default function Layout() {
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
-              gap: 1.5,
+              gap: { xs: 1, sm: 1.5 },
               cursor: 'pointer',
-              mr: { xs: 1, sm: 3 },
+              mr: { xs: 0.5, sm: 2 },
               transition: 'all 0.3s ease',
               '&:hover': { opacity: 0.85, transform: 'scale(0.98)' },
               textDecoration: 'none',
+              minWidth: 0,
             }}
           >
             {tenantData?.logo_url ? (
               <Box 
                 component="img" 
                 src={tenantData.logo_url} 
-                sx={{ height: { xs: 32, sm: 40 }, width: 'auto', borderRadius: 2 }} 
+                sx={{ height: { xs: 30, sm: 38 }, width: 'auto', borderRadius: 2, flexShrink: 0 }} 
               />
             ) : (
               <Box sx={{ 
                 background: `linear-gradient(135deg, ${tenantData?.primary_color || '#1e40af'} 0%, ${tenantData?.primary_color || '#2563eb'} 100%)`,
                 color: 'white', 
-                p: 0.7, 
-                borderRadius: '10px', 
+                p: 0.75, 
+                borderRadius: '11px', 
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: `0 4px 12px ${tenantData?.primary_color || '#2563eb'}44`,
-                transition: 'all 0.3s ease',
+                flexShrink: 0,
               }}>
                 <HomeIcon sx={{ fontSize: 20 }} />
               </Box>
             )}
-            <Box>
-              <Typography variant="caption" sx={{ 
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="caption" noWrap sx={{ 
                 fontWeight: 900, 
                 color: tenantData?.primary_color || 'primary.main', 
                 textTransform: 'uppercase', 
-                fontSize: { xs: '0.7rem', sm: '0.75rem' }, 
-                letterSpacing: '1px',
+                fontSize: { xs: '0.68rem', sm: '0.76rem' }, 
+                letterSpacing: '0.8px',
                 display: 'block',
                 lineHeight: 1.2,
+                maxWidth: { xs: 115, sm: 220, md: 280 },
               }}>
                 {tenantData?.name || 'APEX ERP'}
               </Typography>
@@ -329,6 +368,7 @@ export default function Layout() {
                   color: 'text.disabled', 
                   fontWeight: 600,
                   lineHeight: 1,
+                  display: { xs: 'none', sm: 'block' }
                 }}>
                   Súper Admin
                 </Typography>
@@ -339,9 +379,9 @@ export default function Layout() {
           <Box sx={{ flexGrow: 1 }} />
 
           {/* Right side controls */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1.5, md: 3 } }}>
-            {/* Clock - hidden on mobile */}
-            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.6, sm: 1.2, md: 2 } }}>
+            {/* Clock - hidden on mobile/tablet */}
+            <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
               <Clock />
             </Box>
 
@@ -358,9 +398,9 @@ export default function Layout() {
                     fontWeight: 700, 
                     color: 'text.secondary', 
                     borderRadius: '12px',
-                    px: 2,
-                    py: 1,
-                    fontSize: '0.82rem',
+                    px: 1.8,
+                    py: 0.8,
+                    fontSize: '0.8rem',
                     bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                     border: '1px solid',
                     borderColor: 'divider',
@@ -375,7 +415,7 @@ export default function Layout() {
                 </Button>
                 <IconButton
                   onClick={() => navigate('/dashboard')}
-                  sx={{ display: { xs: 'inline-flex', sm: 'none' }, color: 'text.secondary', p: 1 }}
+                  sx={{ display: { xs: 'inline-flex', sm: 'none' }, color: 'text.secondary', p: 0.8 }}
                   title="Volver al Tablero"
                 >
                   <DashboardIcon fontSize="small" />
@@ -385,7 +425,7 @@ export default function Layout() {
 
             {/* Branch Switcher */}
             {branches.length > 0 && (
-              <Box sx={{ mr: 0.5, display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1 }}>
+              <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1 }}>
                 <BusinessIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
                 <select 
                   value={activeTenantId} 
@@ -394,7 +434,7 @@ export default function Layout() {
                     padding: '5px 10px', 
                     borderRadius: '10px', 
                     border: '1px solid rgba(0,0,0,0.1)',
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                     outline: 'none',
                     backgroundColor: 'transparent',
                     cursor: 'pointer',
@@ -409,7 +449,7 @@ export default function Layout() {
               </Box>
             )}
 
-            {/* Theme Toggle */}
+            {/* Online/Offline Status Chip */}
             <Chip
               size="small"
               icon={
@@ -423,39 +463,60 @@ export default function Layout() {
               }
               label={
                 isSyncingOffline
-                  ? `Sincronizando (${pendingOfflineCount})...`
+                  ? `Sync (${pendingOfflineCount})`
                   : !isOnline
-                    ? `Offline (${pendingOfflineCount} en cola)`
+                    ? `Offline (${pendingOfflineCount})`
                     : pendingOfflineCount > 0
-                      ? `Sincronizar (${pendingOfflineCount})`
+                      ? `Sync (${pendingOfflineCount})`
                       : 'En Línea'
               }
               color={!isOnline || pendingOfflineCount > 0 ? 'warning' : 'success'}
               onClick={pendingOfflineCount > 0 ? triggerGlobalOfflineSync : undefined}
               sx={{
                 fontWeight: 800,
-                fontSize: '0.72rem',
+                fontSize: { xs: '0.66rem', sm: '0.72rem' },
                 borderRadius: '8px',
                 cursor: pendingOfflineCount > 0 ? 'pointer' : 'default',
+                '& .MuiChip-label': { px: { xs: 0.8, sm: 1.2 } }
               }}
             />
 
+            {/* Global Stock Restock Alarm */}
             {wmsAlerts.length > 0 && (
               <>
                 <Tooltip title="Alarma de Inventario: Productos próximos a agotarse que debes reponer" arrow>
-                  <Chip
-                    size="small"
-                    color="error"
-                    icon={<AlarmIcon fontSize="small" />}
-                    label={`🚨 ${wmsAlerts.length} por agotarse — ¡Reponer!`}
-                    onClick={(e) => setAlarmAnchorEl(e.currentTarget)}
-                    sx={{
-                      fontWeight: 900,
-                      fontSize: '0.72rem',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                    }}
-                  />
+                  <Box>
+                    <Chip
+                      size="small"
+                      color="error"
+                      icon={<AlarmIcon fontSize="small" />}
+                      label={`🚨 ${wmsAlerts.length} por agotarse — ¡Reponer!`}
+                      onClick={(e) => setAlarmAnchorEl(e.currentTarget)}
+                      sx={{
+                        display: { xs: 'none', md: 'inline-flex' },
+                        fontWeight: 900,
+                        fontSize: '0.72rem',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={(e) => setAlarmAnchorEl(e.currentTarget)}
+                      sx={{
+                        display: { xs: 'inline-flex', md: 'none' },
+                        p: 0.8,
+                        border: '1px solid',
+                        borderColor: 'error.main',
+                        borderRadius: '10px',
+                      }}
+                    >
+                      <Badge badgeContent={wmsAlerts.length} color="error">
+                        <AlarmIcon fontSize="small" />
+                      </Badge>
+                    </IconButton>
+                  </Box>
                 </Tooltip>
                 <Menu
                   anchorEl={alarmAnchorEl}
@@ -464,10 +525,10 @@ export default function Layout() {
                   slotProps={{
                     paper: {
                       sx: {
-                        borderRadius: '16px',
+                        borderRadius: '18px',
                         mt: 1.5,
                         width: 390,
-                        maxWidth: '92vw',
+                        maxWidth: '94vw',
                         p: 1.5,
                         border: '2px solid',
                         borderColor: 'error.main',
@@ -515,7 +576,7 @@ export default function Layout() {
                       variant="outlined"
                       onClick={() => {
                         setAlarmAnchorEl(null);
-                        navigate('/inventory/warehouses');
+                        navigate('/warehouses');
                       }}
                       sx={{ borderRadius: '8px', fontWeight: 700, textTransform: 'none' }}
                     >
@@ -539,6 +600,7 @@ export default function Layout() {
               </>
             )}
 
+            {/* Voice Induction Agent Button */}
             <Tooltip title="Iniciar Agente Virtual de Inducción con Audio" arrow>
               <Button
                 size="small"
@@ -547,11 +609,12 @@ export default function Layout() {
                 startIcon={<VoiceAgentIcon fontSize="small" />}
                 onClick={() => window.dispatchEvent(new CustomEvent('open-apex-induction-agent'))}
                 sx={{
+                  display: { xs: 'none', sm: 'inline-flex' },
                   borderRadius: '10px',
                   fontWeight: 800,
                   textTransform: 'none',
-                  fontSize: '0.78rem',
-                  px: { xs: 1, sm: 1.5 },
+                  fontSize: '0.76rem',
+                  px: 1.4,
                   py: 0.6,
                 }}
               >
@@ -559,12 +622,13 @@ export default function Layout() {
               </Button>
             </Tooltip>
 
+            {/* Theme Toggle */}
             <Tooltip title={themeMode === 'dark' ? 'Modo Claro' : 'Modo Oscuro'} arrow>
               <IconButton 
                 onClick={() => setThemeMode(themeMode === 'light' ? 'dark' : 'light')} 
                 size="small"
                 sx={{ 
-                  p: 1,
+                  p: 0.9,
                   borderRadius: '10px',
                   border: '1px solid',
                   borderColor: 'divider',
@@ -586,11 +650,11 @@ export default function Layout() {
 
             {/* User Menu */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
-                <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.1, fontSize: '0.85rem' }}>
+              <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
+                <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.1, fontSize: '0.84rem' }}>
                   {user?.username || 'Usuario'}
                 </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, fontSize: '0.7rem' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, fontSize: '0.68rem' }}>
                   {user?.email}
                 </Typography>
               </Box>
@@ -601,7 +665,7 @@ export default function Layout() {
                   alignItems: 'center',
                   gap: 0.5,
                   cursor: 'pointer',
-                  p: 0.5,
+                  p: 0.4,
                   borderRadius: '14px',
                   border: '1px solid',
                   borderColor: 'divider',
@@ -615,12 +679,12 @@ export default function Layout() {
                 <Avatar sx={{ 
                   bgcolor: tenantData?.primary_color || 'primary.main', 
                   fontWeight: 800, 
-                  width: 34, 
-                  height: 34,
-                  fontSize: '0.9rem',
+                  width: 32, 
+                  height: 32,
+                  fontSize: '0.86rem',
                   boxShadow: `0 4px 12px ${tenantData?.primary_color || '#2563eb'}44`,
                 }}>
-                  {user?.username?.[0].toUpperCase() || user?.email?.[0].toUpperCase() || 'U'}
+                  {user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                 </Avatar>
                 <ArrowDownIcon sx={{ fontSize: 16, color: 'text.disabled', display: { xs: 'none', sm: 'block' } }} />
               </Box>
@@ -634,7 +698,7 @@ export default function Layout() {
                     sx: { 
                       borderRadius: '18px', 
                       mt: 1.5, 
-                      minWidth: 200, 
+                      minWidth: 210, 
                       boxShadow: '0 20px 60px -10px rgba(0,0,0,0.12)',
                       border: '1px solid',
                       borderColor: 'divider',
@@ -647,7 +711,6 @@ export default function Layout() {
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
-                {/* User info header */}
                 <Box sx={{ px: 2, py: 1.5, mb: 0.5 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.2 }}>
                     {user?.username || 'Usuario'}
@@ -660,7 +723,7 @@ export default function Layout() {
                       label="Súper Admin" 
                       size="small" 
                       color="primary"
-                      sx={{ mt: 0.5, fontWeight: 700, fontSize: '0.65rem', height: 20, borderRadius: '8px' }}
+                      sx={{ mt: 0.5, fontWeight: 700, fontSize: '0.65rem', height: 20, borderRadius: '8px', display: 'inline-flex' }}
                     />
                   )}
                 </Box>
@@ -695,16 +758,104 @@ export default function Layout() {
         </Toolbar>
       </AppBar>
 
+      {/* Mobile & Tablet Quick Navigation Drawer */}
+      <Drawer
+        anchor="left"
+        open={mobileDrawerOpen}
+        onClose={() => setMobileDrawerOpen(false)}
+        slotProps={{
+          paper: {
+            sx: {
+              width: 290,
+              p: 2,
+              pt: 9,
+              borderRadius: '0 24px 24px 0',
+            },
+          },
+        }}
+      >
+        <Typography variant="overline" sx={{ px: 1.5, fontWeight: 900, color: 'text.secondary', letterSpacing: '1px' }}>
+          Navegación Rápida
+        </Typography>
+        <List dense sx={{ mt: 0.5 }}>
+          {quickNavLinks.map((item) => {
+            const IconComp = item.icon;
+            const active = location.pathname === item.path;
+            return (
+              <ListItemButton
+                key={item.path}
+                selected={active}
+                onClick={() => {
+                  setMobileDrawerOpen(false);
+                  navigate(item.path);
+                }}
+                sx={{
+                  borderRadius: '12px',
+                  mb: 0.5,
+                  py: 1,
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 38 }}>
+                  <IconComp sx={{ color: item.color, fontSize: 21 }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.label}
+                  slotProps={{ primary: { style: { fontWeight: active ? 800 : 600, fontSize: '0.88rem' } } }}
+                />
+              </ListItemButton>
+            );
+          })}
+        </List>
+        <Divider sx={{ my: 1.5 }} />
+        <Button
+          fullWidth
+          variant="outlined"
+          color="primary"
+          startIcon={<VoiceAgentIcon />}
+          onClick={() => {
+            setMobileDrawerOpen(false);
+            window.dispatchEvent(new CustomEvent('open-apex-induction-agent'));
+          }}
+          sx={{ borderRadius: '12px', fontWeight: 800, mb: 1.5 }}
+        >
+          Inducción Virtual (Audio)
+        </Button>
+        {branches.length > 0 && (
+          <Box sx={{ px: 1, mt: 1 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+              Cambiar Sucursal
+            </Typography>
+            <select
+              value={activeTenantId}
+              onChange={(e) => handleBranchChange(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: '10px',
+                border: '1px solid rgba(0,0,0,0.15)',
+                fontWeight: 700,
+              }}
+            >
+              <option value="main">Sucursal Principal</option>
+              {branches.map((b: any) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </Box>
+        )}
+      </Drawer>
+
       {/* Main Content Area */}
       <Box 
         component="main" 
         sx={{ 
           flexGrow: 1, 
           minHeight: '100vh',
-          mt: { xs: '60px', sm: '68px' }, 
-          px: { xs: 2, sm: 4, md: 6 },
+          mt: { xs: '58px', sm: '68px' }, 
+          px: { xs: 1.5, sm: 3, md: 5 },
           pb: isPOS ? 0 : 8,
           width: '100%',
+          maxWidth: '100vw',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -728,9 +879,11 @@ export default function Layout() {
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 1,
               backdropFilter: 'blur(8px)',
             }}>
-              <Typography sx={{ fontWeight: 700, color: '#e65100', fontSize: '0.88rem' }}>
+              <Typography sx={{ fontWeight: 700, color: '#e65100', fontSize: '0.86rem' }}>
                 ⚠️ Viendo empresa: <strong>{localStorage.getItem('active_tenant_name')}</strong>
               </Typography>
               <Button 
@@ -783,8 +936,8 @@ export default function Layout() {
               bgcolor: '#25D366',
               color: 'white',
               boxShadow: '0 8px 30px rgba(37, 211, 102, 0.4)',
-              width: { xs: 50, sm: 56 },
-              height: { xs: 50, sm: 56 },
+              width: { xs: 48, sm: 56 },
+              height: { xs: 48, sm: 56 },
               zIndex: 9999,
               transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               '&:hover': {
@@ -816,13 +969,13 @@ export default function Layout() {
             rel="noopener noreferrer"
             sx={{
               position: 'fixed',
-              bottom: { xs: 76, sm: 90 },
+              bottom: { xs: 72, sm: 90 },
               right: { xs: 16, sm: 24 },
               background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
               color: 'white',
               boxShadow: '0 8px 30px rgba(220, 39, 67, 0.35)',
-              width: { xs: 46, sm: 52 },
-              height: { xs: 46, sm: 52 },
+              width: { xs: 44, sm: 52 },
+              height: { xs: 44, sm: 52 },
               zIndex: 9999,
               transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
               '&:hover': {

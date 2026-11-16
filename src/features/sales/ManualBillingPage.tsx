@@ -6,13 +6,13 @@ import {
   MenuItem
 } from '@mui/material';
 import { 
-  Description as InvoiceIcon, 
-  Delete as DeleteIcon,
-  Search as SearchIcon,
-  Save as SaveIcon,
-  Download as DownloadIcon,
-  Print as PrintIcon,
-  ReceiptLong as ThermalIcon
+  ReceiptLongRounded as InvoiceIcon, 
+  DeleteOutlineRounded as DeleteIcon,
+  SearchRounded as SearchIcon,
+  TaskAltRounded as SaveIcon,
+  PictureAsPdfRounded as DownloadIcon,
+  PrintRounded as PrintIcon,
+  PointOfSaleRounded as ThermalIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';

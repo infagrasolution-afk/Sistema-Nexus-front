@@ -5,7 +5,15 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Grid,
   TextField, MenuItem, Autocomplete, IconButton
 } from '@mui/material';
-import { Add, RequestQuote, FileDownload, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  AddRounded as Add,
+  RequestQuoteRounded as RequestQuote,
+  PictureAsPdfRounded as FileDownload,
+  DeleteOutlineRounded as DeleteIcon,
+  PaidRounded as PaidIcon,
+  PendingActionsRounded as PendingIcon,
+  SearchRounded as SearchIcon,
+} from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
@@ -17,6 +25,7 @@ export default function BudgetsPage() {
   const [openNewDialog, setOpenNewDialog] = useState(false);
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [defaultPriceTier, setDefaultPriceTier] = useState<PriceTier>(1);
+  const [searchTerm, setSearchTerm] = useState('');
   const [items, setItems] = useState<Array<{
     product_id: number;
     sku: string;
@@ -185,44 +194,99 @@ export default function BudgetsPage() {
     win.document.close();
   };
 
+  const filteredBudgets = budgets.filter((b: any) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      !q ||
+      String(b.id).includes(q) ||
+      (b.created_by_name || '').toLowerCase().includes(q) ||
+      (b.status || '').toLowerCase().includes(q)
+    );
+  });
+
+  const totalQuoted = budgets.reduce((acc: number, b: any) => acc + Number(b.total || 0), 0);
+  const pendingCount = budgets.filter((b: any) => b.status === 'PENDING').length;
+
   return (
     <Box sx={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      alignItems: 'center', 
       width: '100%',
-      maxWidth: 1000, 
+      maxWidth: 1200, 
       mx: 'auto', 
-      mt: 6,
-      px: 3
+      mt: { xs: 2, sm: 4 },
+      px: { xs: 0.5, sm: 2 }
     }}>
+      {/* KPI Strip */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <Paper elevation={0} sx={{ p: 2.5, borderRadius: '20px', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(37, 99, 235, 0.1)', color: 'primary.main', display: 'flex' }}>
+              <RequestQuote fontSize="medium" />
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
+                Total Presupuestos
+              </Typography>
+              <Typography variant="h5" sx={{ fontWeight: 900 }}>{budgets.length}</Typography>
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <Paper elevation={0} sx={{ p: 2.5, borderRadius: '20px', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(16, 185, 129, 0.1)', color: 'success.main', display: 'flex' }}>
+              <PaidIcon fontSize="medium" />
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
+                Volumen Cotizado (USD)
+              </Typography>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: 'success.main' }}>
+                ${totalQuoted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <Paper elevation={0} sx={{ p: 2.5, borderRadius: '20px', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ p: 1.5, borderRadius: '14px', bgcolor: 'rgba(245, 158, 11, 0.12)', color: 'warning.main', display: 'flex' }}>
+              <PendingIcon fontSize="medium" />
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
+                Pendientes por Aprobar
+              </Typography>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: 'warning.main' }}>{pendingCount}</Typography>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
+
       <Paper elevation={0} sx={{ 
-        p: 4, 
+        p: { xs: 2, sm: 4 }, 
         width: '100%',
         borderRadius: '24px', 
         border: '1px solid', 
         borderColor: 'divider',
         bgcolor: 'background.paper',
-        boxShadow: '0 10px 40px -10px rgba(0,0,0,0.05)'
       }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ 
-              bgcolor: 'primary.50', 
-              p: 2, 
+              bgcolor: 'rgba(37, 99, 235, 0.08)', 
+              p: 1.8, 
               borderRadius: '16px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '1px solid',
-              borderColor: 'primary.100'
+              border: '1px solid rgba(37, 99, 235, 0.16)'
             }}>
-              <RequestQuote color="primary" sx={{ fontSize: 32 }} />
+              <RequestQuote color="primary" sx={{ fontSize: 30 }} />
             </Box>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-1px' }}>Presupuestos</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.8 }}>
-                Gestión de cotizaciones con 3 niveles de precios y logo corporativo
+              <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.8px' }}>Presupuestos y Cotizaciones</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, opacity: 0.85 }}>
+                Gestión de cotizaciones comerciales con 3 niveles de precios y logo corporativo
               </Typography>
             </Box>
           </Box>
@@ -232,49 +296,63 @@ export default function BudgetsPage() {
             onClick={() => setOpenNewDialog(true)}
             sx={{ 
               borderRadius: '12px', 
-              px: 3.5, 
+              px: 3, 
               py: 1.2, 
-              fontWeight: 700,
-              boxShadow: '0 8px 16px rgba(37, 99, 235, 0.2)',
-              '&:hover': { boxShadow: '0 12px 20px rgba(37, 99, 235, 0.3)' }
+              fontWeight: 800,
+              width: { xs: '100%', sm: 'auto' },
             }}
           >
             Nuevo Presupuesto
           </Button>
         </Box>
 
-        <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '16px' }}>
+        <Box sx={{ mb: 3 }}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Buscar presupuesto por N°, asesor o estado..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} />,
+              },
+            }}
+          />
+        </Box>
+
+        <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '16px' }}>
           <Table>
-            <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
+            <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700, py: 2.5 }}>ID</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Vendedor</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                <TableCell sx={{ fontWeight: 700, textAlign: 'right' }}>Acciones</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Cotización</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Fecha</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Vendedor / Asesor</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Total (USD)</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 800, textAlign: 'right' }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {budgets.length === 0 && !isLoading && (
+              {filteredBudgets.length === 0 && !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
-                    <Typography color="text.secondary" sx={{ fontWeight: 500 }}>No hay presupuestos registrados aún.</Typography>
+                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                    <Typography color="text.secondary" sx={{ fontWeight: 600 }}>No hay presupuestos registrados aún.</Typography>
                   </TableCell>
                 </TableRow>
               )}
-              {budgets.map((b: any) => (
+              {filteredBudgets.map((b: any) => (
                 <TableRow key={b.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                  <TableCell sx={{ fontWeight: 600 }}>#{b.id.toString().padStart(5, '0')}</TableCell>
-                  <TableCell sx={{ color: 'text.secondary', fontWeight: 500 }}>{new Date(b.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell sx={{ fontWeight: 500 }}>{b.created_by_name || 'N/A'}</TableCell>
-                  <TableCell sx={{ fontWeight: 800, color: 'primary.main' }}>${Number(b.total || 0).toFixed(2)}</TableCell>
+                  <TableCell sx={{ fontWeight: 800, fontFamily: 'monospace' }}>COT-{b.id.toString().padStart(5, '0')}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', fontWeight: 600, whiteSpace: 'nowrap' }}>{new Date(b.created_at).toLocaleDateString('es-VE')}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{b.created_by_name || 'Ventas'}</TableCell>
+                  <TableCell sx={{ fontWeight: 900, color: 'primary.main', whiteSpace: 'nowrap' }}>${Number(b.total || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <Chip 
-                      label={b.status} 
+                      label={b.status === 'PENDING' ? 'PENDIENTE' : b.status} 
                       size="small"
                       color={b.status === 'PENDING' ? 'warning' : 'success'}
-                      sx={{ fontWeight: 700, borderRadius: '6px', fontSize: '0.75rem' }}
+                      sx={{ fontWeight: 800, borderRadius: '8px', fontSize: '0.72rem' }}
                     />
                   </TableCell>
                   <TableCell align="right">
@@ -283,7 +361,7 @@ export default function BudgetsPage() {
                       variant="outlined" 
                       startIcon={<FileDownload />}
                       onClick={() => handlePrintBudget(b)}
-                      sx={{ fontWeight: 700, borderRadius: '8px', textTransform: 'none' }}
+                      sx={{ fontWeight: 700, borderRadius: '10px', textTransform: 'none', whiteSpace: 'nowrap' }}
                     >
                       Imprimir PDF
                     </Button>
@@ -296,7 +374,7 @@ export default function BudgetsPage() {
       </Paper>
 
       <Dialog open={openNewDialog} onClose={() => setOpenNewDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800 }}>Crear Nuevo Presupuesto</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 800 }}>Crear Nuevo Presupuesto Comercial</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2} sx={{ mb: 2 }}>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -305,7 +383,7 @@ export default function BudgetsPage() {
                 getOptionLabel={(c: any) => `${c.name} (${c.tax_id})`}
                 value={customers.find((c: any) => c.id === customerId) || null}
                 onChange={(_, val: any) => setCustomerId(val ? val.id : null)}
-                renderInput={(params) => <TextField {...params} label="Cliente" size="small" />}
+                renderInput={(params) => <TextField {...params} label="Cliente / Razón Social" size="small" />}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -355,7 +433,7 @@ export default function BudgetsPage() {
               <TableBody>
                 {items.map((item, idx) => (
                   <TableRow key={idx}>
-                    <TableCell>{item.name}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{item.name}</TableCell>
                     <TableCell align="center">
                       <TextField
                         type="number"
@@ -366,7 +444,7 @@ export default function BudgetsPage() {
                           next[idx].quantity = Number(e.target.value) || 1;
                           setItems(next);
                         }}
-                        sx={{ width: 65 }}
+                        sx={{ width: 70 }}
                       />
                     </TableCell>
                     <TableCell align="center">
@@ -400,10 +478,10 @@ export default function BudgetsPage() {
                           next[idx].unit_price = Number(e.target.value) || 0;
                           setItems(next);
                         }}
-                        sx={{ width: 90 }}
+                        sx={{ width: 95 }}
                       />
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    <TableCell align="right" sx={{ fontWeight: 800 }}>
                       ${(item.quantity * item.unit_price).toFixed(2)}
                     </TableCell>
                     <TableCell align="center">

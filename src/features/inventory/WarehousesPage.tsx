@@ -6,16 +6,16 @@ import {
   TableCell, TableContainer, TableHead, TableRow, Snackbar
 } from '@mui/material';
 import { 
-  Warehouse as WarehouseIcon, 
-  Add as AddIcon, 
-  QrCode as QrIcon,
-  Print as PrintIcon,
-  Delete as DeleteIcon,
-  Search as SearchIcon,
-  WarningAmber as WarningIcon,
-  NotificationsActive as AlarmIcon,
-  Inventory2 as InventoryIcon,
-  ShoppingCartCheckout as RestockIcon
+  WarehouseRounded as WarehouseIcon, 
+  AddRounded as AddIcon, 
+  QrCode2Rounded as QrIcon,
+  PrintRounded as PrintIcon,
+  DeleteOutlineRounded as DeleteIcon,
+  SearchRounded as SearchIcon,
+  WarningAmberRounded as WarningIcon,
+  NotificationsActiveRounded as AlarmIcon,
+  Inventory2Rounded as InventoryIcon,
+  ShoppingCartCheckoutRounded as RestockIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';

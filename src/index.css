@@ -1,6 +1,6 @@
 /* ===========================
    APEX ERP — Premium Design System
-   Global Styles & Utilities
+   Global Styles & Responsive Utilities
    =========================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -41,9 +41,17 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
 
-  @media (max-width: 1024px) {
+@media (max-width: 1024px) {
+  :root {
     font-size: 15px;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    font-size: 14.5px;
   }
 }
 
@@ -70,6 +78,7 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* Reset */
@@ -80,6 +89,19 @@
 body {
   margin: 0;
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Responsive images & tables */
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.MuiTableContainer-root {
+  width: 100%;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Typography */
@@ -90,10 +112,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: clamp(1.85rem, 4.5vw, 3.25rem);
   font-weight: 900;
   letter-spacing: -0.04em;
-  margin: 32px 0;
+  margin: 24px 0;
 }
 
 h2 {

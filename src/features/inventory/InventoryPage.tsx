@@ -6,10 +6,10 @@ import {
   Snackbar, Alert, CircularProgress, Card, CardContent, Divider, MenuItem
 } from '@mui/material';
 import { 
-  Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, 
-  Refresh as RefreshIcon, Inventory as InventoryIcon, 
-  Warning as WarningIcon, Error as ErrorIcon,
-  FileUpload as UploadIcon, Description as TemplateIcon
+  AddRounded as AddIcon, EditRounded as EditIcon, DeleteOutlineRounded as DeleteIcon, 
+  RefreshRounded as RefreshIcon, Inventory2Rounded as InventoryIcon, 
+  WarningAmberRounded as WarningIcon, ErrorOutlineRounded as ErrorIcon,
+  CloudUploadRounded as UploadIcon, DescriptionRounded as TemplateIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';

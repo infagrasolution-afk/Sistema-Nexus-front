@@ -7,22 +7,22 @@ import {
   Card, CardContent, InputAdornment, Avatar
 } from '@mui/material';
 import { 
-  Search as SearchIcon, 
-  Delete as DeleteIcon, 
-  Payment as PaymentIcon,
-  Warehouse as WarehouseIcon,
-  AttachMoney as MoneyIcon,
-  CreditCard as CardIcon,
-  AccountBalance as BankIcon,
-  History as HistoryIcon,
-  Sync as SyncIcon,
-  PersonAdd as PersonAddIcon,
-  Pause as PauseIcon,
-  PlayArrow as PlayArrowIcon,
-  CloudDone as OnlineIcon,
-  CloudOff as OfflineIcon,
-  Print as PrintIcon,
-  ReceiptLong as ThermalIcon
+  SearchRounded as SearchIcon, 
+  DeleteOutlineRounded as DeleteIcon, 
+  PaymentsRounded as PaymentIcon,
+  WarehouseRounded as WarehouseIcon,
+  PaidRounded as MoneyIcon,
+  CreditCardRounded as CardIcon,
+  AccountBalanceRounded as BankIcon,
+  HistoryRounded as HistoryIcon,
+  SyncRounded as SyncIcon,
+  PersonAddAlt1Rounded as PersonAddIcon,
+  PauseCircleOutlineRounded as PauseIcon,
+  PlayCircleOutlineRounded as PlayArrowIcon,
+  CloudDoneRounded as OnlineIcon,
+  CloudOffRounded as OfflineIcon,
+  PrintRounded as PrintIcon,
+  ReceiptLongRounded as ThermalIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
