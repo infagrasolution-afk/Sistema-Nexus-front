@@ -12,6 +12,7 @@ import {
   FileUpload as UploadIcon, Description as TemplateIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 const defaultFormData = {
@@ -33,6 +34,7 @@ const defaultFormData = {
 
 export default function InventoryPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [formData, setFormData] = useState(defaultFormData);
@@ -58,6 +60,12 @@ export default function InventoryPage() {
       const response = await api.get('/inventory/products');
       return response.data;
     },
+  });
+
+  const { data: wmsAlerts = [] } = useQuery({
+    queryKey: ['wms-alerts'],
+    queryFn: async () => (await api.get('/inventory/alerts')).data,
+    refetchInterval: 15000,
   });
 
   // 2. Create Product Mutation
@@ -316,10 +324,19 @@ export default function InventoryPage() {
             Control en tiempo real de tus productos, niveles de stock y costos
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
           <IconButton onClick={() => refetch()} disabled={isLoading || isRefetching} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '12px' }}>
             {isLoading || isRefetching ? <CircularProgress size={20} /> : <RefreshIcon />}
           </IconButton>
+          <Button
+            variant="outlined"
+            color="warning"
+            startIcon={<WarningIcon />}
+            onClick={() => navigate('/inventory/warehouses')}
+            sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 700, bgcolor: 'background.paper' }}
+          >
+            Stock Mínimo por Almacén
+          </Button>
           <Button 
             variant="outlined" 
             startIcon={<UploadIcon />} 
@@ -344,6 +361,35 @@ export default function InventoryPage() {
           </Button>
         </Box>
       </Box>
+
+      {/* ALARMA DE STOCK MÍNIMO POR ALMACÉN Y PRODUCTO */}
+      {wmsAlerts.length > 0 && (
+        <Alert
+          severity="error"
+          sx={{ mb: 3.5, borderRadius: '16px', border: '1px solid', borderColor: 'error.main' }}
+          action={
+            <Button
+              color="error"
+              variant="contained"
+              size="small"
+              onClick={() => navigate('/purchases')}
+              sx={{ fontWeight: 800, borderRadius: '8px', textTransform: 'none', whiteSpace: 'nowrap' }}
+            >
+              Reponer Ahora
+            </Button>
+          }
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+            🚨 Alarma de Reposición Activa: {wmsAlerts.length} producto(s) próximo(s) a agotarse — ¡Debes reponer!
+          </Typography>
+          <Typography variant="caption" sx={{ display: 'block', mt: 0.5, fontWeight: 600 }}>
+            {wmsAlerts
+              .slice(0, 5)
+              .map((a: any) => `• ${a.name} en ${a.warehouse_name || 'Almacén'} (Quedan ${a.current_stock} / Mín: ${a.min_stock})`)
+              .join('   ')}
+          </Typography>
+        </Alert>
+      )}
 
       {/* 2. Premium Analytics Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

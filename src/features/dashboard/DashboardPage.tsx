@@ -269,14 +269,15 @@ export default function DashboardPage() {
             {alerts.map((alert: any, i: number) => (
               <Paper key={i} elevation={0} sx={{ 
                 p: 2.5, 
-                minWidth: 320, 
+                minWidth: 360, 
                 borderRadius: '18px', 
                 borderLeft: '5px solid', 
                 borderColor: 'error.main',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 2.5,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(239, 68, 68, 0.06)' : 'rgba(254, 242, 242, 0.9)',
+                justifyContent: 'space-between',
+                gap: 2,
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(254, 242, 242, 0.95)',
                 color: (theme) => theme.palette.mode === 'dark' ? '#fca5a5' : '#991b1b',
                 backdropFilter: 'blur(12px)',
                 transition: 'all 0.3s ease',
@@ -285,11 +286,29 @@ export default function DashboardPage() {
                   boxShadow: '0 8px 20px rgba(239, 68, 68, 0.1)',
                 }
               }}>
-                <Timeline color="error" sx={{ fontSize: 28 }} />
-                <Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Stock Crítico: {alert.name}</Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.85 }}>Quedan {alert.current_stock} unidades (Mínimo: {alert.min_stock})</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Timeline color="error" sx={{ fontSize: 28 }} />
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                      🚨 {alert.name} ({alert.warehouse_name || 'Almacén'})
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', fontWeight: 800 }}>
+                      ⚠️ ¡El producto está próximo a agotarse, debes reponer!
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                      Quedan <strong>{alert.current_stock}</strong> unid. (Stock Mínimo: <strong>{alert.min_stock}</strong>)
+                    </Typography>
+                  </Box>
                 </Box>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  onClick={() => navigate('/purchases')}
+                  sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none', whiteSpace: 'nowrap' }}
+                >
+                  Reponer
+                </Button>
               </Paper>
             ))}
           </Box>

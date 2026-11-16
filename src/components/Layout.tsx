@@ -17,6 +17,7 @@ import {
   CloudDone as OnlineIcon,
   CloudOff as OfflineIcon,
   Sync as SyncIcon,
+  NotificationsActive as AlarmIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -63,9 +64,17 @@ export default function Layout() {
   const queryClient = useQueryClient();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [alarmAnchorEl, setAlarmAnchorEl] = useState<null | HTMLElement>(null);
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [pendingOfflineCount, setPendingOfflineCount] = useState<number>(getTotalPendingOfflineCount());
   const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
+
+  const { data: wmsAlerts = [] } = useQuery({
+    queryKey: ['wms-alerts'],
+    queryFn: async () => (await api.get('/inventory/alerts')).data,
+    enabled: !!user,
+    refetchInterval: 15000,
+  });
 
   const triggerGlobalOfflineSync = async () => {
     const count = getTotalPendingOfflineCount();
@@ -430,6 +439,105 @@ export default function Layout() {
                 cursor: pendingOfflineCount > 0 ? 'pointer' : 'default',
               }}
             />
+
+            {wmsAlerts.length > 0 && (
+              <>
+                <Tooltip title="Alarma de Inventario: Productos próximos a agotarse que debes reponer" arrow>
+                  <Chip
+                    size="small"
+                    color="error"
+                    icon={<AlarmIcon fontSize="small" />}
+                    label={`🚨 ${wmsAlerts.length} por agotarse — ¡Reponer!`}
+                    onClick={(e) => setAlarmAnchorEl(e.currentTarget)}
+                    sx={{
+                      fontWeight: 900,
+                      fontSize: '0.72rem',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                    }}
+                  />
+                </Tooltip>
+                <Menu
+                  anchorEl={alarmAnchorEl}
+                  open={Boolean(alarmAnchorEl)}
+                  onClose={() => setAlarmAnchorEl(null)}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        borderRadius: '16px',
+                        mt: 1.5,
+                        width: 390,
+                        maxWidth: '92vw',
+                        p: 1.5,
+                        border: '2px solid',
+                        borderColor: 'error.main',
+                      },
+                    },
+                  }}
+                >
+                  <Typography variant="subtitle2" sx={{ fontWeight: 900, color: 'error.main', px: 1, pb: 0.5 }}>
+                    🚨 Alarma de Stock Mínimo ({wmsAlerts.length} productos)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1, pb: 1, fontWeight: 600 }}>
+                    Estos productos alcanzaron su stock mínimo y están próximos a agotarse:
+                  </Typography>
+                  <Divider sx={{ mb: 1 }} />
+                  <Box sx={{ maxHeight: 260, overflowY: 'auto', px: 0.5 }}>
+                    {wmsAlerts.map((al: any, idx: number) => (
+                      <Box
+                        key={idx}
+                        sx={{
+                          p: 1.2,
+                          mb: 1,
+                          borderRadius: 2,
+                          bgcolor: 'action.hover',
+                          borderLeft: '4px solid',
+                          borderColor: al.status === 'AGOTADO' ? 'error.main' : 'warning.main',
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                          {al.name} ({al.sku})
+                        </Typography>
+                        <Typography variant="caption" sx={{ display: 'block', color: 'error.main', fontWeight: 700 }}>
+                          ⚠️ Próximo a agotarse en {al.warehouse_name || 'Almacén'} — ¡Debes reponer!
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Disponible: <strong>{al.current_stock}</strong> | Mínimo: <strong>{al.min_stock}</strong>
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: 'flex', gap: 1, px: 0.5 }}>
+                    <Button
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        setAlarmAnchorEl(null);
+                        navigate('/inventory/warehouses');
+                      }}
+                      sx={{ borderRadius: '8px', fontWeight: 700, textTransform: 'none' }}
+                    >
+                      Ver Almacenes
+                    </Button>
+                    <Button
+                      fullWidth
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={() => {
+                        setAlarmAnchorEl(null);
+                        navigate('/purchases');
+                      }}
+                      sx={{ borderRadius: '8px', fontWeight: 800, textTransform: 'none' }}
+                    >
+                      Reponer en Compras
+                    </Button>
+                  </Box>
+                </Menu>
+              </>
+            )}
 
             <Tooltip title="Iniciar Agente Virtual de Inducción con Audio" arrow>
               <Button
