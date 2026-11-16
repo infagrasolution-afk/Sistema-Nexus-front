@@ -60,7 +60,7 @@ export default function SystemWizard() {
 
   // Demo Data Seeding State
   const [seedingDemo, setSeedingDemo] = useState(false);
-  const [seedMessage, setSeedMessage] = useState<string | null>(null);
+  const [seedMessage, setSeedMessage] = useState<{ text: string; severity: 'success' | 'error' } | null>(null);
 
   const autoTourRef = useRef(autoTour);
   autoTourRef.current = autoTour;
@@ -297,7 +297,10 @@ export default function SystemWizard() {
     setSeedMessage(null);
     try {
       const res = await api.post('/tenants/seed-demo');
-      setSeedMessage(res.data?.message || '¡Datos de demostración cargados con éxito!');
+      setSeedMessage({
+        text: res.data?.message || '¡Datos de demostración cargados con éxito!',
+        severity: 'success',
+      });
       // Refresh all queries so data appears immediately on screen
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
@@ -313,7 +316,10 @@ export default function SystemWizard() {
         );
       }
     } catch (err: any) {
-      setSeedMessage(err.response?.data?.detail || 'Error al cargar los datos de demostración.');
+      setSeedMessage({
+        text: err.response?.data?.detail || 'Error al cargar los datos de demostración.',
+        severity: 'error',
+      });
     } finally {
       setSeedingDemo(false);
     }
@@ -515,8 +521,8 @@ export default function SystemWizard() {
         </Button>
 
         {seedMessage && (
-          <Alert severity="success" sx={{ width: '100%', mb: 1.5, py: 0.2, fontSize: '0.74rem' }}>
-            {seedMessage}
+          <Alert severity={seedMessage.severity} sx={{ width: '100%', mb: 1.5, py: 0.2, fontSize: '0.74rem' }}>
+            {seedMessage.text}
           </Alert>
         )}
 
