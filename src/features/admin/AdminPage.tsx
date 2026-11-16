@@ -12,13 +12,14 @@ import {
   VpnKey as LicenseIcon,
   Add as AddIcon,
   Refresh as RefreshIcon,
-  TrendingUp as TrendingIcon,
   Warning as WarningIcon,
   Login as LoginIcon,
   BugReport as ErrorIcon,
   Terminal as TerminalIcon,
   Delete as DeleteIcon,
-  Calculate as CalculateIcon
+  Calculate as CalculateIcon,
+  Security as SecurityIcon,
+  Storage as StorageIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,9 @@ export default function AdminPage() {
   const [tabValue, setTabValue] = useState(0);
   const [open, setOpen] = useState(false);
   const [selectedError, setSelectedError] = useState<any>(null);
+  const [tenantSearch, setTenantSearch] = useState('');
+  const [auditSearch, setAuditSearch] = useState('');
+  const [dbMode, setDbMode] = useState<'shared' | 'dedicated'>('shared');
 
   const AVAILABLE_MODULES = [
     { id: 'admin', label: 'Módulo Administrativo (Base Obligatoria)' },
@@ -48,7 +52,8 @@ export default function AdminPage() {
     modules: ['admin', 'inventory', 'sales', 'purchases', 'treasury', 'accounting', 'hr'],
     admin_username: '',
     admin_password: '',
-    logo_url: ''
+    logo_url: '',
+    custom_database_url: ''
   });
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,22 +84,30 @@ export default function AdminPage() {
   // Queries
   const { data: metrics } = useQuery({
     queryKey: ['admin-metrics'],
-    queryFn: async () => (await api.get('/admin/dashboard')).data
+    queryFn: async () => (await api.get('/admin/dashboard')).data,
+    refetchInterval: 12000,
   });
 
   const { data: tenants = [], isLoading: tenantsLoading, isError: tenantsError, refetch: refetchTenants } = useQuery({
     queryKey: ['tenants'],
     queryFn: async () => {
       const res = await api.get('/admin/tenants');
-      // Handle both array and paginated responses
       return Array.isArray(res.data) ? res.data : (res.data?.items || res.data?.data || []);
-    }
+    },
+    refetchInterval: 15000,
   });
 
   const { data: errorLogs = [], refetch: refetchLogs } = useQuery({
     queryKey: ['error-logs'],
     queryFn: async () => (await api.get('/support/error-logs')).data,
-    enabled: tabValue === 1 // Only load logs when tab is active
+    enabled: tabValue === 1
+  });
+
+  const { data: securityAuditLogs = [], refetch: refetchAuditLogs } = useQuery({
+    queryKey: ['admin-security-audit-logs'],
+    queryFn: async () => (await api.get('/admin/security-audit-logs?limit=250')).data,
+    enabled: tabValue === 3,
+    refetchInterval: 10000,
   });
 
   const createTenantMutation = useMutation({
@@ -121,8 +134,10 @@ export default function AdminPage() {
         modules: ['sales', 'inventory', 'accounting', 'users'],
         admin_username: '',
         admin_password: '',
-        logo_url: ''
+        logo_url: '',
+        custom_database_url: ''
       });
+      setDbMode('shared');
     }
   });
 
@@ -180,7 +195,7 @@ export default function AdminPage() {
     { title: t('Total Companies'), value: metrics?.total_tenants || 0, icon: <BusinessIcon />, color: '#2563eb' },
     { title: t('Active Users'), value: metrics?.total_users || 0, icon: <PeopleIcon />, color: '#059669' },
     { title: t('Expiring Soon'), value: metrics?.expiring_soon || 0, icon: <WarningIcon />, color: '#d97706' },
-    { title: t('Growth'), value: '+12%', icon: <TrendingIcon />, color: '#7c3aed' },
+    { title: 'Eventos Auditados (IP/Seguridad)', value: metrics?.total_audit_events || 0, icon: <SecurityIcon />, color: '#7c3aed' },
   ];
 
   return (
@@ -237,9 +252,10 @@ export default function AdminPage() {
           '& .MuiTab-root': { fontWeight: 700, textTransform: 'none', fontSize: '0.95rem', minHeight: 48 }
         }}
       >
-        <Tab icon={<BusinessIcon fontSize="small" />} iconPosition="start" label="Control de Inquilinos" />
+        <Tab icon={<BusinessIcon fontSize="small" />} iconPosition="start" label="Control de Inquilinos (En Vivo)" />
         <Tab icon={<ErrorIcon fontSize="small" />} iconPosition="start" label="Diagnóstico de Errores y Soporte" />
         <Tab icon={<CalculateIcon fontSize="small" />} iconPosition="start" label="Cotizador & Propuestas (PDF)" />
+        <Tab icon={<SecurityIcon fontSize="small" />} iconPosition="start" label="Auditoría Forense Global (IPs / Usuarios)" />
       </Tabs>
 
       {tabValue === 0 && (
@@ -265,19 +281,29 @@ export default function AdminPage() {
 
           {/* Tenants Table */}
           <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2.5, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, px: 2.5, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary' }}>
                 {tenantsLoading ? 'Cargando...' : `${tenants.length} empresa${tenants.length !== 1 ? 's' : ''} registrada${tenants.length !== 1 ? 's' : ''}`}
               </Typography>
-              <Button size="small" startIcon={<RefreshIcon />} onClick={() => refetchTenants()} sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
-                Actualizar
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                <TextField
+                  size="small"
+                  placeholder="Filtrar cliente por nombre, RIF o licencia..."
+                  value={tenantSearch}
+                  onChange={(e) => setTenantSearch(e.target.value)}
+                  sx={{ minWidth: 260 }}
+                />
+                <Button size="small" startIcon={<RefreshIcon />} onClick={() => refetchTenants()} sx={{ fontWeight: 700, fontSize: '0.78rem' }}>
+                  Actualizar
+                </Button>
+              </Box>
             </Box>
             <TableContainer>
               <Table>
                 <TableHead sx={{ bgcolor: 'action.hover' }}>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 700 }}>{t('Company')}</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Arquitectura BD / Usuarios</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>{t('License Key')}</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>{t('Expiration')}</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>{t('Status')}</TableCell>
@@ -287,13 +313,13 @@ export default function AdminPage() {
                 <TableBody>
                   {tenantsLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary', fontWeight: 600 }}>
+                      <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary', fontWeight: 600 }}>
                         ⏳ Cargando empresas...
                       </TableCell>
                     </TableRow>
                   ) : tenantsError ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                      <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                         <Typography color="error" sx={{ fontWeight: 700, mb: 1.5 }}>
                           ⚠️ Error al consultar la lista de empresas. Puede que el servidor se esté reiniciando.
                         </Typography>
@@ -304,7 +330,7 @@ export default function AdminPage() {
                     </TableRow>
                   ) : tenants.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                      <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
                         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                           <BusinessIcon sx={{ fontSize: 48, color: 'text.disabled', opacity: 0.4 }} />
                           <Typography color="text.secondary" sx={{ fontWeight: 600 }}>No hay empresas registradas aún</Typography>
@@ -315,14 +341,40 @@ export default function AdminPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    tenants.map((tenant: any) => {
+                    tenants
+                      .filter((tenant: any) =>
+                        !tenantSearch ||
+                        (tenant.name || '').toLowerCase().includes(tenantSearch.toLowerCase()) ||
+                        (tenant.tax_id || '').toLowerCase().includes(tenantSearch.toLowerCase()) ||
+                        (tenant.license_key || '').toLowerCase().includes(tenantSearch.toLowerCase())
+                      )
+                      .map((tenant: any) => {
                       const tenantNameLower = (tenant.name || '').toLowerCase();
                       const isLifetime = tenant.id === 1 || tenantNameLower.includes('master') || tenantNameLower.includes('demo');
+                      const userCount = metrics?.users_per_tenant?.[String(tenant.id)] || 1;
+                      const isDedicatedDb = Boolean(tenant.custom_database_url);
                       return (
                         <TableRow key={tenant.id} hover>
                           <TableCell>
-                            <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{tenant.name || '—'}</Typography>
-                            <Typography variant="caption" color="text.secondary">{tenant.email || 'Sin email'}</Typography>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.95rem' }}>{tenant.name || '—'}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              RIF: {tenant.tax_id || 'N/A'} • {tenant.email || 'Sin email'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                              <Chip
+                                size="small"
+                                icon={<StorageIcon fontSize="small" />}
+                                label={isDedicatedDb ? '🏢 BD Dedicada VIP' : `⚡ Pool Único (tenant_${tenant.id})`}
+                                color={isDedicatedDb ? 'secondary' : 'info'}
+                                variant="outlined"
+                                sx={{ fontWeight: 800, fontSize: '0.7rem', height: 22 }}
+                              />
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                                👥 {userCount} usuario{userCount !== 1 ? 's' : ''} activo{userCount !== 1 ? 's' : ''}
+                              </Typography>
+                            </Box>
                           </TableCell>
                           <TableCell>
                             <Chip 
@@ -502,6 +554,99 @@ export default function AdminPage() {
         <ProposalGenerator onProvisionTenant={handleProvisionFromProposal} />
       )}
 
+      {tabValue === 3 && (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, mb: 0.5 }}>
+                🛡️ Bitácora Forense Global en Tiempo Real (Usuarios, Direcciones IP y Operaciones)
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Supervisa en vivo cada acción ejecutada en todas las empresas: quién lo hizo, desde qué dirección IP, navegador/dispositivo y qué operación realizó.
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <TextField
+                size="small"
+                placeholder="Buscar por usuario, IP, módulo o acción..."
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
+                sx={{ minWidth: 260 }}
+              />
+              <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetchAuditLogs()} sx={{ borderRadius: 2, fontWeight: 700 }}>
+                Refrescar
+              </Button>
+            </Box>
+          </Box>
+
+          <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+            <TableContainer>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: 'action.hover' }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 800 }}>Fecha / Hora</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Empresa (Tenant)</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Usuario</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Dirección IP</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Módulo</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Acción / Operación</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>HTTP</TableCell>
+                    <TableCell sx={{ fontWeight: 800 }}>Navegador / Sistema Operativo</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {securityAuditLogs
+                    .filter((l: any) =>
+                      !auditSearch ||
+                      (l.username || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+                      (l.ip_address || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+                      (l.module || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+                      (l.action || '').toLowerCase().includes(auditSearch.toLowerCase())
+                    )
+                    .map((log: any) => {
+                      const tName = tenants.find((t: any) => t.id === log.tenant_id)?.name || (log.tenant_id ? `Empresa #${log.tenant_id}` : 'Global');
+                      return (
+                        <TableRow key={log.id} hover>
+                          <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                            {new Date(log.created_at).toLocaleString('es-VE')}
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 700, fontSize: '0.8rem' }}>{tName}</TableCell>
+                          <TableCell sx={{ fontWeight: 800, color: 'primary.main' }}>{log.username}</TableCell>
+                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{log.ip_address}</TableCell>
+                          <TableCell>
+                            <Chip label={log.module} size="small" variant="outlined" sx={{ fontWeight: 800, fontSize: '0.7rem' }} />
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{log.action}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={log.status_code || 200}
+                              size="small"
+                              color={(log.status_code || 200) < 400 ? 'success' : 'error'}
+                              sx={{ fontWeight: 800, fontSize: '0.7rem' }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ fontSize: '0.72rem', color: 'text.secondary', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {log.user_agent}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {securityAuditLogs.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                        <Typography color="text.secondary" sx={{ fontWeight: 600 }}>
+                          Aún no hay eventos registrados en la bitácora forense global.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </Box>
+      )}
+
       {/* Create Tenant Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: 4 } } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>{t('Add New Client Company')}</DialogTitle>
@@ -583,6 +728,38 @@ export default function AdminPage() {
                 ))}
               </Select>
             </FormControl>
+
+            <Divider sx={{ my: 1 }}>Arquitectura de Base de Datos (Modo Híbrido)</Divider>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Modo de Base de Datos del Cliente</InputLabel>
+              <Select
+                label="Modo de Base de Datos del Cliente"
+                value={dbMode}
+                onChange={(e) => {
+                  const val = e.target.value as 'shared' | 'dedicated';
+                  setDbMode(val);
+                  if (val === 'shared') {
+                    setNewCompany({ ...newCompany, custom_database_url: '' });
+                  }
+                }}
+              >
+                <MenuItem value="shared">⚡ Pool Único Multi-Esquema (Estándar — Sin costo extra)</MenuItem>
+                <MenuItem value="dedicated">🏢 Base de Datos Dedicada VIP (Servidor / BD Exclusiva)</MenuItem>
+              </Select>
+            </FormControl>
+
+            {dbMode === 'dedicated' && (
+              <TextField
+                label="URL de Base de Datos PostgreSQL Dedicada"
+                placeholder="postgresql+asyncpg://usuario:clave@host:5432/bd_cliente"
+                fullWidth
+                size="small"
+                value={newCompany.custom_database_url}
+                onChange={(e) => setNewCompany({ ...newCompany, custom_database_url: e.target.value })}
+                helperText="El ERP creará todas las tablas automáticamente en esta base de datos exclusiva."
+              />
+            )}
 
             <Divider sx={{ my: 1 }}>Datos de Acceso Administrador</Divider>
 

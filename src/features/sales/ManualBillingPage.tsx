@@ -17,6 +17,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
+import { saveOfflineSale } from '../../utils/offlineQueue';
 import {
   type PriceTier,
   type EmissionMode,
@@ -170,6 +171,46 @@ export default function ManualBillingPage() {
       }
       setBudgetId('');
       queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+    onError: (_err: any, variables: any) => {
+      const saved = saveOfflineSale(variables, {
+        subtotal,
+        tax,
+        igtf,
+        total,
+        currency,
+      });
+      const selectedCust = customers.find((c: any) => c.id === customerId) || null;
+      const printableSale: PrintableSaleData = {
+        id: saved.local_id,
+        invoiceNumber: customInvoiceNumber || `OFF-${String(Date.now()).slice(-6)}`,
+        controlNumber: customControlNumber || `00-${String(Date.now()).slice(-8)}`,
+        createdAt: saved.created_at,
+        currency,
+        exchangeRate,
+        paymentMethod,
+        customer: selectedCust,
+        items: items.map((i: any) => ({
+          sku: i.sku,
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.unit_price * (1 - globalDiscount / 100),
+          discount: i.discount || 0,
+          taxExempt: Boolean(i.tax_exempt),
+          priceTier: i.price_tier || 1,
+        })),
+        subtotalUsd: subtotal,
+        taxUsd: tax,
+        igtfUsd: igtf,
+        totalUsd: total,
+      };
+      setLastEmittedSale(printableSale);
+      executeFiscalEmission(emissionMode, printableSale, tenant, thermalWidth);
+      setItems([]);
+      setCustomerId(null);
+      alert(
+        '⚡ FACTURA GUARDADA EN CONTINGENCIA OFFLINE\n\nNo hay conexión a internet en este momento, pero la factura fue impresa y guardada localmente de forma segura. Se enviará automáticamente a la Base de Datos apenas regrese el internet.'
+      );
     },
   });
 

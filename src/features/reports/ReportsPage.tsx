@@ -12,7 +12,8 @@ import {
   Search as SearchIcon,
   Download as DownloadIcon,
   Close as CloseIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  Security as SecurityIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -76,6 +77,16 @@ const REPORT_CATEGORIES = [
       { id: 'seniat_purchase_book', title: 'Libro de Compras Fiscal', description: 'Exportar Libro de Compras mensual con formato oficial exigido por el SENIAT Venezuela.' },
       { id: 'seniat_txt_withholding', title: 'Archivo TXT Retenciones IVA', description: 'Generar y descargar archivo TXT oficial para la declaración en el portal del SENIAT.' },
     ]
+  },
+  {
+    id: 'audit_movements',
+    title: 'Bitácora Universal y Seguridad (IP)',
+    icon: <SecurityIcon />,
+    color: '#0f172a',
+    reports: [
+      { id: 'all_system_movements', title: 'Todos los Movimientos del Sistema (Universal)', description: 'Historial completo en tiempo real de todas las operaciones (Ventas, Inventario, Compras, Tesorería, Contabilidad y Caja) con Usuario e IP.' },
+      { id: 'forensic_ip_audit', title: 'Auditoría Forense de Seguridad (Usuarios e IP)', description: 'Registro inmutable de inicios de sesión, creaciones, ediciones y anulaciones con Dirección IP real, Dispositivo/Navegador y Endpoint.' },
+    ]
   }
 ];
 
@@ -88,13 +99,14 @@ export default function ReportsPage() {
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [movementModuleFilter, setMovementModuleFilter] = useState<string>('ALL');
 
   // Extract user modules to dynamically hide categories
   const { user } = useAppStore();
   const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting,seniat';
 
   const allowedCategories = REPORT_CATEGORIES.filter(cat => {
-    if (user?.is_superuser) return true;
+    if (user?.is_superuser || cat.id === 'audit_movements' || cat.id === 'seniat') return true;
     return userModulesStr.includes(cat.id);
   });
 
@@ -109,8 +121,16 @@ export default function ReportsPage() {
 
   const { data: movements = [], isLoading: isLoadingMovements } = useQuery({
     queryKey: ['reports-movements'],
-    queryFn: async () => (await api.get('/movements/')).data,
-    enabled: viewerOpen && currentReport?.id === 'movements'
+    queryFn: async () => (await api.get('/movements/?limit=500')).data,
+    enabled: viewerOpen && (currentReport?.id === 'movements' || currentReport?.id === 'all_system_movements'),
+    refetchInterval: 10000,
+  });
+
+  const { data: forensicLogs = [], isLoading: isLoadingForensic } = useQuery({
+    queryKey: ['reports-forensic-audit'],
+    queryFn: async () => (await api.get('/movements/security-audit?limit=300')).data,
+    enabled: viewerOpen && currentReport?.id === 'forensic_ip_audit',
+    refetchInterval: 10000,
   });
 
   const { data: sales = [], isLoading: isLoadingSales } = useQuery({
@@ -190,7 +210,57 @@ export default function ReportsPage() {
       }
       return;
     }
-    alert('Exportando reporte a formato CSV...');
+
+    // Exportación CSV Universal para Movimientos y Auditoría Forense
+    let csvRows: string[][] = [];
+    let filename = `${currentReport?.id || 'reporte'}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+    if (currentReport?.id === 'movements' || currentReport?.id === 'all_system_movements') {
+      csvRows.push(['Fecha/Hora', 'Modulo', 'Operacion', 'Referencia', 'Producto', 'Cantidad', 'Monto', 'Moneda', 'Descripcion', 'Usuario', 'Direccion IP', 'Endpoint']);
+      movements.forEach((m: any) => {
+        csvRows.push([
+          new Date(m.created_at).toLocaleString('es-VE'),
+          m.module || '',
+          m.operation || '',
+          m.reference_code || '',
+          m.product_name || '',
+          String(m.quantity ?? ''),
+          String(m.amount ?? ''),
+          m.currency || '',
+          (m.description || '').replace(/;/g, ','),
+          m.user_name || 'Admin',
+          m.ip_address || 'Local',
+          m.endpoint || '',
+        ]);
+      });
+    } else if (currentReport?.id === 'forensic_ip_audit') {
+      csvRows.push(['Fecha/Hora', 'Usuario', 'Direccion IP', 'Modulo', 'Accion', 'Metodo HTTP', 'Ruta', 'Status HTTP', 'Navegador / Dispositivo']);
+      forensicLogs.forEach((l: any) => {
+        csvRows.push([
+          new Date(l.created_at).toLocaleString('es-VE'),
+          l.username || '',
+          l.ip_address || '',
+          l.module || '',
+          l.action || '',
+          l.http_method || '',
+          l.endpoint_path || '',
+          String(l.status_code ?? ''),
+          (l.user_agent || '').replace(/;/g, ','),
+        ]);
+      });
+    } else {
+      csvRows.push(['Reporte', currentReport?.title || 'General']);
+    }
+
+    const csvContent = '\uFEFF' + csvRows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8-sig;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
   };
 
   // Dynamic Content Render inside report viewer
@@ -289,14 +359,107 @@ export default function ReportsPage() {
       );
     }
 
-    // --- 3. MOVEMENT HISTORY REPORT ---
-    if (currentReport.id === 'movements') {
+    // --- 3. MOVEMENT HISTORY REPORT & ALL SYSTEM MOVEMENTS ---
+    if (currentReport.id === 'movements' || currentReport.id === 'all_system_movements') {
       if (isLoadingMovements) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
 
-      const filtered = movements.filter((m: any) => 
-        (m.product_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.operation || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.user_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+      const filtered = movements.filter((m: any) => {
+        const matchesModule = movementModuleFilter === 'ALL' || (m.module || '').toUpperCase() === movementModuleFilter;
+        const matchesSearch =
+          (m.product_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (m.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (m.operation || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (m.module || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (m.user_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (m.ip_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (m.reference_code || '').toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesModule && matchesSearch;
+      });
+
+      return (
+        <Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2.5 }}>
+            {['ALL', 'SALES', 'INVENTORY', 'PURCHASES', 'TREASURY', 'ACCOUNTING', 'CASH'].map((modKey) => (
+              <Chip
+                key={modKey}
+                label={modKey === 'ALL' ? `Todos (${movements.length})` : modKey}
+                color={movementModuleFilter === modKey ? 'primary' : 'default'}
+                variant={movementModuleFilter === modKey ? 'filled' : 'outlined'}
+                onClick={() => setMovementModuleFilter(modKey)}
+                sx={{ fontWeight: 800, cursor: 'pointer' }}
+              />
+            ))}
+          </Box>
+
+          <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <Table size="small">
+              <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>Fecha / Hora</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Módulo</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Operación</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Descripción Completa / Producto</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="right">Cant. / Monto</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Usuario</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>IP Origen</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((m: any) => (
+                  <TableRow key={m.id} hover>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{new Date(m.created_at).toLocaleString('es-VE')}</TableCell>
+                    <TableCell>
+                      <Chip label={m.module} size="small" variant="outlined" sx={{ fontWeight: 800, fontSize: '0.7rem' }} />
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={m.operation} 
+                        size="small" 
+                        color={m.operation === 'CHARGE' || m.operation === 'SALE' ? 'success' : m.operation === 'DISCHARGE' ? 'error' : 'primary'} 
+                        sx={{ fontWeight: 700, borderRadius: '6px', fontSize: '0.7rem' }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600, fontSize: '0.82rem' }}>
+                      {m.description || m.product_name || 'Operación registrada'}
+                      {m.reference_code && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontFamily: 'monospace' }}>
+                          Ref: {m.reference_code} {m.warehouse_name ? `| Almacén: ${m.warehouse_name}` : ''}
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 800 }}>
+                      {m.amount ? `${m.currency || '$'} ${Number(m.amount).toFixed(2)}` : m.quantity ? `${m.quantity} ${m.unit || 'und'}` : '—'}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{m.user_name || 'Admin'}</TableCell>
+                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'text.secondary' }}>
+                      {m.ip_address || 'Local'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                      No se encontraron movimientos que coincidan con el filtro seleccionado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      );
+    }
+
+    // --- 3B. FORENSIC SECURITY & IP AUDIT REPORT ---
+    if (currentReport.id === 'forensic_ip_audit') {
+      if (isLoadingForensic) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+
+      const filteredLogs = forensicLogs.filter((l: any) =>
+        (l.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.ip_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.module || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.action || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.endpoint_path || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
 
       return (
@@ -305,35 +468,39 @@ export default function ReportsPage() {
             <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Fecha / Hora</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Operación</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Producto</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">Cantidad</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Almacén</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Usuario</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Dirección IP</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Módulo</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Acción Ejecutada</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Estado HTTP</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Dispositivo / Navegador</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filtered.map((m: any) => (
-                <TableRow key={m.id} hover>
-                  <TableCell>{new Date(m.created_at).toLocaleString()}</TableCell>
+              {filteredLogs.map((l: any) => (
+                <TableRow key={l.id} hover>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{new Date(l.created_at).toLocaleString('es-VE')}</TableCell>
+                  <TableCell sx={{ fontWeight: 800, color: 'primary.main' }}>{l.username}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{l.ip_address}</TableCell>
+                  <TableCell><Chip label={l.module} size="small" sx={{ fontWeight: 800, fontSize: '0.7rem' }} /></TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{l.action}</TableCell>
                   <TableCell>
-                    <Chip 
-                      label={m.operation} 
-                      size="small" 
-                      color={m.operation === 'CHARGE' ? 'success' : m.operation === 'DISCHARGE' ? 'error' : 'primary'} 
-                      sx={{ fontWeight: 700, borderRadius: '6px' }}
+                    <Chip
+                      label={l.status_code || 200}
+                      size="small"
+                      color={(l.status_code || 200) < 400 ? 'success' : 'error'}
+                      sx={{ fontWeight: 800, fontSize: '0.7rem' }}
                     />
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{m.product_name || 'N/A'}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>{m.quantity}</TableCell>
-                  <TableCell>{m.warehouse_name || 'General'}</TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{m.user_name || 'Admin'}</TableCell>
+                  <TableCell sx={{ fontSize: '0.72rem', color: 'text.secondary', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {l.user_agent}
+                  </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {filteredLogs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    No se encontraron movimientos que coincidan con la búsqueda.
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    No se encontraron registros forenses de seguridad.
                   </TableCell>
                 </TableRow>
               )}

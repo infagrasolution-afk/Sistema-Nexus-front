@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { 
   Box, Typography, Grid, Paper, Dialog, DialogTitle, 
-  DialogContent, DialogActions, Button, Fade, Grow, Chip
+  DialogContent, DialogActions, Button, Fade, Grow, Chip,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
 import { 
   Inventory, PointOfSale, People, Settings, Assessment, LocalShipping, 
@@ -118,11 +119,27 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, tenant, hasModule } = useAppStore();
   const [openPosModal, setOpenPosModal] = useState(false);
+  const [livePeriod, setLivePeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
 
   const { data: alerts = [] } = useQuery({
     queryKey: ['wms-alerts'],
     queryFn: async () => (await api.get('/inventory/alerts')).data,
-    enabled: !!user
+    enabled: !!user,
+    refetchInterval: 15000,
+  });
+
+  const { data: summary } = useQuery({
+    queryKey: ['dashboard-live-summary', livePeriod],
+    queryFn: async () => (await api.get(`/dashboard/summary?period=${livePeriod}`)).data,
+    enabled: !!user,
+    refetchInterval: 10000, // En vivo cada 10s
+  });
+
+  const { data: liveMovements = [] } = useQuery({
+    queryKey: ['dashboard-live-movements'],
+    queryFn: async () => (await api.get('/movements/?limit=8')).data,
+    enabled: !!user,
+    refetchInterval: 10000, // En vivo cada 10s
   });
 
   // Módulos visibles en el Dashboard según la licencia activa del tenant (o todos si es superusuario)
@@ -241,7 +258,7 @@ export default function DashboardPage() {
       {alerts.length > 0 && (
         <Fade in timeout={800}>
           <Box sx={{ 
-            mb: 5, 
+            mb: 4, 
             display: 'flex', 
             gap: 2, 
             overflowX: 'auto', 
@@ -278,6 +295,170 @@ export default function DashboardPage() {
           </Box>
         </Fade>
       )}
+
+      {/* ── MONITOR EJECUTIVO EN VIVO (VENTAS Y MOVIMIENTOS EN TIEMPO REAL) ── */}
+      <Fade in timeout={700}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2.5, sm: 3.5 },
+            mb: 4.5,
+            borderRadius: '24px',
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.55)' : 'rgba(255, 255, 255, 0.88)'),
+            backdropFilter: 'blur(16px)',
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
+                sx={{
+                  width: 11,
+                  height: 11,
+                  borderRadius: '50%',
+                  bgcolor: '#10b981',
+                  boxShadow: '0 0 12px #10b981',
+                }}
+              />
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+                  Monitor Ejecutivo en Vivo — {tenant?.name || 'Mi Empresa'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Actualización automática en tiempo real de ventas, cobranzas, inventario y auditoría por usuario/IP
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={livePeriod}
+                onChange={(_, val) => val && setLivePeriod(val)}
+              >
+                <ToggleButton value="today" sx={{ fontWeight: 700, fontSize: '0.75rem', px: 1.5 }}>Hoy</ToggleButton>
+                <ToggleButton value="week" sx={{ fontWeight: 700, fontSize: '0.75rem', px: 1.5 }}>7 Días</ToggleButton>
+                <ToggleButton value="month" sx={{ fontWeight: 700, fontSize: '0.75rem', px: 1.5 }}>Mes</ToggleButton>
+                <ToggleButton value="all" sx={{ fontWeight: 700, fontSize: '0.75rem', px: 1.5 }}>Histórico</ToggleButton>
+              </ToggleButtonGroup>
+
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => navigate('/reports')}
+                startIcon={<Assessment fontSize="small" />}
+                sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none' }}
+              >
+                Ver Todos los Reportes y Movimientos
+              </Button>
+            </Box>
+          </Box>
+
+          {/* KPIs en Vivo */}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper elevation={0} sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#059669', textTransform: 'uppercase' }}>
+                  Ventas Emitidas ({summary?.total_orders || 0} Facturas)
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: '#047857', mt: 0.5 }}>
+                  ${Number(summary?.total_sales || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper elevation={0} sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#2563eb', textTransform: 'uppercase' }}>
+                  Cuentas por Cobrar (CxC)
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: '#1d4ed8', mt: 0.5 }}>
+                  ${Number(summary?.ar_open || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper elevation={0} sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#d97706', textTransform: 'uppercase' }}>
+                  Cuentas por Pagar (CxP)
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: '#b45309', mt: 0.5 }}>
+                  ${Number(summary?.ap_open || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper elevation={0} sx={{ p: 2, borderRadius: '16px', bgcolor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.2)' }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase' }}>
+                  Catálogo Activo / Compras
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 900, color: '#6d28d9', mt: 0.5 }}>
+                  {summary?.active_products || 0} Ítems | ${Number(summary?.total_purchases || 0).toFixed(2)}
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Feed de Movimientos en Vivo */}
+          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TrendingUp fontSize="small" color="primary" /> Últimos Movimientos y Operaciones en Tiempo Real
+          </Typography>
+          <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '14px', maxHeight: 250 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Fecha / Hora</TableCell>
+                  <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Módulo</TableCell>
+                  <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Operación</TableCell>
+                  <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Descripción del Movimiento</TableCell>
+                  <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }} align="right">Monto / Cant.</TableCell>
+                  <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>Usuario</TableCell>
+                  <TableCell sx={{ fontWeight: 800, fontSize: '0.75rem' }}>IP Origen</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {liveMovements.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Aún no hay movimientos recientes. Las ventas, compras y ajustes aparecerán aquí en vivo.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  liveMovements.map((m: any) => (
+                    <TableRow key={m.id} hover>
+                      <TableCell sx={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                        {new Date(m.created_at).toLocaleString('es-VE')}
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={m.module} size="small" variant="outlined" sx={{ fontWeight: 800, fontSize: '0.68rem', height: 20 }} />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={m.operation}
+                          size="small"
+                          color={m.operation === 'SALE' || m.operation === 'CHARGE' ? 'success' : m.operation === 'DISCHARGE' ? 'error' : 'primary'}
+                          sx={{ fontWeight: 800, fontSize: '0.68rem', height: 20 }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.78rem', fontWeight: 600 }}>{m.description}</TableCell>
+                      <TableCell align="right" sx={{ fontSize: '0.78rem', fontWeight: 800 }}>
+                        {m.amount ? `$${Number(m.amount).toFixed(2)}` : m.quantity ? `${m.quantity} ${m.unit || 'und'}` : '—'}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: '0.75rem', fontWeight: 700 }}>{m.user_name || 'Admin'}</TableCell>
+                      <TableCell sx={{ fontSize: '0.72rem', fontFamily: 'monospace', color: 'text.secondary' }}>
+                        {m.ip_address || 'Local'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </Fade>
 
       <Grid container spacing={{ xs: 2.5, sm: 3.5 }} sx={{ justifyContent: 'center' }}>
         {allowedModules.map((mod: any, index: number) => {

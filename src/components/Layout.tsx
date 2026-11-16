@@ -14,13 +14,17 @@ import {
   LightMode as LightModeIcon,
   KeyboardArrowDown as ArrowDownIcon,
   RecordVoiceOver as VoiceAgentIcon,
+  CloudDone as OnlineIcon,
+  CloudOff as OfflineIcon,
+  Sync as SyncIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axiosConfig';
 import { useAppStore } from '../store/useAppStore';
 import SystemWizard from './SystemWizard';
+import { getTotalPendingOfflineCount, syncOfflineSales } from '../utils/offlineQueue';
 
 function Clock() {
   const [time, setTime] = useState(new Date());
@@ -56,8 +60,55 @@ export default function Layout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [pendingOfflineCount, setPendingOfflineCount] = useState<number>(getTotalPendingOfflineCount());
+  const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
+
+  const triggerGlobalOfflineSync = async () => {
+    const count = getTotalPendingOfflineCount();
+    if (count === 0 || !navigator.onLine) return;
+    setIsSyncingOffline(true);
+    try {
+      const { synced } = await syncOfflineSales(api);
+      setPendingOfflineCount(getTotalPendingOfflineCount());
+      if (synced > 0) {
+        queryClient.invalidateQueries();
+      }
+    } finally {
+      setIsSyncingOffline(false);
+    }
+  };
+
+  useEffect(() => {
+    const refreshQueueCount = () => setPendingOfflineCount(getTotalPendingOfflineCount());
+    const handleOnline = () => {
+      setIsOnline(true);
+      triggerGlobalOfflineSync();
+    };
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('apex-offline-queue-updated', refreshQueueCount);
+
+    const interval = setInterval(() => {
+      setIsOnline(navigator.onLine);
+      refreshQueueCount();
+      if (navigator.onLine && getTotalPendingOfflineCount() > 0) {
+        triggerGlobalOfflineSync();
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('apex-offline-queue-updated', refreshQueueCount);
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = () => {
     setAnchorEl(null);
@@ -350,6 +401,36 @@ export default function Layout() {
             )}
 
             {/* Theme Toggle */}
+            <Chip
+              size="small"
+              icon={
+                isSyncingOffline ? (
+                  <SyncIcon fontSize="small" />
+                ) : isOnline ? (
+                  <OnlineIcon fontSize="small" />
+                ) : (
+                  <OfflineIcon fontSize="small" />
+                )
+              }
+              label={
+                isSyncingOffline
+                  ? `Sincronizando (${pendingOfflineCount})...`
+                  : !isOnline
+                    ? `Offline (${pendingOfflineCount} en cola)`
+                    : pendingOfflineCount > 0
+                      ? `Sincronizar (${pendingOfflineCount})`
+                      : 'En Línea'
+              }
+              color={!isOnline || pendingOfflineCount > 0 ? 'warning' : 'success'}
+              onClick={pendingOfflineCount > 0 ? triggerGlobalOfflineSync : undefined}
+              sx={{
+                fontWeight: 800,
+                fontSize: '0.72rem',
+                borderRadius: '8px',
+                cursor: pendingOfflineCount > 0 ? 'pointer' : 'default',
+              }}
+            />
+
             <Tooltip title="Iniciar Agente Virtual de Inducción con Audio" arrow>
               <Button
                 size="small"
