@@ -17,12 +17,23 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { QRCodeCanvas } from 'qrcode.react';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
 
 export default function SettingsPage() {
   const { t } = useTranslation();
   const [agentStatus, setAgentStatus] = useState<'connected' | 'disconnected' | 'checking'>('disconnected');
+  const [pwdForm, setPwdForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
+  const [pwdFeedback, setPwdFeedback] = useState<{ text: string; severity: 'success' | 'error' } | null>(null);
+  const [totpSetup, setTotpSetup] = useState<{ secret: string; otpauth_uri: string } | null>(null);
+  const [totpCodeInput, setTotpCodeInput] = useState('');
+  const [totpFeedback, setTotpFeedback] = useState<{ text: string; severity: 'success' | 'error' } | null>(null);
+
+  const { data: secStatus, refetch: refetchSecStatus } = useQuery({
+    queryKey: ['auth-security-status'],
+    queryFn: async () => (await api.get('/auth/security-status')).data,
+  });
 
   useEffect(() => {
     let intervalId: any;
@@ -666,6 +677,221 @@ export default function SettingsPage() {
                 Guardar Configuración API Digital
               </Button>
             </Box>
+          </Paper>
+        </Grid>
+
+        {/* Card 7: Seguridad de Cuenta (Contraseña y 2FA Google Authenticator) */}
+        <Grid size={12}>
+          <Paper sx={{ p: 4, borderRadius: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ bgcolor: 'error.main', width: 42, height: 42 }}>
+                  <SecurityIcon sx={{ fontSize: 22 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                    Seguridad Blindada de Cuenta (Contraseña y 2FA Google Authenticator)
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                    Protege tu acceso con una clave fuerte y verificación en 2 pasos (TOTP)
+                  </Typography>
+                </Box>
+              </Box>
+              {secStatus?.is_superuser && (
+                <Chip
+                  size="small"
+                  color={secStatus?.secret_key_configured ? 'success' : 'warning'}
+                  label={
+                    secStatus?.secret_key_configured
+                      ? '🔐 SECRET_KEY Segura Configurada'
+                      : '⚠️ Configura SECRET_KEY (>=32 chars) en Render'
+                  }
+                  sx={{ fontWeight: 800 }}
+                />
+              )}
+            </Box>
+
+            <Grid container spacing={4}>
+              {/* Cambiar Contraseña */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2 }}>
+                  1. Cambiar Mi Contraseña
+                </Typography>
+                {pwdFeedback && (
+                  <Alert severity={pwdFeedback.severity} sx={{ mb: 2, fontWeight: 600 }}>
+                    {pwdFeedback.text}
+                  </Alert>
+                )}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <TextField
+                    size="small"
+                    type="password"
+                    label="Contraseña Actual"
+                    value={pwdForm.current_password}
+                    onChange={(e) => setPwdForm({ ...pwdForm, current_password: e.target.value })}
+                  />
+                  <TextField
+                    size="small"
+                    type="password"
+                    label="Nueva Contraseña (mín. 8 caracteres)"
+                    value={pwdForm.new_password}
+                    onChange={(e) => setPwdForm({ ...pwdForm, new_password: e.target.value })}
+                  />
+                  <TextField
+                    size="small"
+                    type="password"
+                    label="Confirmar Nueva Contraseña"
+                    value={pwdForm.confirm_password}
+                    onChange={(e) => setPwdForm({ ...pwdForm, confirm_password: e.target.value })}
+                  />
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={async () => {
+                      setPwdFeedback(null);
+                      if (pwdForm.new_password.length < 8) {
+                        setPwdFeedback({ text: 'La nueva contraseña debe tener al menos 8 caracteres.', severity: 'error' });
+                        return;
+                      }
+                      if (pwdForm.new_password !== pwdForm.confirm_password) {
+                        setPwdFeedback({ text: 'Las contraseñas nuevas no coinciden.', severity: 'error' });
+                        return;
+                      }
+                      try {
+                        const res = await api.post('/auth/change-password', {
+                          current_password: pwdForm.current_password,
+                          new_password: pwdForm.new_password,
+                        });
+                        setPwdFeedback({ text: res.data?.detail || 'Contraseña actualizada.', severity: 'success' });
+                        setPwdForm({ current_password: '', new_password: '', confirm_password: '' });
+                      } catch (err: any) {
+                        setPwdFeedback({ text: err.response?.data?.detail || 'Error al actualizar contraseña.', severity: 'error' });
+                      }
+                    }}
+                    sx={{ borderRadius: '12px', fontWeight: 800, alignSelf: 'flex-start', px: 3 }}
+                  >
+                    Actualizar Contraseña
+                  </Button>
+                </Box>
+              </Grid>
+
+              {/* 2FA Google Authenticator */}
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                    2. Autenticación de 2 Factores (Google Authenticator)
+                  </Typography>
+                  <Chip
+                    size="small"
+                    color={secStatus?.totp_enabled ? 'success' : 'default'}
+                    label={secStatus?.totp_enabled ? '✅ 2FA Activo' : 'Desactivado'}
+                    sx={{ fontWeight: 800 }}
+                  />
+                </Box>
+                {totpFeedback && (
+                  <Alert severity={totpFeedback.severity} sx={{ mb: 2, fontWeight: 600 }}>
+                    {totpFeedback.text}
+                  </Alert>
+                )}
+
+                {!secStatus?.totp_enabled ? (
+                  !totpSetup ? (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Escanea un código QR con <strong>Google Authenticator</strong> o <strong>Authy</strong> para pedir un código de 6 dígitos cada vez que inicies sesión.
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        startIcon={<SecurityIcon />}
+                        onClick={async () => {
+                          setTotpFeedback(null);
+                          try {
+                            const res = await api.post('/auth/2fa/setup');
+                            setTotpSetup(res.data);
+                          } catch (err: any) {
+                            setTotpFeedback({ text: err.response?.data?.detail || 'Error generando QR 2FA.', severity: 'error' });
+                          }
+                        }}
+                        sx={{ borderRadius: '12px', fontWeight: 800 }}
+                      >
+                        Activar 2FA (Generar QR)
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, alignItems: 'flex-start' }}>
+                      <Box sx={{ p: 1.5, bgcolor: '#fff', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                        <QRCodeCanvas value={totpSetup.otpauth_uri} size={160} />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Clave manual: <strong style={{ fontFamily: 'monospace' }}>{totpSetup.secret}</strong>
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: '100%', maxWidth: 340 }}>
+                        <TextField
+                          size="small"
+                          label="Código de 6 dígitos"
+                          value={totpCodeInput}
+                          onChange={(e) => setTotpCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          fullWidth
+                        />
+                        <Button
+                          variant="contained"
+                          color="success"
+                          onClick={async () => {
+                            setTotpFeedback(null);
+                            try {
+                              const res = await api.post('/auth/2fa/enable', { code: totpCodeInput });
+                              setTotpFeedback({ text: res.data?.detail || '2FA activado.', severity: 'success' });
+                              setTotpSetup(null);
+                              setTotpCodeInput('');
+                              refetchSecStatus();
+                            } catch (err: any) {
+                              setTotpFeedback({ text: err.response?.data?.detail || 'Código incorrecto.', severity: 'error' });
+                            }
+                          }}
+                          sx={{ borderRadius: '10px', fontWeight: 800, whiteSpace: 'nowrap' }}
+                        >
+                          Confirmar 2FA
+                        </Button>
+                      </Box>
+                    </Box>
+                  )
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, alignItems: 'flex-start' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Tu cuenta exige el código de 6 dígitos de Google Authenticator al iniciar sesión.
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', width: '100%', maxWidth: 360 }}>
+                      <TextField
+                        size="small"
+                        label="Código 2FA actual para desactivar"
+                        value={totpCodeInput}
+                        onChange={(e) => setTotpCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        fullWidth
+                      />
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={async () => {
+                          setTotpFeedback(null);
+                          try {
+                            const res = await api.post('/auth/2fa/disable', { code: totpCodeInput });
+                            setTotpFeedback({ text: res.data?.detail || '2FA desactivado.', severity: 'success' });
+                            setTotpCodeInput('');
+                            refetchSecStatus();
+                          } catch (err: any) {
+                            setTotpFeedback({ text: err.response?.data?.detail || 'Código inválido.', severity: 'error' });
+                          }
+                        }}
+                        sx={{ borderRadius: '10px', fontWeight: 800, whiteSpace: 'nowrap' }}
+                      >
+                        Desactivar 2FA
+                      </Button>
+                    </Box>
+                  </Box>
+                )}
+              </Grid>
+            </Grid>
           </Paper>
         </Grid>
       </Grid>

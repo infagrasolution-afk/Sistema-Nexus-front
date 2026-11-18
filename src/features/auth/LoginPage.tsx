@@ -22,6 +22,8 @@ import api from '../../api/axiosConfig';
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [requires2FA, setRequires2FA] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<any>(null);
   const [sessionClosedAlert, setSessionClosedAlert] = useState(false);
@@ -52,7 +54,11 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { username, password });
+      const payload: any = { username, password };
+      if (requires2FA && totpCode.trim()) {
+        payload.totp_code = totpCode.trim();
+      }
+      const response = await api.post('/auth/login', payload);
       const { access_token, refresh_token, tenant_id } = response.data;
 
       localStorage.setItem('token', access_token);
@@ -67,7 +73,15 @@ export default function LoginPage() {
       navigate('/dashboard');
     } catch (err: any) {
       const detail = err.response?.data?.detail;
-      setLoginError(detail || 'Error de inicio de sesión. Verifique sus credenciales.');
+      if (detail && typeof detail === 'object' && detail.type === '2fa_required') {
+        setRequires2FA(true);
+        setLoginError(detail.message || 'Ingresa el código de 6 dígitos de tu Google Authenticator.');
+      } else if (detail && typeof detail === 'object' && detail.type === 'invalid_2fa') {
+        setRequires2FA(true);
+        setLoginError(detail.message || 'Código 2FA inválido o expirado.');
+      } else {
+        setLoginError(detail || 'Error de inicio de sesión. Verifique sus credenciales.');
+      }
     } finally {
       setLoading(false);
     }
@@ -532,6 +546,52 @@ export default function LoginPage() {
                   }}
                 />
               </Box>
+
+              {requires2FA && (
+                <Fade in>
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="caption" sx={{
+                      fontWeight: 700,
+                      color: '#2563eb',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      display: 'block',
+                      mb: 1,
+                      ml: 0.5
+                    }}>
+                      Código Google Authenticator (2FA)
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      placeholder="000000"
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      autoFocus
+                      slotProps={{
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SecurityIcon sx={{ color: '#2563eb', fontSize: 20 }} />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '16px',
+                          bgcolor: '#eff6ff',
+                        },
+                        '& input': {
+                          fontWeight: 800,
+                          letterSpacing: '6px',
+                          textAlign: 'center',
+                          fontSize: '1.1rem',
+                        },
+                      }}
+                    />
+                  </Box>
+                </Fade>
+              )}
 
               <Button
                 type="submit"
