@@ -19,10 +19,11 @@ import { useTranslation } from 'react-i18next';
 import api from '../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
+import { formatMovementModule, formatMovementOperation } from '../../utils/movementLabels';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, tenant } = useAppStore();
   const [livePeriod, setLivePeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [logoError, setLogoError] = useState(false);
@@ -307,11 +308,11 @@ export default function DashboardPage() {
                           {new Date(m.created_at).toLocaleString('es-VE')}
                         </TableCell>
                         <TableCell>
-                          <Chip label={m.module} size="small" variant="outlined" sx={{ fontWeight: 800, fontSize: '0.66rem', height: 20 }} />
+                          <Chip label={formatMovementModule(m.module, i18n.language)} size="small" variant="outlined" sx={{ fontWeight: 800, fontSize: '0.66rem', height: 20 }} />
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={m.operation}
+                            label={formatMovementOperation(m.operation, i18n.language)}
                             size="small"
                             color={m.operation === 'SALE' || m.operation === 'CHARGE' ? 'success' : m.operation === 'DISCHARGE' ? 'error' : 'primary'}
                             sx={{ fontWeight: 800, fontSize: '0.66rem', height: 20 }}
