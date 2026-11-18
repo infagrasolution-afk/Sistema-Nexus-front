@@ -13,7 +13,9 @@ import {
   Download as DownloadIcon,
   Close as CloseIcon,
   Warning as WarningIcon,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  AccountBalanceWallet as TreasuryIcon,
+  Badge as PayrollIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -30,6 +32,7 @@ const REPORT_CATEGORIES = [
     reports: [
       { id: 'daily_sales', title: 'Ventas del Día', description: 'Resumen de todas las ventas realizadas hoy.' },
       { id: 'sales_by_item', title: 'Ventas por Producto', description: 'Análisis de cuáles son tus productos más vendidos.' },
+      { id: 'sales_by_customer', title: 'Ventas por Cliente (Ranking)', description: 'Ranking de facturación acumulada y transacciones por cada cliente.' },
       { id: 'z_report', title: 'Corte Z / Arqueo', description: 'Reporte fiscal de cierre de caja.' },
       { id: 'user_performance', title: 'Rendimiento de Cajeros', description: 'Ventas totales segmentadas por cada usuario.' },
     ]
@@ -54,6 +57,7 @@ const REPORT_CATEGORIES = [
     reports: [
       { id: 'p_and_l', title: 'Estado de Resultados (P&L)', description: 'Ingresos vs Gastos para ver tu utilidad.' },
       { id: 'balance_sheet', title: 'Balance General', description: 'Activos, Pasivos y Patrimonio de la empresa.' },
+      { id: 'trial_balance', title: 'Balance de Comprobación', description: 'Comprobación de saldos deudores y acreedores por cuenta contable.' },
       { id: 'ledger', title: 'Libro Mayor', description: 'Detalle de movimientos por cuenta contable.' },
       { id: 'tax_report', title: 'Reporte de Impuestos (IVA)', description: 'Resumen de impuestos para declaraciones.' },
     ]
@@ -87,6 +91,26 @@ const REPORT_CATEGORIES = [
     reports: [
       { id: 'all_system_movements', title: 'Todos los Movimientos del Sistema (Universal)', description: 'Historial completo en tiempo real de todas las operaciones (Ventas, Inventario, Compras, Tesorería, Contabilidad y Caja) con Usuario e IP.' },
       { id: 'forensic_ip_audit', title: 'Auditoría Forense de Seguridad (Usuarios e IP)', description: 'Registro inmutable de inicios de sesión, creaciones, ediciones y anulaciones con Dirección IP real, Dispositivo/Navegador y Endpoint.' },
+    ]
+  },
+  {
+    id: 'treasury',
+    title: 'Tesorería, Bancos y CxC/CxP',
+    icon: <TreasuryIcon />,
+    color: '#0891b2',
+    reports: [
+      { id: 'ar_aging', title: 'Cuentas por Cobrar y Antigüedad (CxC)', description: 'Saldos pendientes por cobrar a clientes, abonos y vencimientos.' },
+      { id: 'ap_aging', title: 'Cuentas por Pagar a Proveedores (CxP)', description: 'Obligaciones pendientes con proveedores y fechas de vencimiento.' },
+      { id: 'cash_flow_banks', title: 'Disponibilidad en Cuentas Bancarias', description: 'Saldos actuales en Bolívares (VES) y Divisas (USD) por banco.' },
+    ]
+  },
+  {
+    id: 'payroll',
+    title: 'Nómina y RRHH (LOTTT)',
+    icon: <PayrollIcon />,
+    color: '#db2777',
+    reports: [
+      { id: 'payroll_summary', title: 'Resumen de Nómina y Retenciones de Ley', description: 'Totales devengados, deducciones (IVSS, RPE, FAOV) y neto pagado por período.' },
     ]
   }
 ];
@@ -152,7 +176,7 @@ export default function ReportsPage() {
   const userModulesStr = user?.modules || 'sales,inventory,purchases,accounting,seniat';
 
   const allowedCategories = REPORT_CATEGORIES.filter(cat => {
-    if (user?.is_superuser || cat.id === 'audit_movements' || cat.id === 'seniat') return true;
+    if (user?.is_superuser || cat.id === 'audit_movements' || cat.id === 'seniat' || cat.id === 'treasury' || cat.id === 'payroll') return true;
     return userModulesStr.includes(cat.id);
   });
 
@@ -201,6 +225,30 @@ export default function ReportsPage() {
     queryKey: ['reports-pnl'],
     queryFn: async () => (await api.get('/accounting/pnl')).data,
     enabled: viewerOpen && currentReport?.id === 'p_and_l'
+  });
+
+  const { data: arList = [], isLoading: isLoadingAr } = useQuery({
+    queryKey: ['reports-ar'],
+    queryFn: async () => (await api.get('/treasury/ar')).data,
+    enabled: viewerOpen && currentReport?.id === 'ar_aging',
+  });
+
+  const { data: apList = [], isLoading: isLoadingAp } = useQuery({
+    queryKey: ['reports-ap'],
+    queryFn: async () => (await api.get('/treasury/ap')).data,
+    enabled: viewerOpen && currentReport?.id === 'ap_aging',
+  });
+
+  const { data: bankAccounts = [], isLoading: isLoadingBanks } = useQuery({
+    queryKey: ['reports-banks'],
+    queryFn: async () => (await api.get('/treasury/bank-accounts')).data,
+    enabled: viewerOpen && currentReport?.id === 'cash_flow_banks',
+  });
+
+  const { data: payrollPeriods = [], isLoading: isLoadingPayroll } = useQuery({
+    queryKey: ['reports-payroll-periods'],
+    queryFn: async () => (await api.get('/payroll/periods')).data,
+    enabled: viewerOpen && currentReport?.id === 'payroll_summary',
   });
 
   const handleOpenReport = (reportId: string, title: string) => {
@@ -1152,6 +1200,190 @@ export default function ReportsPage() {
     }
 
     // --- FALLBACK MOCK DATA FOR OTHER MODULES RENDER ---
+    if (currentReport.id === 'sales_by_customer') {
+      if (isLoadingSales) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+      const grouped: Record<string, { name: string; count: number; total: number }> = {};
+      sales.filter((s: any) => matchesDateRange(s.created_at)).forEach((s: any) => {
+        const cname = s.customer?.name || 'Consumidor Final';
+        if (!grouped[cname]) grouped[cname] = { name: cname, count: 0, total: 0 };
+        grouped[cname].count += 1;
+        grouped[cname].total += Number(s.total || 0);
+      });
+      const rows = Object.values(grouped)
+        .filter((r) => r.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => b.total - a.total);
+      return (
+        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Cliente</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Facturas</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Total Facturado</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((r, i) => (
+                <TableRow key={i} hover>
+                  <TableCell sx={{ fontWeight: 700 }}>{r.name}</TableCell>
+                  <TableCell align="right">{r.count}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800, color: 'success.main' }}>${r.total.toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+              {rows.length === 0 && (
+                <TableRow><TableCell colSpan={3} align="center" sx={{ py: 4 }}>No hay ventas en este rango.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+
+    if (currentReport.id === 'trial_balance') {
+      if (isLoadingAccounts) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+      const rows = accounts.filter((a: any) =>
+        a.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.code.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return (
+        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Cuenta Contable</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Tipo</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Saldo Deudor</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Saldo Acreedor</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((a: any) => {
+                const isDebit = ['Activo', 'Gasto', 'Costo'].includes(a.type);
+                const bal = Number(a.balance || 0);
+                return (
+                  <TableRow key={a.id} hover>
+                    <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{a.code}</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{a.name}</TableCell>
+                    <TableCell>{a.type}</TableCell>
+                    <TableCell align="right">{isDebit ? `$${bal.toFixed(2)}` : '—'}</TableCell>
+                    <TableCell align="right">{!isDebit ? `$${bal.toFixed(2)}` : '—'}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+
+    if (currentReport.id === 'ar_aging' || currentReport.id === 'ap_aging') {
+      const isAr = currentReport.id === 'ar_aging';
+      if (isAr ? isLoadingAr : isLoadingAp) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+      const list = (isAr ? arList : apList).filter((item: any) =>
+        matchesDateRange(item.created_at || item.due_date) &&
+        ((item.customer?.name || item.supplier?.name || item.notes || '').toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+      return (
+        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>{isAr ? 'Cliente' : 'Proveedor'}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Vencimiento</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Monto Original</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Saldo Pendiente</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {list.map((row: any) => (
+                <TableRow key={row.id} hover>
+                  <TableCell sx={{ fontWeight: 700 }}>{row.customer?.name || row.supplier?.name || `Registro #${row.id}`}</TableCell>
+                  <TableCell>{row.due_date ? new Date(row.due_date).toLocaleDateString('es-VE') : '—'}</TableCell>
+                  <TableCell><Chip size="small" label={row.status} color={row.status === 'PAID' ? 'success' : 'warning'} /></TableCell>
+                  <TableCell align="right">${Number(row.total_amount || 0).toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800, color: 'error.main' }}>${Number(row.remaining_amount || 0).toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+              {list.length === 0 && (
+                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}>No hay registros en este rango.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+
+    if (currentReport.id === 'cash_flow_banks') {
+      if (isLoadingBanks) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+      const rows = bankAccounts.filter((b: any) =>
+        (b.bank_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (b.account_number || '').toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return (
+        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Banco</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Cuenta</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Moneda</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Saldo Disponible</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((b: any) => (
+                <TableRow key={b.id} hover>
+                  <TableCell sx={{ fontWeight: 700 }}>{b.bank_name}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace' }}>{b.account_number}</TableCell>
+                  <TableCell><Chip size="small" label={b.currency} /></TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800 }}>
+                    {b.currency === 'VES' ? 'Bs.' : '$'}{Number(b.current_balance || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+
+    if (currentReport.id === 'payroll_summary') {
+      if (isLoadingPayroll) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
+      const rows = payrollPeriods.filter((p: any) =>
+        matchesDateRange(p.start_date || p.created_at) &&
+        (p.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return (
+        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Período de Nómina</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Fechas</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Asignaciones</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Deducciones Ley</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Neto Pagado</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rows.map((p: any) => (
+                <TableRow key={p.id} hover>
+                  <TableCell sx={{ fontWeight: 700 }}>{p.name}</TableCell>
+                  <TableCell>{p.start_date} al {p.end_date}</TableCell>
+                  <TableCell><Chip size="small" label={p.status} /></TableCell>
+                  <TableCell align="right">${Number(p.total_gross || 0).toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ color: 'error.main' }}>${Number(p.total_deductions || 0).toFixed(2)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 800, color: 'success.main' }}>${Number(p.total_net || 0).toFixed(2)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      );
+    }
+
     return (
       <Box sx={{ py: 4 }}>
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Resumen del Reporte ({currentReport.title})</Typography>

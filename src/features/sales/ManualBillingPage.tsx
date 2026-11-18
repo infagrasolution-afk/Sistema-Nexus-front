@@ -347,14 +347,14 @@ export default function ManualBillingPage() {
       flexDirection: 'column', 
       alignItems: 'center', 
       width: '100%',
-      maxWidth: 1000, 
+      maxWidth: 1480, 
       mx: 'auto', 
-      mt: 6,
-      px: 3,
+      mt: { xs: 2, sm: 3 },
+      px: { xs: 1, sm: 2 },
       pb: 8
     }}>
       <Paper elevation={0} sx={{ 
-        p: 4, 
+        p: { xs: 2, sm: 3.5 }, 
         width: '100%',
         borderRadius: '24px', 
         border: '1px solid', 
@@ -393,8 +393,8 @@ export default function ManualBillingPage() {
           </Button>
         </Box>
 
-        <Grid container spacing={4}>
-          <Grid size={{ xs: 12, md: 8 }}>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, lg: 8.5 }}>
             <Box sx={{ mb: 4 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <SearchIcon fontSize="small" color="primary" /> Datos del Cliente y Despacho
@@ -483,17 +483,17 @@ export default function ManualBillingPage() {
                 />
               </Box>
               
-              <TableContainer sx={{ border: '1px solid', borderColor: 'grey.100', borderRadius: '16px' }}>
+              <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '16px' }}>
                 <Table size="small">
                   <TableHead sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50' }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 700, py: 2 }}>Producto</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>Cant.</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>Nivel Precio</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Precio ($)</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>Desc %</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Subtotal</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>Acción</TableCell>
+                      <TableCell sx={{ fontWeight: 800, py: 1.5, minWidth: 210 }}>Producto</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, width: 78 }}>Cant.</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, minWidth: 125 }}>Nivel Precio</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, width: 105 }}>Precio ($)</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, width: 76 }}>Desc %</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 800, minWidth: 96 }}>Subtotal</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, width: 56 }}>Acción</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -506,7 +506,7 @@ export default function ManualBillingPage() {
                     )}
                     {items.map((item, index) => (
                       <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell sx={{ fontWeight: 500 }}>{item.name}</TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontSize: '0.86rem', minWidth: 210 }}>{item.name}</TableCell>
                         <TableCell align="center">
                           <TextField 
                             type="number" 
@@ -574,7 +574,7 @@ export default function ManualBillingPage() {
                             sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
                           />
                         </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600 }}>
+                        <TableCell align="right" sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>
                           {item.discount > 0 && (
                             <Typography variant="caption" sx={{ textDecoration: 'line-through', color: 'text.secondary', display: 'block' }}>
                               ${(item.quantity * item.unit_price).toFixed(2)}
@@ -595,7 +595,7 @@ export default function ManualBillingPage() {
             </Box>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 4 }}>
+          <Grid size={{ xs: 12, lg: 3.5 }}>
             <Paper elevation={0} sx={{ 
               p: 3, 
               borderRadius: '20px', 
