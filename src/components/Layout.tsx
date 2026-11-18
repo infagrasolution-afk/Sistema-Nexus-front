@@ -1,31 +1,25 @@
 import { useState, useEffect } from 'react';
-import { 
-  Box, AppBar, Toolbar, Typography, IconButton, Avatar, Button, Menu, MenuItem, 
-  Divider, ListItemIcon, ListItemText, Tooltip, Chip, Fade, Drawer, List, ListItemButton, Badge
+import {
+  Box, AppBar, Toolbar, Typography, IconButton, Avatar, Button, Menu, MenuItem,
+  Divider, ListItemIcon, ListItemText, Tooltip, Chip, Fade, Drawer, Badge,
+  Collapse, Paper
 } from '@mui/material';
-import { 
+import {
   SpaceDashboardRounded as DashboardIcon,
-  StorefrontRounded as BusinessIcon,
   SettingsSuggestRounded as SettingsIcon,
   AdminPanelSettingsRounded as AdminIcon,
   LogoutRounded as LogoutIcon,
-  HomeRounded as HomeIcon,
   DarkModeRounded as DarkModeIcon,
   LightModeRounded as LightModeIcon,
   KeyboardArrowDownRounded as ArrowDownIcon,
+  KeyboardArrowRightRounded as ArrowRightIcon,
   RecordVoiceOverRounded as VoiceAgentIcon,
   CloudDoneRounded as OnlineIcon,
   CloudOffRounded as OfflineIcon,
   SyncRounded as SyncIcon,
   NotificationsActiveRounded as AlarmIcon,
   MenuRounded as MenuIcon,
-  PointOfSaleRounded as PosIcon,
-  ReceiptLongRounded as BillingIcon,
-  Inventory2Rounded as InventoryIcon,
-  WarehouseRounded as WarehouseIcon,
-  InsightsRounded as ReportsIcon,
-  ShoppingCartCheckoutRounded as PurchasesIcon,
-  RequestQuoteRounded as BudgetsIcon,
+  ChevronLeftRounded as CollapseIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,7 +27,11 @@ import { useTranslation } from 'react-i18next';
 import api from '../api/axiosConfig';
 import { useAppStore } from '../store/useAppStore';
 import SystemWizard from './SystemWizard';
+import { ApexLogo } from './ApexLogo';
+import { ALL_ERP_MODULES, SUPERADMIN_MODULE, type NavModuleGroup } from '../config/navigationModules';
 import { getTotalPendingOfflineCount, syncOfflineSales } from '../utils/offlineQueue';
+
+const SIDEBAR_WIDTH = 285;
 
 function Clock() {
   const [time, setTime] = useState(new Date());
@@ -45,14 +43,14 @@ function Clock() {
 
   return (
     <Box sx={{ textAlign: 'right' }}>
-      <Typography 
-        sx={{ 
-          fontWeight: 800, 
-          color: 'text.primary', 
-          fontFamily: '"Outfit", monospace', 
-          fontSize: '0.92rem',
+      <Typography
+        sx={{
+          fontWeight: 800,
+          color: 'text.primary',
+          fontFamily: '"Outfit", monospace',
+          fontSize: '0.9rem',
           lineHeight: 1,
-          letterSpacing: '0.5px'
+          letterSpacing: '0.5px',
         }}
       >
         {time.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -65,7 +63,7 @@ function Clock() {
 }
 
 export default function Layout() {
-  const { user, setUser, themeMode, setThemeMode } = useAppStore();
+  const { user, setUser, themeMode, setThemeMode, hasModule } = useAppStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,6 +72,9 @@ export default function Layout() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [alarmAnchorEl, setAlarmAnchorEl] = useState<null | HTMLElement>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [logoError, setLogoError] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>('sales_group');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [pendingOfflineCount, setPendingOfflineCount] = useState<number>(getTotalPendingOfflineCount());
   const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
@@ -131,12 +132,12 @@ export default function Layout() {
   const handleLogout = () => {
     setAnchorEl(null);
     setMobileDrawerOpen(false);
-    
+
     const refreshToken = localStorage.getItem('refresh_token');
     if (refreshToken) {
-      api.post('/auth/logout', { refresh_token: refreshToken }).catch(e => console.error('Logout error', e));
+      api.post('/auth/logout', { refresh_token: refreshToken }).catch((e) => console.error('Logout error', e));
     }
-    
+
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('active_tenant_id');
@@ -144,7 +145,7 @@ export default function Layout() {
     sessionStorage.removeItem('session_active');
     sessionStorage.removeItem('apex_wizard_prompted');
     setUser(null);
-    
+
     window.location.href = '/login';
   };
 
@@ -161,7 +162,7 @@ export default function Layout() {
     },
     refetchInterval: 12000,
     refetchOnWindowFocus: true,
-    retry: false
+    retry: false,
   });
 
   const { data: tenantData } = useQuery({
@@ -170,9 +171,10 @@ export default function Layout() {
       const response = await api.get('/tenants/me');
       const data = response.data;
       useAppStore.getState().setTenant(data);
+      setLogoError(false);
       return data;
     },
-    enabled: !!user
+    enabled: !!user,
   });
 
   // Inactivity monitor
@@ -205,7 +207,12 @@ export default function Layout() {
   }, [tenantData?.settings?.session_timeout]);
 
   const getLicenseWarning = () => {
-    if (tenantData?.id === 1 || tenantData?.name?.toLowerCase().includes('master') || tenantData?.name?.toLowerCase().includes('demo') || user?.is_superuser) {
+    if (
+      tenantData?.id === 1 ||
+      tenantData?.name?.toLowerCase().includes('master') ||
+      tenantData?.name?.toLowerCase().includes('demo') ||
+      user?.is_superuser
+    ) {
       return null;
     }
     if (!tenantData?.subscription_end) return null;
@@ -213,7 +220,7 @@ export default function Layout() {
     const now = new Date();
     const diffTime = end.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays <= 30 && diffDays > 0) {
       return `${t('Your license expires in')} ${diffDays} ${t('days. Please renew to avoid service interruption.')}`;
     }
@@ -231,7 +238,7 @@ export default function Layout() {
       const response = await api.get('/tenants/branches');
       return response.data;
     },
-    enabled: !!user && !user.is_superuser
+    enabled: !!user && !user.is_superuser,
   });
 
   const handleBranchChange = (branchId: string) => {
@@ -248,208 +255,457 @@ export default function Layout() {
   const isDashboard = location.pathname === '/dashboard';
   const isPOS = location.pathname === '/sales';
 
-  const quickNavLinks = [
-    { label: 'Panel Principal', path: '/dashboard', icon: DashboardIcon, color: '#2563eb' },
-    { label: 'Punto de Venta (POS)', path: '/sales', icon: PosIcon, color: '#10b981' },
-    { label: 'Facturación SENIAT', path: '/sales/manual-billing', icon: BillingIcon, color: '#3b82f6' },
-    { label: 'Presupuestos', path: '/sales/budgets', icon: BudgetsIcon, color: '#6366f1' },
-    { label: 'Inventario y Kardex', path: '/inventory', icon: InventoryIcon, color: '#059669' },
-    { label: 'Almacenes y Stock Mín.', path: '/warehouses', icon: WarehouseIcon, color: '#f59e0b' },
-    { label: 'Órdenes de Compra', path: '/purchases', icon: PurchasesIcon, color: '#ec4899' },
-    { label: 'Reportes y Auditoría IP', path: '/reports', icon: ReportsIcon, color: '#8b5cf6' },
-  ];
+  const allowedModules: NavModuleGroup[] = user?.is_superuser
+    ? [...ALL_ERP_MODULES, SUPERADMIN_MODULE]
+    : ALL_ERP_MODULES.filter((m) => {
+        const licenseKey = m.reqId === 'users' ? 'admin' : m.reqId === 'payroll' ? 'hr' : m.reqId;
+        return hasModule(licenseKey as any);
+      });
+
+  // Auto-expand the group matching the active route
+  useEffect(() => {
+    const matched = allowedModules.find((g) =>
+      g.subModules?.some((sub) => location.pathname === sub.path)
+    );
+    if (matched) {
+      setExpandedGroup(matched.id);
+    }
+  }, [location.pathname]);
+
+  const handleNavigateFromSidebar = (path: string) => {
+    setMobileDrawerOpen(false);
+    navigate(path);
+  };
+
+  const sidebarContent = (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        p: 1.5,
+        overflowY: 'auto',
+      }}
+    >
+      {/* Client Identity Card inside Sidebar */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 1.5,
+          mb: 1.5,
+          borderRadius: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          bgcolor: (theme) =>
+            theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(37, 99, 235, 0.04)',
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        {tenantData?.logo_url && !logoError ? (
+          <Box
+            component="img"
+            src={tenantData.logo_url}
+            alt={tenantData?.name || 'Logo Empresa'}
+            onError={() => setLogoError(true)}
+            sx={{
+              height: 38,
+              maxWidth: 68,
+              objectFit: 'contain',
+              borderRadius: '10px',
+              bgcolor: '#fff',
+              p: 0.4,
+              border: '1px solid',
+              borderColor: 'divider',
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <ApexLogo size={36} primaryColor={tenantData?.primary_color || '#2563eb'} />
+        )}
+        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+          <Typography variant="subtitle2" noWrap sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+            {tenantData?.name || 'APEX ERP'}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+            {tenantData?.tax_id || 'Gestión Empresarial'}
+          </Typography>
+        </Box>
+      </Paper>
+
+      {/* Monitor Ejecutivo Shortcut Card */}
+      <Paper
+        elevation={0}
+        onClick={() => handleNavigateFromSidebar('/dashboard')}
+        sx={{
+          p: 1.4,
+          mb: 1.8,
+          borderRadius: '14px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.4,
+          background: isDashboard
+            ? `linear-gradient(135deg, ${tenantData?.primary_color || '#2563eb'} 0%, #1e40af 100%)`
+            : 'transparent',
+          color: isDashboard ? '#fff' : 'text.primary',
+          border: '1px solid',
+          borderColor: isDashboard ? 'transparent' : 'divider',
+          boxShadow: isDashboard ? `0 8px 20px -6px ${tenantData?.primary_color || '#2563eb'}66` : 'none',
+          transition: 'all 0.25s ease',
+          '&:hover': {
+            transform: 'translateX(3px)',
+            borderColor: 'primary.main',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            p: 0.8,
+            borderRadius: '10px',
+            bgcolor: isDashboard ? 'rgba(255,255,255,0.18)' : 'rgba(37, 99, 235, 0.1)',
+            color: isDashboard ? '#fff' : 'primary.main',
+            display: 'flex',
+          }}
+        >
+          <DashboardIcon fontSize="small" />
+        </Box>
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
+            Monitor Ejecutivo
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              fontSize: '0.68rem',
+              opacity: isDashboard ? 0.85 : 0.7,
+              fontWeight: 600,
+            }}
+          >
+            KPIs y Movimientos en Vivo
+          </Typography>
+        </Box>
+      </Paper>
+
+      <Typography
+        variant="overline"
+        sx={{ px: 1, mb: 0.8, fontWeight: 900, color: 'text.disabled', fontSize: '0.68rem', letterSpacing: '1px' }}
+      >
+        Módulos del Sistema
+      </Typography>
+
+      {/* Tarjeticas Ordenadas de Módulos */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
+        {allowedModules.map((mod) => {
+          const IconComp = mod.icon;
+          const isGrouped = Boolean(mod.subModules && mod.subModules.length > 0);
+          const isExpanded = expandedGroup === mod.id;
+          const hasActiveSub = mod.subModules?.some((s) => location.pathname === s.path) || location.pathname === mod.path;
+
+          return (
+            <Paper
+              key={mod.id}
+              elevation={0}
+              sx={{
+                borderRadius: '16px',
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: hasActiveSub ? `${mod.color}66` : 'divider',
+                position: 'relative',
+                transition: 'all 0.25s ease',
+                '&:before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  bottom: 0,
+                  width: '4px',
+                  background: mod.gradient,
+                },
+              }}
+            >
+              <Box
+                onClick={() => {
+                  if (isGrouped) {
+                    setExpandedGroup(isExpanded ? null : mod.id);
+                  } else if (mod.path) {
+                    handleNavigateFromSidebar(mod.path);
+                  }
+                }}
+                sx={{
+                  p: 1.25,
+                  pl: 1.8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  bgcolor: hasActiveSub ? `${mod.color}0a` : 'transparent',
+                  '&:hover': { bgcolor: `${mod.color}0d` },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0 }}>
+                  <Box
+                    sx={{
+                      p: 0.75,
+                      borderRadius: '10px',
+                      bgcolor: `${mod.color}16`,
+                      color: mod.color,
+                      display: 'flex',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <IconComp sx={{ fontSize: 19 }} />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 800, fontSize: '0.82rem', lineHeight: 1.2 }}>
+                      {mod.title}
+                    </Typography>
+                    {isGrouped && (
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.66rem', fontWeight: 600 }}>
+                        {mod.subModules!.length} opciones
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+                {isGrouped && (
+                  <Box sx={{ color: 'text.disabled', display: 'flex' }}>
+                    {isExpanded ? <ArrowDownIcon fontSize="small" /> : <ArrowRightIcon fontSize="small" />}
+                  </Box>
+                )}
+              </Box>
+
+              {isGrouped && (
+                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                  <Box sx={{ px: 1.2, pb: 1.2, pt: 0.4, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    {mod.subModules!.map((sub) => {
+                      const SubIcon = sub.icon;
+                      const active = location.pathname === sub.path;
+                      return (
+                        <Button
+                          key={sub.id + sub.title}
+                          fullWidth
+                          size="small"
+                          onClick={() => handleNavigateFromSidebar(sub.path)}
+                          startIcon={<SubIcon sx={{ fontSize: 16, color: active ? '#fff' : mod.color }} />}
+                          sx={{
+                            justifyContent: 'flex-start',
+                            textAlign: 'left',
+                            borderRadius: '10px',
+                            px: 1.2,
+                            py: 0.7,
+                            fontSize: '0.76rem',
+                            fontWeight: active ? 800 : 600,
+                            color: active ? '#fff' : 'text.primary',
+                            bgcolor: active ? mod.color : 'transparent',
+                            backgroundImage: active ? mod.gradient : 'none',
+                            '&:hover': {
+                              bgcolor: active ? mod.color : `${mod.color}14`,
+                              transform: 'translateX(2px)',
+                            },
+                          }}
+                        >
+                          {sub.title}
+                        </Button>
+                      );
+                    })}
+                  </Box>
+                </Collapse>
+              )}
+            </Paper>
+          );
+        })}
+      </Box>
+
+      {/* Mobile extras */}
+      <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 2 }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          color="primary"
+          startIcon={<VoiceAgentIcon />}
+          onClick={() => {
+            setMobileDrawerOpen(false);
+            window.dispatchEvent(new CustomEvent('open-apex-induction-agent'));
+          }}
+          sx={{ borderRadius: '12px', fontWeight: 800, mb: 1.2 }}
+        >
+          Inducción Virtual (Audio)
+        </Button>
+      </Box>
+
+      {branches.length > 0 && (
+        <Box sx={{ mt: 2, px: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+            Sucursal Activa
+          </Typography>
+          <select
+            value={activeTenantId}
+            onChange={(e) => handleBranchChange(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              borderRadius: '10px',
+              border: '1px solid rgba(100,116,139,0.25)',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+            }}
+          >
+            <option value="main">Sucursal Principal</option>
+            {branches.map((b: any) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </Box>
+      )}
+    </Box>
+  );
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default', width: '100%', overflowX: 'hidden' }}>
-      {/* Top AppBar - Premium Responsive Glassmorphism */}
-      <AppBar 
-        position="fixed" 
-        sx={{ 
+      {/* Top AppBar */}
+      <AppBar
+        position="fixed"
+        sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
-          bgcolor: (theme) => theme.palette.mode === 'dark' 
-            ? 'rgba(11, 15, 25, 0.9)' 
-            : 'rgba(255, 255, 255, 0.92)',
+          bgcolor: (theme) =>
+            theme.palette.mode === 'dark' ? 'rgba(11, 15, 25, 0.92)' : 'rgba(255, 255, 255, 0.94)',
           color: 'text.primary',
           borderBottom: '1px solid',
           borderColor: 'divider',
           boxShadow: 'none',
           backdropFilter: 'blur(20px) saturate(180%)',
-          transition: 'all 0.3s ease',
         }}
       >
-        {/* License Warning Banner */}
         {warning && (
           <Fade in>
-            <Box sx={{ 
-              bgcolor: 'warning.main', 
-              color: 'warning.contrastText', 
-              textAlign: 'center', 
-              py: 0.6, 
-              px: 2,
-              fontSize: { xs: '0.75rem', sm: '0.82rem' }, 
-              fontWeight: 700,
-              letterSpacing: '0.2px',
-            }}>
+            <Box
+              sx={{
+                bgcolor: 'warning.main',
+                color: 'warning.contrastText',
+                textAlign: 'center',
+                py: 0.6,
+                px: 2,
+                fontSize: { xs: '0.75rem', sm: '0.82rem' },
+                fontWeight: 700,
+              }}
+            >
               ⚠️ {warning}
             </Box>
           </Fade>
         )}
 
-        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.5 }, minHeight: { xs: 58, sm: 68 }, px: { xs: 1.5, sm: 3 } }}>
-          {/* Mobile Quick Menu Trigger */}
+        <Toolbar sx={{ gap: { xs: 0.75, sm: 1.5 }, minHeight: { xs: 58, sm: 66 }, px: { xs: 1.5, sm: 2.5 } }}>
+          {/* Mobile Drawer Trigger */}
           <IconButton
             onClick={() => setMobileDrawerOpen(true)}
             size="small"
             sx={{
               display: { xs: 'inline-flex', md: 'none' },
-              p: 1,
+              p: 0.9,
               borderRadius: '10px',
               border: '1px solid',
               borderColor: 'divider',
             }}
-            aria-label="Abrir menú rápido"
+            aria-label="Abrir menú de módulos"
           >
             <MenuIcon fontSize="small" />
           </IconButton>
 
-          {/* Logo / Brand */}
-          <Box 
+          {/* Desktop Sidebar Toggle */}
+          <Tooltip title={desktopSidebarOpen ? 'Ocultar barra lateral' : 'Mostrar barra lateral'} arrow>
+            <IconButton
+              onClick={() => setDesktopSidebarOpen((prev) => !prev)}
+              size="small"
+              sx={{
+                display: { xs: 'none', md: 'inline-flex' },
+                p: 0.9,
+                borderRadius: '10px',
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              {desktopSidebarOpen ? <CollapseIcon fontSize="small" /> : <MenuIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+
+          {/* Brand: APEX Logo + Client Logo & Name */}
+          <Box
             onClick={() => navigate('/dashboard')}
-            sx={{ 
+            sx={{
               display: 'flex',
-              flexDirection: 'row',
               alignItems: 'center',
-              gap: { xs: 1, sm: 1.5 },
+              gap: { xs: 1, sm: 1.4 },
               cursor: 'pointer',
-              mr: { xs: 0.5, sm: 2 },
-              transition: 'all 0.3s ease',
-              '&:hover': { opacity: 0.85, transform: 'scale(0.98)' },
-              textDecoration: 'none',
               minWidth: 0,
+              '&:hover': { opacity: 0.9 },
             }}
           >
-            {tenantData?.logo_url ? (
-              <Box 
-                component="img" 
-                src={tenantData.logo_url} 
-                sx={{ height: { xs: 30, sm: 38 }, width: 'auto', borderRadius: 2, flexShrink: 0 }} 
+            <ApexLogo size={36} primaryColor={tenantData?.primary_color || '#2563eb'} />
+
+            {tenantData?.logo_url && !logoError && (
+              <Box
+                component="img"
+                src={tenantData.logo_url}
+                alt={tenantData?.name || 'Logo'}
+                onError={() => setLogoError(true)}
+                sx={{
+                  height: { xs: 28, sm: 34 },
+                  maxWidth: { xs: 70, sm: 110 },
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  bgcolor: '#fff',
+                  px: 0.6,
+                  py: 0.2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  display: { xs: 'none', sm: 'block' },
+                }}
               />
-            ) : (
-              <Box sx={{ 
-                background: `linear-gradient(135deg, ${tenantData?.primary_color || '#1e40af'} 0%, ${tenantData?.primary_color || '#2563eb'} 100%)`,
-                color: 'white', 
-                p: 0.75, 
-                borderRadius: '11px', 
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 4px 12px ${tenantData?.primary_color || '#2563eb'}44`,
-                flexShrink: 0,
-              }}>
-                <HomeIcon sx={{ fontSize: 20 }} />
-              </Box>
             )}
+
             <Box sx={{ minWidth: 0 }}>
-              <Typography variant="caption" noWrap sx={{ 
-                fontWeight: 900, 
-                color: tenantData?.primary_color || 'primary.main', 
-                textTransform: 'uppercase', 
-                fontSize: { xs: '0.68rem', sm: '0.76rem' }, 
-                letterSpacing: '0.8px',
-                display: 'block',
-                lineHeight: 1.2,
-                maxWidth: { xs: 115, sm: 220, md: 280 },
-              }}>
+              <Typography
+                variant="caption"
+                noWrap
+                sx={{
+                  fontWeight: 900,
+                  color: tenantData?.primary_color || 'primary.main',
+                  textTransform: 'uppercase',
+                  fontSize: { xs: '0.7rem', sm: '0.78rem' },
+                  letterSpacing: '0.7px',
+                  display: 'block',
+                  lineHeight: 1.15,
+                  maxWidth: { xs: 130, sm: 230, md: 280 },
+                }}
+              >
                 {tenantData?.name || 'APEX ERP'}
               </Typography>
-              {user?.is_superuser && (
-                <Typography variant="caption" sx={{ 
-                  fontSize: '0.62rem', 
-                  color: 'text.disabled', 
-                  fontWeight: 600,
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.62rem',
+                  color: 'text.disabled',
+                  fontWeight: 700,
                   lineHeight: 1,
-                  display: { xs: 'none', sm: 'block' }
-                }}>
-                  Súper Admin
-                </Typography>
-              )}
+                  display: { xs: 'none', sm: 'block' },
+                }}
+              >
+                {user?.is_superuser ? 'APEX ERP • Súper Admin' : 'APEX ERP Empresarial'}
+              </Typography>
             </Box>
           </Box>
 
           <Box sx={{ flexGrow: 1 }} />
 
           {/* Right side controls */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.6, sm: 1.2, md: 2 } }}>
-            {/* Clock - hidden on mobile/tablet */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.6, sm: 1.2, md: 1.6 } }}>
             <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
               <Clock />
             </Box>
 
-            {/* Back to Dashboard button */}
-            {!isDashboard && (
-              <>
-                <Button 
-                  variant="text" 
-                  startIcon={<DashboardIcon />} 
-                  onClick={() => navigate('/dashboard')}
-                  size="small"
-                  sx={{ 
-                    display: { xs: 'none', sm: 'inline-flex' }, 
-                    fontWeight: 700, 
-                    color: 'text.secondary', 
-                    borderRadius: '12px',
-                    px: 1.8,
-                    py: 0.8,
-                    fontSize: '0.8rem',
-                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    '&:hover': {
-                      bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                      color: 'primary.main',
-                      borderColor: 'primary.main',
-                    }
-                  }}
-                >
-                  Tablero
-                </Button>
-                <IconButton
-                  onClick={() => navigate('/dashboard')}
-                  sx={{ display: { xs: 'inline-flex', sm: 'none' }, color: 'text.secondary', p: 0.8 }}
-                  title="Volver al Tablero"
-                >
-                  <DashboardIcon fontSize="small" />
-                </IconButton>
-              </>
-            )}
-
-            {/* Branch Switcher */}
-            {branches.length > 0 && (
-              <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1 }}>
-                <BusinessIcon sx={{ fontSize: 18, color: 'text.disabled' }} />
-                <select 
-                  value={activeTenantId} 
-                  onChange={(e) => handleBranchChange(e.target.value)}
-                  style={{ 
-                    padding: '5px 10px', 
-                    borderRadius: '10px', 
-                    border: '1px solid rgba(0,0,0,0.1)',
-                    fontSize: '0.8rem',
-                    outline: 'none',
-                    backgroundColor: 'transparent',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
-                >
-                  <option value="main">Sucursal Principal</option>
-                  {branches.map((b: any) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </Box>
-            )}
-
-            {/* Online/Offline Status Chip */}
             <Chip
               size="small"
               icon={
@@ -477,11 +733,10 @@ export default function Layout() {
                 fontSize: { xs: '0.66rem', sm: '0.72rem' },
                 borderRadius: '8px',
                 cursor: pendingOfflineCount > 0 ? 'pointer' : 'default',
-                '& .MuiChip-label': { px: { xs: 0.8, sm: 1.2 } }
+                '& .MuiChip-label': { px: { xs: 0.8, sm: 1.2 } },
               }}
             />
 
-            {/* Global Stock Restock Alarm */}
             {wmsAlerts.length > 0 && (
               <>
                 <Tooltip title="Alarma de Inventario: Productos próximos a agotarse que debes reponer" arrow>
@@ -490,7 +745,7 @@ export default function Layout() {
                       size="small"
                       color="error"
                       icon={<AlarmIcon fontSize="small" />}
-                      label={`🚨 ${wmsAlerts.length} por agotarse — ¡Reponer!`}
+                      label={`🚨 ${wmsAlerts.length} por agotarse`}
                       onClick={(e) => setAlarmAnchorEl(e.currentTarget)}
                       sx={{
                         display: { xs: 'none', md: 'inline-flex' },
@@ -539,9 +794,6 @@ export default function Layout() {
                   <Typography variant="subtitle2" sx={{ fontWeight: 900, color: 'error.main', px: 1, pb: 0.5 }}>
                     🚨 Alarma de Stock Mínimo ({wmsAlerts.length} productos)
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1, pb: 1, fontWeight: 600 }}>
-                    Estos productos alcanzaron su stock mínimo y están próximos a agotarse:
-                  </Typography>
                   <Divider sx={{ mb: 1 }} />
                   <Box sx={{ maxHeight: 260, overflowY: 'auto', px: 0.5 }}>
                     {wmsAlerts.map((al: any, idx: number) => (
@@ -578,7 +830,7 @@ export default function Layout() {
                         setAlarmAnchorEl(null);
                         navigate('/warehouses');
                       }}
-                      sx={{ borderRadius: '8px', fontWeight: 700, textTransform: 'none' }}
+                      sx={{ borderRadius: '8px', fontWeight: 700 }}
                     >
                       Ver Almacenes
                     </Button>
@@ -591,7 +843,7 @@ export default function Layout() {
                         setAlarmAnchorEl(null);
                         navigate('/purchases');
                       }}
-                      sx={{ borderRadius: '8px', fontWeight: 800, textTransform: 'none' }}
+                      sx={{ borderRadius: '8px', fontWeight: 800 }}
                     >
                       Reponer en Compras
                     </Button>
@@ -600,7 +852,6 @@ export default function Layout() {
               </>
             )}
 
-            {/* Voice Induction Agent Button */}
             <Tooltip title="Iniciar Agente Virtual de Inducción con Audio" arrow>
               <Button
                 size="small"
@@ -612,7 +863,6 @@ export default function Layout() {
                   display: { xs: 'none', sm: 'inline-flex' },
                   borderRadius: '10px',
                   fontWeight: 800,
-                  textTransform: 'none',
                   fontSize: '0.76rem',
                   px: 1.4,
                   py: 0.6,
@@ -622,29 +872,23 @@ export default function Layout() {
               </Button>
             </Tooltip>
 
-            {/* Theme Toggle */}
             <Tooltip title={themeMode === 'dark' ? 'Modo Claro' : 'Modo Oscuro'} arrow>
-              <IconButton 
-                onClick={() => setThemeMode(themeMode === 'light' ? 'dark' : 'light')} 
+              <IconButton
+                onClick={() => setThemeMode(themeMode === 'light' ? 'dark' : 'light')}
                 size="small"
-                sx={{ 
+                sx={{
                   p: 0.9,
                   borderRadius: '10px',
                   border: '1px solid',
                   borderColor: 'divider',
-                  bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                  }
+                  '&:hover': { borderColor: 'primary.main', bgcolor: 'primary.main', color: 'white' },
                 }}
               >
-                {themeMode === 'dark' 
-                  ? <LightModeIcon sx={{ fontSize: 18, color: '#fbbf24' }} /> 
-                  : <DarkModeIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-                }
+                {themeMode === 'dark' ? (
+                  <LightModeIcon sx={{ fontSize: 18, color: '#fbbf24' }} />
+                ) : (
+                  <DarkModeIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                )}
               </IconButton>
             </Tooltip>
 
@@ -669,21 +913,18 @@ export default function Layout() {
                   borderRadius: '14px',
                   border: '1px solid',
                   borderColor: 'divider',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    borderColor: 'primary.main',
-                    bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.06)' : 'rgba(37, 99, 235, 0.04)',
-                  }
+                  '&:hover': { borderColor: 'primary.main' },
                 }}
               >
-                <Avatar sx={{ 
-                  bgcolor: tenantData?.primary_color || 'primary.main', 
-                  fontWeight: 800, 
-                  width: 32, 
-                  height: 32,
-                  fontSize: '0.86rem',
-                  boxShadow: `0 4px 12px ${tenantData?.primary_color || '#2563eb'}44`,
-                }}>
+                <Avatar
+                  sx={{
+                    bgcolor: tenantData?.primary_color || 'primary.main',
+                    fontWeight: 800,
+                    width: 32,
+                    height: 32,
+                    fontSize: '0.86rem',
+                  }}
+                >
                   {user?.username?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                 </Avatar>
                 <ArrowDownIcon sx={{ fontSize: 16, color: 'text.disabled', display: { xs: 'none', sm: 'block' } }} />
@@ -693,42 +934,38 @@ export default function Layout() {
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
                 onClose={() => setAnchorEl(null)}
-                slotProps={{ 
-                  paper: { 
-                    sx: { 
-                      borderRadius: '18px', 
-                      mt: 1.5, 
-                      minWidth: 210, 
-                      boxShadow: '0 20px 60px -10px rgba(0,0,0,0.12)',
+                slotProps={{
+                  paper: {
+                    sx: {
+                      borderRadius: '18px',
+                      mt: 1.5,
+                      minWidth: 210,
                       border: '1px solid',
                       borderColor: 'divider',
-                      backdropFilter: 'blur(20px)',
-                      overflow: 'hidden',
                       p: 0.5,
-                    } 
-                  } 
+                    },
+                  },
                 }}
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
               >
                 <Box sx={{ px: 2, py: 1.5, mb: 0.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
                     {user?.username || 'Usuario'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  <Typography variant="caption" color="text.secondary">
                     {user?.email}
                   </Typography>
                   {user?.is_superuser && (
-                    <Chip 
-                      label="Súper Admin" 
-                      size="small" 
+                    <Chip
+                      label="Súper Admin"
+                      size="small"
                       color="primary"
                       sx={{ mt: 0.5, fontWeight: 700, fontSize: '0.65rem', height: 20, borderRadius: '8px', display: 'inline-flex' }}
                     />
                   )}
                 </Box>
                 <Divider sx={{ mb: 0.5 }} />
-                
                 <MenuItem onClick={() => { setAnchorEl(null); navigate('/settings'); }} sx={{ borderRadius: '12px', mx: 0.5 }}>
                   <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
                   <ListItemText primary="Configuración" slotProps={{ primary: { style: { fontWeight: 700, fontSize: '0.88rem' } } }} />
@@ -740,15 +977,7 @@ export default function Layout() {
                   </MenuItem>
                 )}
                 <Divider sx={{ my: 0.5 }} />
-                <MenuItem 
-                  onClick={handleLogout} 
-                  sx={{ 
-                    color: 'error.main', 
-                    borderRadius: '12px', 
-                    mx: 0.5,
-                    '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.06)' }
-                  }}
-                >
+                <MenuItem onClick={handleLogout} sx={{ color: 'error.main', borderRadius: '12px', mx: 0.5 }}>
                   <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
                   <ListItemText primary="Cerrar Sesión" slotProps={{ primary: { style: { fontWeight: 700, fontSize: '0.88rem', color: 'inherit' } } }} />
                 </MenuItem>
@@ -758,142 +987,96 @@ export default function Layout() {
         </Toolbar>
       </AppBar>
 
-      {/* Mobile & Tablet Quick Navigation Drawer */}
+      {/* Desktop Permanent Collapsible Sidebar */}
+      <Drawer
+        variant="persistent"
+        open={desktopSidebarOpen}
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          width: desktopSidebarOpen ? SIDEBAR_WIDTH : 0,
+          flexShrink: 0,
+          transition: 'width 0.25s ease',
+          '& .MuiDrawer-paper': {
+            width: SIDEBAR_WIDTH,
+            boxSizing: 'border-box',
+            mt: warning ? '98px' : '66px',
+            height: warning ? 'calc(100% - 98px)' : 'calc(100% - 66px)',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark' ? 'rgba(11, 15, 25, 0.96)' : 'rgba(255, 255, 255, 0.92)',
+            backdropFilter: 'blur(20px)',
+          },
+        }}
+      >
+        {sidebarContent}
+      </Drawer>
+
+      {/* Mobile Temporary Sidebar Drawer */}
       <Drawer
         anchor="left"
         open={mobileDrawerOpen}
         onClose={() => setMobileDrawerOpen(false)}
+        sx={{ display: { xs: 'block', md: 'none' } }}
         slotProps={{
           paper: {
             sx: {
               width: 290,
-              p: 2,
-              pt: 9,
+              pt: 8,
               borderRadius: '0 24px 24px 0',
             },
           },
         }}
       >
-        <Typography variant="overline" sx={{ px: 1.5, fontWeight: 900, color: 'text.secondary', letterSpacing: '1px' }}>
-          Navegación Rápida
-        </Typography>
-        <List dense sx={{ mt: 0.5 }}>
-          {quickNavLinks.map((item) => {
-            const IconComp = item.icon;
-            const active = location.pathname === item.path;
-            return (
-              <ListItemButton
-                key={item.path}
-                selected={active}
-                onClick={() => {
-                  setMobileDrawerOpen(false);
-                  navigate(item.path);
-                }}
-                sx={{
-                  borderRadius: '12px',
-                  mb: 0.5,
-                  py: 1,
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 38 }}>
-                  <IconComp sx={{ color: item.color, fontSize: 21 }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.label}
-                  slotProps={{ primary: { style: { fontWeight: active ? 800 : 600, fontSize: '0.88rem' } } }}
-                />
-              </ListItemButton>
-            );
-          })}
-        </List>
-        <Divider sx={{ my: 1.5 }} />
-        <Button
-          fullWidth
-          variant="outlined"
-          color="primary"
-          startIcon={<VoiceAgentIcon />}
-          onClick={() => {
-            setMobileDrawerOpen(false);
-            window.dispatchEvent(new CustomEvent('open-apex-induction-agent'));
-          }}
-          sx={{ borderRadius: '12px', fontWeight: 800, mb: 1.5 }}
-        >
-          Inducción Virtual (Audio)
-        </Button>
-        {branches.length > 0 && (
-          <Box sx={{ px: 1, mt: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
-              Cambiar Sucursal
-            </Typography>
-            <select
-              value={activeTenantId}
-              onChange={(e) => handleBranchChange(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                borderRadius: '10px',
-                border: '1px solid rgba(0,0,0,0.15)',
-                fontWeight: 700,
-              }}
-            >
-              <option value="main">Sucursal Principal</option>
-              {branches.map((b: any) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-          </Box>
-        )}
+        {sidebarContent}
       </Drawer>
 
       {/* Main Content Area */}
-      <Box 
-        component="main" 
-        sx={{ 
-          flexGrow: 1, 
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
           minHeight: '100vh',
-          mt: { xs: '58px', sm: '68px' }, 
-          px: { xs: 1.5, sm: 3, md: 5 },
+          mt: { xs: '58px', sm: '66px' },
+          px: { xs: 1.5, sm: 3, md: 4 },
           pb: isPOS ? 0 : 8,
-          width: '100%',
-          maxWidth: '100vw',
+          width: { xs: '100%', md: desktopSidebarOpen ? `calc(100% - ${SIDEBAR_WIDTH}px)` : '100%' },
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           overflowX: 'hidden',
-          transition: 'all 0.3s ease',
-          bgcolor: isPOS ? 'background.default' : 'transparent'
+          transition: 'all 0.25s ease',
         }}
       >
-        {/* Superadmin impersonation banner */}
         {localStorage.getItem('active_tenant_id') && user?.is_superuser && (
           <Fade in>
-            <Box sx={{ 
-              width: '100%',
-              maxWidth: 1400,
-              mt: 2,
-              mb: 0,
-              p: 1.5, 
-              bgcolor: '#fff3e0', 
-              border: '1px solid #ffe0b2', 
-              borderRadius: '16px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 1,
-              backdropFilter: 'blur(8px)',
-            }}>
+            <Box
+              sx={{
+                width: '100%',
+                maxWidth: 1400,
+                mt: 2,
+                p: 1.5,
+                bgcolor: '#fff3e0',
+                border: '1px solid #ffe0b2',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1,
+              }}
+            >
               <Typography sx={{ fontWeight: 700, color: '#e65100', fontSize: '0.86rem' }}>
                 ⚠️ Viendo empresa: <strong>{localStorage.getItem('active_tenant_name')}</strong>
               </Typography>
-              <Button 
-                size="small" 
+              <Button
+                size="small"
                 variant="outlined"
                 color="warning"
-                onClick={() => { 
-                  localStorage.removeItem('active_tenant_id'); 
-                  localStorage.removeItem('active_tenant_name'); 
-                  window.location.href = '/admin'; 
+                onClick={() => {
+                  localStorage.removeItem('active_tenant_id');
+                  localStorage.removeItem('active_tenant_name');
+                  window.location.href = '/admin';
                 }}
                 sx={{ borderRadius: '10px', fontWeight: 700, fontSize: '0.78rem' }}
               >
@@ -904,19 +1087,15 @@ export default function Layout() {
         )}
 
         <Outlet />
-        
-        {/* Footer */}
+
         {!isPOS && (
           <Box sx={{ mt: 'auto', pt: 6, pb: 4, textAlign: 'center', width: '100%' }}>
-            <Typography variant="caption" sx={{ 
-              fontWeight: 600, 
-              color: 'text.disabled', 
-              letterSpacing: '0.3px',
-              fontSize: '0.72rem',
-            }}>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', fontSize: '0.72rem' }}>
               APEX ERP v2.0 • Elaborado por{' '}
-              <Box component="span" sx={{ fontWeight: 800, color: 'primary.main' }}>InfaGraSolution</Box>
-              {' '}• infagrasolution@gmail.com
+              <Box component="span" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                InfaGraSolution
+              </Box>{' '}
+              • infagrasolution@gmail.com
             </Typography>
           </Box>
         )}
@@ -936,25 +1115,14 @@ export default function Layout() {
               bgcolor: '#25D366',
               color: 'white',
               boxShadow: '0 8px 30px rgba(37, 211, 102, 0.4)',
-              width: { xs: 48, sm: 56 },
-              height: { xs: 48, sm: 56 },
+              width: { xs: 48, sm: 54 },
+              height: { xs: 48, sm: 54 },
               zIndex: 9999,
-              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-              '&:hover': {
-                bgcolor: '#128C7E',
-                transform: 'scale(1.12) rotate(8deg)',
-                boxShadow: '0 14px 40px rgba(37, 211, 102, 0.55)',
-              },
-              animation: 'pulseWA 2.5s infinite',
-              '@keyframes pulseWA': {
-                '0%': { boxShadow: '0 0 0 0 rgba(37, 211, 102, 0.6)' },
-                '70%': { boxShadow: '0 0 0 14px rgba(37, 211, 102, 0)' },
-                '100%': { boxShadow: '0 0 0 0 rgba(37, 211, 102, 0)' }
-              }
+              '&:hover': { bgcolor: '#128C7E', transform: 'scale(1.1) rotate(6deg)' },
             }}
           >
             <svg viewBox="0 0 24 24" style={{ width: '55%', height: '55%' }} fill="currentColor">
-              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.734-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.592 1.981 14.119.957 11.487.957c-5.43 0-9.85 4.37-9.855 9.801-.001 1.71.472 3.376 1.367 4.832L2.012 21.6l6.635-1.746z"/>
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.262 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.5-5.734-1.453L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.963C16.592 1.981 14.119.957 11.487.957c-5.43 0-9.85 4.37-9.855 9.801-.001 1.71.472 3.376 1.367 4.832L2.012 21.6l6.635-1.746z" />
             </svg>
           </IconButton>
         </Tooltip>
@@ -969,29 +1137,19 @@ export default function Layout() {
             rel="noopener noreferrer"
             sx={{
               position: 'fixed',
-              bottom: { xs: 72, sm: 90 },
+              bottom: { xs: 72, sm: 86 },
               right: { xs: 16, sm: 24 },
               background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
               color: 'white',
               boxShadow: '0 8px 30px rgba(220, 39, 67, 0.35)',
-              width: { xs: 44, sm: 52 },
-              height: { xs: 44, sm: 52 },
+              width: { xs: 44, sm: 50 },
+              height: { xs: 44, sm: 50 },
               zIndex: 9999,
-              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-              '&:hover': {
-                transform: 'scale(1.12) rotate(-8deg)',
-                boxShadow: '0 14px 40px rgba(220, 39, 67, 0.5)',
-              },
-              animation: 'pulseIG 3s infinite 1s',
-              '@keyframes pulseIG': {
-                '0%': { boxShadow: '0 0 0 0 rgba(220, 39, 67, 0.5)' },
-                '70%': { boxShadow: '0 0 0 14px rgba(220, 39, 67, 0)' },
-                '100%': { boxShadow: '0 0 0 0 rgba(220, 39, 67, 0)' }
-              }
+              '&:hover': { transform: 'scale(1.1) rotate(-6deg)' },
             }}
           >
             <svg viewBox="0 0 24 24" style={{ width: '50%', height: '50%' }} fill="currentColor">
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
             </svg>
           </IconButton>
         </Tooltip>

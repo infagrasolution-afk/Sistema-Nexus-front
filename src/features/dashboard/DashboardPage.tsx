@@ -1,153 +1,31 @@
 import { useState } from 'react';
-import { 
-  Box, Typography, Grid, Paper, Dialog, DialogTitle, 
-  DialogContent, DialogActions, Button, Fade, Grow, Chip,
+import {
+  Box, Typography, Grid, Paper, Button, Fade, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, ToggleButtonGroup, ToggleButton
 } from '@mui/material';
-import { 
+import {
   Inventory2Rounded as Inventory,
   PointOfSaleRounded as PointOfSale,
-  PeopleAltRounded as People,
-  SettingsSuggestRounded as Settings,
   InsightsRounded as Assessment,
-  LocalShippingRounded as LocalShipping, 
-  ShoppingCartCheckoutRounded as ShoppingCart,
-  DomainRounded as Business,
-  SwapHorizRounded as CompareArrows,
-  GridViewRounded as ViewModule,
-  ReceiptLongRounded as Receipt,
-  MenuBookRounded as Description,
-  WarehouseRounded as Warehouse,
-  AccountBalanceRounded as AccountBalance,
   AccountBalanceWalletRounded as AccountBalanceWallet,
-  ShieldRounded as Security,
-  AdminPanelSettingsRounded as AdminPanelSettings,
   NotificationsActiveRounded as Timeline,
-  RequestQuoteRounded as RequestQuote,
-  CurrencyExchangeRounded as Sync,
-  BadgeRounded as Badge,
   TrendingUpRounded as TrendingUp,
   BoltRounded as Bolt,
-  FactCheckRounded as FactCheck,
-  TuneRounded as Tune,
-  AddBoxRounded as AddBox,
-  IndeterminateCheckBoxRounded as IndeterminateBox,
-  AssignmentReturnRounded as CreditNoteIcon,
-  PostAddRounded as DebitNoteIcon,
-  CalculateRounded as PayrollCalcIcon,
-  HelpCenterRounded as HelpIcon,
   PaidRounded as PaidIcon,
+  ReceiptLongRounded as Receipt,
+  WarehouseRounded as Warehouse,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
-
-const ALL_MODULES = [
-  { 
-    id: 'sales_group', 
-    title: 'Ventas y Facturación', 
-    icon: PointOfSale, 
-    color: '#2563eb', // Royal Blue
-    gradient: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-    reqId: 'sales',
-    subModules: [
-      { id: 'pos', title: 'Punto de Venta (Caja Rápida)', path: '/sales', icon: PointOfSale },
-      { id: 'manual_billing', title: 'Facturación Legal (SENIAT)', path: '/sales/manual-billing', icon: Receipt },
-      { id: 'budgets', title: 'Presupuestos / Cotizaciones', path: '/sales/budgets', icon: RequestQuote },
-      { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
-      { id: 'customers', title: 'Clientes y Contactos', path: '/sales/customers', icon: People },
-      { id: 'debit_notes', title: 'Notas de Débito', path: '/sales/debit-notes', icon: DebitNoteIcon },
-      { id: 'credit_notes', title: 'Notas de Crédito (Anulaciones)', path: '/sales/credit-notes', icon: CreditNoteIcon },
-    ]
-  },
-  { 
-    id: 'inventory_group', 
-    title: 'Gestión de Inventario', 
-    icon: Inventory, 
-    color: '#10b981', // Emerald Green
-    gradient: 'linear-gradient(135deg, #059669, #10b981)',
-    reqId: 'inventory',
-    subModules: [
-      { id: 'catalog', title: 'Catálogo de Productos', path: '/catalog', icon: ViewModule },
-      { id: 'warehouses', title: 'Almacenes y Stock Mínimo', path: '/warehouses', icon: Warehouse },
-      { id: 'movements', title: 'Kardex y Movimientos', path: '/inventory', icon: CompareArrows },
-      { id: 'audits', title: 'Conteo Físico / Auditoría', path: '/inventory/audits', icon: FactCheck },
-      { id: 'adjustments', title: 'Ajustes de Inventario', path: '/inventory/adjustments', icon: Tune },
-      { id: 'charges', title: 'Cargos (Entradas por Ajuste)', path: '/inventory/charges', icon: AddBox },
-      { id: 'discharges', title: 'Descargos (Mermas / Pérdidas)', path: '/inventory/discharges', icon: IndeterminateBox },
-      { id: 'transfers', title: 'Transferencias entre Almacenes', path: '/transfers', icon: CompareArrows },
-      { id: 'dispatch_notes', title: 'Notas de Despacho', path: '/inventory/dispatch-notes', icon: LocalShipping },
-    ]
-  },
-  { 
-    id: 'accounting_group', 
-    title: 'Módulo Contable', 
-    icon: AccountBalance, 
-    color: '#f59e0b', // Amber
-    gradient: 'linear-gradient(135deg, #d97706, #f59e0b)',
-    reqId: 'accounting',
-    subModules: [
-      { id: 'accounts', title: 'Plan Único de Cuentas', path: '/accounting/accounts', icon: AccountBalance },
-      { id: 'journal', title: 'Libro Diario y Asientos', path: '/accounting/journal', icon: Description },
-      { id: 'reconciliation', title: 'Conciliación Bancaria', path: '/accounting/reconciliation', icon: Sync },
-    ]
-  },
-  {
-    id: 'treasury_group',
-    title: 'Tesorería y Finanzas',
-    icon: AccountBalanceWallet,
-    color: '#8b5cf6', // Violet
-    gradient: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
-    reqId: 'treasury',
-    subModules: [
-      { id: 'cxc', title: 'Cuentas por Cobrar (Clientes)', path: '/ar', icon: PaidIcon },
-      { id: 'cxp', title: 'Cuentas por Pagar (Proveedores)', path: '/ap', icon: PointOfSale },
-      { id: 'bank_accounts', title: 'Cuentas Bancarias (VES / USD)', path: '/treasury/bank-accounts', icon: AccountBalance },
-      { id: 'cash', title: 'Caja Chica y Arqueo Diario', path: '/cash', icon: AccountBalanceWallet },
-    ]
-  },
-  {
-    id: 'payroll_group',
-    title: 'Nómina y Gestión Humana (LOTTT)',
-    icon: Badge,
-    color: '#ec4899', // Pink / Rose
-    gradient: 'linear-gradient(135deg, #db2777, #ec4899)',
-    reqId: 'payroll',
-    subModules: [
-      { id: 'employees', title: 'Ficha de Trabajadores', path: '/payroll', icon: People },
-      { id: 'payroll_periods', title: 'Cálculo de Nómina y Leyes (IVSS/FAOV)', path: '/payroll', icon: PayrollCalcIcon },
-    ]
-  },
-  { 
-    id: 'admin_group', 
-    title: 'Administración y Sistema', 
-    icon: Settings, 
-    color: '#64748b', // Slate
-    gradient: 'linear-gradient(135deg, #475569, #64748b)',
-    reqId: 'users',
-    subModules: [
-      { id: 'payroll', title: 'Nómina y RRHH (LOTTT)', path: '/payroll', icon: Badge },
-      { id: 'delivery_notes', title: 'Notas de Entrega', path: '/sales/delivery-notes', icon: LocalShipping },
-      { id: 'customers', title: 'Directorio de Clientes', path: '/sales/customers', icon: People },
-      { id: 'purchases', title: 'Órdenes de Compra', path: '/purchases', icon: ShoppingCart },
-      { id: 'suppliers', title: 'Directorio de Proveedores', path: '/suppliers', icon: Business },
-      { id: 'treasury', title: 'Caja y Movimientos', path: '/cash', icon: AccountBalanceWallet },
-      { id: 'users', title: 'Usuarios y Accesos', path: '/users', icon: People },
-      { id: 'roles', title: 'Roles y Permisos', path: '/roles', icon: Security },
-      { id: 'reports', title: 'Reportes y Estadísticas', path: '/reports', icon: Assessment },
-      { id: 'settings', title: 'Configuración de la Empresa', path: '/settings', icon: Settings },
-      { id: 'manual', title: 'Manual de Ayuda y SENIAT', path: '/manual', icon: HelpIcon },
-    ]
-  },
-];
-
+import { ApexLogo } from '../../components/ApexLogo';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user, tenant, hasModule } = useAppStore();
-  const [openPosModal, setOpenPosModal] = useState(false);
+  const { user, tenant } = useAppStore();
   const [livePeriod, setLivePeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
+  const [logoError, setLogoError] = useState(false);
 
   const { data: alerts = [] } = useQuery({
     queryKey: ['wms-alerts'],
@@ -165,193 +43,165 @@ export default function DashboardPage() {
 
   const { data: liveMovements = [] } = useQuery({
     queryKey: ['dashboard-live-movements'],
-    queryFn: async () => (await api.get('/movements/?limit=8')).data,
+    queryFn: async () => (await api.get('/movements/?limit=10')).data,
     enabled: !!user,
     refetchInterval: 10000,
   });
 
-  const allowedModules = user?.is_superuser 
-    ? [...ALL_MODULES, { id: 'admin', title: 'Súper Admin SaaS', path: '/admin', icon: AdminPanelSettings, color: '#1e3a8a', gradient: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', reqId: 'admin' }]
-    : ALL_MODULES.filter(m => {
-        const licenseKey = m.reqId === 'users' ? 'admin' : (m.reqId === 'payroll' ? 'hr' : m.reqId);
-        return hasModule(licenseKey as any);
-      });
+  const isDemo = (tenant?.name || '').toLowerCase().includes('demo');
+  const isMaster = tenant?.id === 1;
+  const brandColor = tenant?.primary_color || '#2563eb';
 
-  const handleModuleClick = (module: any) => {
-    if (module.id === 'pos') {
-      setOpenPosModal(true);
-    } else if (module.path) {
-      navigate(module.path);
-    }
-  };
-
-  const handleConfirmPos = () => {
-    setOpenPosModal(false);
-    navigate('/sales');
-  };
+  const personalizedSubtitle = isDemo
+    ? `Entorno interactivo de demostración de ${tenant?.name} — Prueba facturación SENIAT, 3 precios, alarmas de stock y modo offline.`
+    : isMaster
+      ? `Centro de comando maestro de ${tenant?.name || 'APEX MASTER CORP'} — Supervisión global SaaS y operación en tiempo real.`
+      : `Bienvenido al espacio ejecutivo de ${tenant?.name || 'tu empresa'} — Control fiscal SENIAT, inventario y finanzas en tiempo real.`;
 
   return (
-    <Box sx={{ 
-      width: '100%',
-      maxWidth: 1400, 
-      mx: 'auto', 
-      mt: { xs: 1, sm: 2 }, 
-      minHeight: '80vh',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      px: { xs: 0.5, sm: 2, md: 4 },
-      py: { xs: 2, sm: 3 },
-      position: 'relative'
-    }}>
-      {/* Background Glow Blobs for depth */}
-      <Box sx={{
-        position: 'fixed',
-        top: '-10%',
-        right: '-10%',
-        width: '50vw',
-        height: '50vw',
-        background: (theme) => theme.palette.mode === 'dark' 
-          ? 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)'
-          : 'radial-gradient(circle, rgba(37, 99, 235, 0.04) 0%, transparent 70%)',
-        zIndex: -1,
-        filter: 'blur(100px)',
-        pointerEvents: 'none'
-      }} />
-      <Box sx={{
-        position: 'fixed',
-        bottom: '-10%',
-        left: '-10%',
-        width: '40vw',
-        height: '40vw',
-        background: (theme) => theme.palette.mode === 'dark'
-          ? 'radial-gradient(circle, rgba(16, 185, 129, 0.07) 0%, transparent 70%)'
-          : 'radial-gradient(circle, rgba(16, 185, 129, 0.03) 0%, transparent 70%)',
-        zIndex: -1,
-        filter: 'blur(80px)',
-        pointerEvents: 'none'
-      }} />
+    <Box
+      sx={{
+        width: '100%',
+        maxWidth: 1360,
+        mx: 'auto',
+        mt: { xs: 1, sm: 2 },
+        px: { xs: 0.5, sm: 1.5 },
+        py: { xs: 1.5, sm: 2.5 },
+        position: 'relative',
+      }}
+    >
+      {/* Personalized Client Welcome Header */}
+      <Fade in timeout={500}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            mb: 3,
+            borderRadius: '22px',
+            border: '1px solid',
+            borderColor: 'divider',
+            background: (theme) =>
+              theme.palette.mode === 'dark'
+                ? `linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, ${brandColor}22 100%)`
+                : `linear-gradient(135deg, #ffffff 0%, ${brandColor}0d 100%)`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: 2.5,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.8, sm: 2.5 } }}>
+            {tenant?.logo_url && !logoError ? (
+              <Box
+                component="img"
+                src={tenant.logo_url}
+                alt={tenant?.name || 'Logo Empresa'}
+                onError={() => setLogoError(true)}
+                sx={{
+                  height: { xs: 52, sm: 64 },
+                  maxWidth: { xs: 90, sm: 130 },
+                  objectFit: 'contain',
+                  borderRadius: '14px',
+                  bgcolor: '#fff',
+                  p: 0.8,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: `0 6px 18px ${brandColor}22`,
+                  flexShrink: 0,
+                }}
+              />
+            ) : (
+              <ApexLogo size={58} primaryColor={brandColor} />
+            )}
 
-      {/* Hero Header */}
-      <Fade in timeout={600}>
-        <Box sx={{ textAlign: 'center', mb: { xs: 3, sm: 5 } }}>
-          <Chip 
-            icon={<Bolt sx={{ fontSize: 16 }} />}
-            label="Panel de Control Inteligente" 
-            size="small"
-            sx={{ 
-              mb: 2,
-              fontWeight: 800, 
-              letterSpacing: '1px', 
-              textTransform: 'uppercase',
-              fontSize: '0.7rem',
-              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(37, 99, 235, 0.06)',
-              color: 'primary.main',
-              borderRadius: '12px',
-              border: '1px solid',
-              borderColor: (theme) => theme.palette.mode === 'dark' ? 'rgba(99, 102, 241, 0.22)' : 'rgba(37, 99, 235, 0.14)',
-              px: 1.5,
-            }}
-          />
-          <Typography sx={(theme) => ({ 
-            fontSize: { xs: '1.65rem', sm: '2.35rem', md: '2.85rem' },
-            fontWeight: 900, 
-            mb: 1, 
-            letterSpacing: '-1.2px',
-            background: theme.palette.mode === 'dark' 
-              ? 'linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #818cf8 100%)' 
-              : 'linear-gradient(135deg, #0f172a 0%, #1e40af 40%, #2563eb 70%, #3b82f6 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            lineHeight: 1.15
-          })}>
-            Bienvenido a {tenant?.name || 'APEX ERP'}, {user?.username || 'Usuario'}
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ 
-            fontWeight: 500, 
-            opacity: 0.78, 
-            maxWidth: 580, 
-            mx: 'auto',
-            fontSize: { xs: '0.88rem', sm: '1rem' },
-            lineHeight: 1.6
-          }}>
-            Potencia y automatiza la gestión fiscal, operativa y financiera de tu empresa en tiempo real.
-          </Typography>
-        </Box>
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+                <Chip
+                  icon={<Bolt sx={{ fontSize: 14 }} />}
+                  label={isDemo ? 'Empresa Demo Activa' : isMaster ? 'Panel Maestro SaaS' : 'Empresa Verificada'}
+                  size="small"
+                  sx={{
+                    fontWeight: 800,
+                    fontSize: '0.68rem',
+                    height: 22,
+                    bgcolor: `${brandColor}16`,
+                    color: brandColor,
+                    borderRadius: '8px',
+                  }}
+                />
+                {tenant?.tax_id && (
+                  <Chip
+                    label={`RIF: ${tenant.tax_id}`}
+                    size="small"
+                    variant="outlined"
+                    sx={{ fontWeight: 700, fontSize: '0.68rem', height: 22, borderRadius: '8px' }}
+                  />
+                )}
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: { xs: '1.25rem', sm: '1.65rem' },
+                  fontWeight: 900,
+                  letterSpacing: '-0.5px',
+                  lineHeight: 1.2,
+                }}
+              >
+                ¡Hola, {user?.username || 'Usuario'}! Bienvenido a{' '}
+                <Box component="span" sx={{ color: brandColor }}>
+                  {tenant?.name || 'APEX ERP'}
+                </Box>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.4, fontSize: '0.84rem' }}>
+                {personalizedSubtitle}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Quick Actions */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<PointOfSale />}
+              onClick={() => navigate('/sales')}
+              sx={{ borderRadius: '11px', fontWeight: 800, px: 2 }}
+            >
+              Punto de Venta
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Receipt />}
+              onClick={() => navigate('/sales/manual-billing')}
+              sx={{ borderRadius: '11px', fontWeight: 800 }}
+            >
+              Facturar SENIAT
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Warehouse />}
+              onClick={() => navigate('/warehouses')}
+              sx={{ borderRadius: '11px', fontWeight: 800 }}
+            >
+              Almacenes
+            </Button>
+          </Box>
+        </Paper>
       </Fade>
 
-      {/* WMS Alerts Banner */}
-      {alerts.length > 0 && (
-        <Fade in timeout={800}>
-          <Box sx={{ 
-            mb: 4, 
-            display: 'flex', 
-            gap: 2, 
-            overflowX: 'auto', 
-            pb: 1.5,
-            '&::-webkit-scrollbar': { height: '6px' },
-            '&::-webkit-scrollbar-thumb': { borderRadius: '10px', bgcolor: 'rgba(0,0,0,0.08)' }
-          }}>
-            {alerts.map((alert: any, i: number) => (
-              <Paper key={i} elevation={0} sx={{ 
-                p: 2.2, 
-                minWidth: { xs: 295, sm: 360 }, 
-                borderRadius: '18px', 
-                borderLeft: '5px solid', 
-                borderColor: 'error.main',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 2,
-                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(254, 242, 242, 0.95)',
-                color: (theme) => theme.palette.mode === 'dark' ? '#fca5a5' : '#991b1b',
-                backdropFilter: 'blur(12px)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 20px rgba(239, 68, 68, 0.1)',
-                }
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.8 }}>
-                  <Timeline color="error" sx={{ fontSize: 28, flexShrink: 0 }} />
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
-                      🚨 {alert.name} ({alert.warehouse_name || 'Almacén'})
-                    </Typography>
-                    <Typography variant="caption" sx={{ display: 'block', fontWeight: 800 }}>
-                      ⚠️ ¡El producto está próximo a agotarse, debes reponer!
-                    </Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                      Quedan <strong>{alert.current_stock}</strong> unid. (Stock Mínimo: <strong>{alert.min_stock}</strong>)
-                    </Typography>
-                  </Box>
-                </Box>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="error"
-                  onClick={() => navigate('/purchases')}
-                  sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
-                >
-                  Reponer
-                </Button>
-              </Paper>
-            ))}
-          </Box>
-        </Fade>
-      )}
-
-      {/* ── MONITOR EJECUTIVO EN VIVO (VENTAS Y MOVIMIENTOS EN TIEMPO REAL) ── */}
-      <Fade in timeout={700}>
+      {/* ── MONITOR EJECUTIVO EN VIVO (LO PRIMERO QUE VE EL CLIENTE) ── */}
+      <Fade in timeout={650}>
         <Paper
           elevation={0}
           sx={{
             p: { xs: 2, sm: 3.5 },
-            mb: 4,
+            mb: 3.5,
             borderRadius: '24px',
             border: '1px solid',
             borderColor: 'divider',
-            bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.55)' : 'rgba(255, 255, 255, 0.9)'),
+            bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.55)' : 'rgba(255, 255, 255, 0.92)'),
             backdropFilter: 'blur(16px)',
           }}
         >
@@ -470,7 +320,7 @@ export default function DashboardPage() {
           <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.2, display: 'flex', alignItems: 'center', gap: 1 }}>
             <TrendingUp fontSize="small" color="primary" /> Últimos Movimientos y Operaciones en Tiempo Real
           </Typography>
-          <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '14px', maxHeight: 250 }}>
+          <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '14px', maxHeight: 320 }}>
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
@@ -486,7 +336,7 @@ export default function DashboardPage() {
               <TableBody>
                 {liveMovements.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                       <Typography variant="caption" color="text.secondary">
                         Aún no hay movimientos recientes. Las ventas, compras y ajustes aparecerán aquí en vivo.
                       </Typography>
@@ -526,237 +376,64 @@ export default function DashboardPage() {
         </Paper>
       </Fade>
 
-      <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ justifyContent: 'center' }}>
-        {allowedModules.map((mod: any, index: number) => {
-          const IconComponent = mod.icon;
-          const isGrouped = !!mod.subModules;
-
-          return (
-            <Grow in timeout={400 + index * 100} key={mod.id}>
-              <Grid size={{ xs: 12, sm: 6, md: (isGrouped ? 6 : 3) }}>
-                <Paper
-                  onClick={() => !isGrouped && handleModuleClick(mod)}
-                  elevation={0}
-                  sx={(theme) => ({
-                    p: { xs: 2.5, sm: 3.5 },
-                    borderRadius: '24px',
-                    border: '1px solid',
-                    borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    cursor: isGrouped ? 'default' : 'pointer',
-                    transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                    backgroundColor: theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.35)' : 'rgba(255, 255, 255, 0.78)',
-                    backdropFilter: 'blur(20px)',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    '&:before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0, left: 0, right: 0, height: '4px',
-                      background: mod.gradient || mod.color,
-                      borderRadius: '4px 4px 0 0',
-                      opacity: 0.85,
-                      transition: 'opacity 0.3s ease',
-                    },
-                    '&:after': isGrouped ? {} : {
-                      content: '""',
-                      position: 'absolute',
-                      bottom: '-50%', left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '80%', height: '50%',
-                      background: `radial-gradient(ellipse, ${mod.color}08, transparent)`,
-                      pointerEvents: 'none',
-                      transition: 'all 0.4s ease',
-                    },
-                    '&:hover': {
-                      transform: isGrouped ? 'none' : 'translateY(-8px)',
-                      boxShadow: isGrouped ? 'none' : theme.palette.mode === 'dark'
-                        ? `0 30px 60px -15px rgba(0,0,0,0.5), 0 0 30px -10px ${mod.color}22`
-                        : `0 30px 60px -15px rgba(0,0,0,0.06), 0 0 30px -10px ${mod.color}15`,
-                      borderColor: isGrouped ? theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' : `${mod.color}55`,
-                      '&:before': {
-                        opacity: 1,
-                      },
-                      '&:after': isGrouped ? {} : {
-                        opacity: 1,
-                        width: '120%',
-                        background: `radial-gradient(ellipse, ${mod.color}12, transparent)`,
-                      }
-                    }
-                  })}
-                >
-                  {/* Header Section */}
-                  <Box sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    flexDirection: isGrouped ? 'row' : 'column',
-                    gap: isGrouped ? 2 : 2,
-                    mb: isGrouped ? 3 : 0,
-                    flexGrow: isGrouped ? 0 : 1,
-                    justifyContent: isGrouped ? 'flex-start' : 'center'
-                  }}>
-                    <Box 
-                      sx={{ 
-                        background: `${mod.color}0d`,
-                        p: isGrouped ? 1.6 : 2.5, 
-                        borderRadius: '18px', 
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mb: isGrouped ? 0 : 1,
-                        border: '1px solid',
-                        borderColor: `${mod.color}22`,
-                        boxShadow: `0 6px 16px -6px ${mod.color}30`,
-                        transition: 'all 0.3s ease',
-                      }}
-                    >
-                      <IconComponent sx={{ fontSize: isGrouped ? 30 : 46, color: mod.color }} />
-                    </Box>
-                    <Box>
-                      <Typography variant={isGrouped ? "h6" : "subtitle1"} sx={{ 
-                        fontWeight: 800, 
-                        textAlign: isGrouped ? 'left' : 'center', 
-                        letterSpacing: '-0.3px',
-                        fontSize: isGrouped ? { xs: '1rem', sm: '1.15rem' } : '0.95rem',
-                      }}>
-                        {mod.title}
-                      </Typography>
-                      {isGrouped && (
-                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, opacity: 0.75 }}>
-                          {mod.subModules.length} funciones integradas
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-
-                  {/* Sub-Modules Grid for Groups */}
-                  {isGrouped && (
-                    <Grid container spacing={1.2} sx={{ mt: 'auto' }}>
-                      {mod.subModules.map((sub: any) => {
-                        const SubIcon = sub.icon;
-                        return (
-                          <Grid size={{ xs: 12, sm: 6 }} key={sub.id + sub.title}>
-                            <Button
-                              fullWidth
-                              variant="outlined"
-                              onClick={(e) => { e.stopPropagation(); handleModuleClick(sub); }}
-                              startIcon={<SubIcon sx={{ color: mod.color, fontSize: 19 }} />}
-                              sx={(theme) => ({ 
-                                justifyContent: 'flex-start', 
-                                borderRadius: '14px', 
-                                borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
-                                py: 1.5,
-                                px: 1.8,
-                                fontWeight: 700,
-                                fontSize: '0.82rem',
-                                color: 'text.primary',
-                                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.008)',
-                                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                                borderWidth: '1px',
-                                textAlign: 'left',
-                                lineHeight: 1.3,
-                                '&:hover': { 
-                                  borderColor: `${mod.color}80`, 
-                                  bgcolor: `${mod.color}0a`, 
-                                  color: mod.color,
-                                  borderWidth: '1px',
-                                  transform: 'translateX(4px)',
-                                  boxShadow: `0 4px 12px -4px ${mod.color}18`,
-                                }
-                              })}
-                            >
-                              {sub.title}
-                            </Button>
-                          </Grid>
-                        );
-                      })}
-                    </Grid>
-                  )}
-                </Paper>
-              </Grid>
-            </Grow>
-          );
-        })}
-      </Grid>
-
-      {/* POS Welcome Modal */}
-      <Dialog 
-        open={openPosModal} 
-        onClose={() => setOpenPosModal(false)}
-        maxWidth="xs"
-        fullWidth
-        slotProps={{ paper: { sx: { 
-          borderRadius: '28px', 
-          p: { xs: 2, sm: 3 }, 
-          boxShadow: '0 30px 60px -12px rgba(0,0,0,0.25)', 
-          backdropFilter: 'blur(24px)',
-          border: '1px solid',
-          borderColor: (theme: any) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-        } } }}
-      >
-        <DialogTitle sx={{ textAlign: 'center', pt: 2 }}>
-          <Box sx={{ 
-            bgcolor: 'rgba(16, 185, 129, 0.08)', 
-            display: 'inline-flex', 
-            p: 2.5, 
-            borderRadius: '50%', 
-            mb: 2, 
-            color: 'success.main', 
-            border: '2px solid rgba(16, 185, 129, 0.15)',
-            boxShadow: '0 8px 20px rgba(16, 185, 129, 0.15)',
-          }}>
-            <PointOfSale sx={{ fontSize: 46 }} />
-          </Box>
-          <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: '-0.5px' }}>Apertura de Caja</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center', px: 2 }}>
-          <Typography variant="body1" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.96rem', lineHeight: 1.6 }}>
-            El usuario <strong>{user?.username || user?.email}</strong> está por abrir el Punto de Venta.
-          </Typography>
-          <Typography variant="body2" sx={{ 
-            color: 'text.secondary', 
-            fontStyle: 'italic', 
-            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 
-            p: 1.5, 
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'divider',
-          }}>
-            Asegúrate de contar el fondo de caja inicial antes de proceder.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', px: 2, pb: 2, pt: 1.5, gap: 1.5 }}>
-          <Button 
-            variant="text" 
-            color="inherit" 
-            onClick={() => setOpenPosModal(false)}
-            sx={{ fontWeight: 700, borderRadius: '14px', py: 1.1, px: 2.5 }}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            variant="contained" 
-            color="success" 
-            onClick={handleConfirmPos}
-            sx={{ 
-              fontWeight: 800, 
-              borderRadius: '14px', 
-              py: 1.1, 
-              px: 3.5, 
-              boxShadow: '0 8px 20px rgba(16, 185, 129, 0.35)',
-              background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-              '&:hover': {
-                boxShadow: '0 12px 28px rgba(16, 185, 129, 0.5)',
-                background: 'linear-gradient(135deg, #047857 0%, #059669 100%)',
-              }
+      {/* WMS Alerts Banner */}
+      {alerts.length > 0 && (
+        <Fade in timeout={800}>
+          <Box
+            sx={{
+              mb: 3,
+              display: 'flex',
+              gap: 2,
+              overflowX: 'auto',
+              pb: 1,
             }}
           >
-            Abrir Punto de Venta
-          </Button>
-        </DialogActions>
-      </Dialog>
+            {alerts.map((alert: any, i: number) => (
+              <Paper
+                key={i}
+                elevation={0}
+                sx={{
+                  p: 2.2,
+                  minWidth: { xs: 295, sm: 360 },
+                  borderRadius: '18px',
+                  borderLeft: '5px solid',
+                  borderColor: 'error.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(254, 242, 242, 0.95)'),
+                  color: (theme) => (theme.palette.mode === 'dark' ? '#fca5a5' : '#991b1b'),
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.8 }}>
+                  <Timeline color="error" sx={{ fontSize: 28, flexShrink: 0 }} />
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>
+                      🚨 {alert.name} ({alert.warehouse_name || 'Almacén'})
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block', fontWeight: 800 }}>
+                      ⚠️ ¡El producto está próximo a agotarse, debes reponer!
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                      Quedan <strong>{alert.current_stock}</strong> unid. (Stock Mínimo: <strong>{alert.min_stock}</strong>)
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  onClick={() => navigate('/purchases')}
+                  sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}
+                >
+                  Reponer
+                </Button>
+              </Paper>
+            ))}
+          </Box>
+        </Fade>
+      )}
     </Box>
   );
 }
