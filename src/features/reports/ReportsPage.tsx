@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../../store/useAppStore';
 import api from '../../api/axiosConfig';
+import { formatMovementModule, formatMovementOperation } from '../../utils/movementLabels';
 
 const REPORT_CATEGORIES = [
   { 
@@ -100,6 +101,51 @@ export default function ReportsPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [movementModuleFilter, setMovementModuleFilter] = useState<string>('ALL');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  const matchesDateRange = (dateStr?: string) => {
+    if (!startDate && !endDate) return true;
+    if (!dateStr) return false;
+    const itemDate = new Date(dateStr);
+    if (Number.isNaN(itemDate.getTime())) return true;
+    if (startDate) {
+      const from = new Date(`${startDate}T00:00:00`);
+      if (itemDate < from) return false;
+    }
+    if (endDate) {
+      const to = new Date(`${endDate}T23:59:59.999`);
+      if (itemDate > to) return false;
+    }
+    return true;
+  };
+
+  const applyQuickDatePreset = (preset: 'today' | 'week' | 'month' | 'clear') => {
+    const now = new Date();
+    const fmt = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    if (preset === 'clear') {
+      setStartDate('');
+      setEndDate('');
+    } else if (preset === 'today') {
+      const today = fmt(now);
+      setStartDate(today);
+      setEndDate(today);
+    } else if (preset === 'week') {
+      const from = new Date(now);
+      from.setDate(now.getDate() - 6);
+      setStartDate(fmt(from));
+      setEndDate(fmt(now));
+    } else if (preset === 'month') {
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      setStartDate(fmt(from));
+      setEndDate(fmt(now));
+    }
+  };
 
   // Extract user modules to dynamically hide categories
   const { user } = useAppStore();
@@ -160,6 +206,8 @@ export default function ReportsPage() {
   const handleOpenReport = (reportId: string, title: string) => {
     setCurrentReport({ id: reportId, title });
     setSearchQuery('');
+    setStartDate('');
+    setEndDate('');
     setViewerOpen(true);
   };
 
@@ -373,7 +421,7 @@ export default function ReportsPage() {
           (m.user_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (m.ip_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
           (m.reference_code || '').toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesModule && matchesSearch;
+        return matchesModule && matchesSearch && matchesDateRange(m.created_at);
       });
 
       return (
@@ -409,11 +457,11 @@ export default function ReportsPage() {
                   <TableRow key={m.id} hover>
                     <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{new Date(m.created_at).toLocaleString('es-VE')}</TableCell>
                     <TableCell>
-                      <Chip label={m.module} size="small" variant="outlined" sx={{ fontWeight: 800, fontSize: '0.7rem' }} />
+                      <Chip label={formatMovementModule(m.module)} size="small" variant="outlined" sx={{ fontWeight: 800, fontSize: '0.7rem' }} />
                     </TableCell>
                     <TableCell>
                       <Chip 
-                        label={m.operation} 
+                        label={formatMovementOperation(m.operation)} 
                         size="small" 
                         color={m.operation === 'CHARGE' || m.operation === 'SALE' ? 'success' : m.operation === 'DISCHARGE' ? 'error' : 'primary'} 
                         sx={{ fontWeight: 700, borderRadius: '6px', fontSize: '0.7rem' }}
@@ -455,11 +503,13 @@ export default function ReportsPage() {
       if (isLoadingForensic) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
 
       const filteredLogs = forensicLogs.filter((l: any) =>
-        (l.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (l.ip_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (l.module || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (l.action || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (l.endpoint_path || '').toLowerCase().includes(searchQuery.toLowerCase())
+        matchesDateRange(l.created_at) && (
+          (l.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (l.ip_address || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (l.module || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (l.action || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (l.endpoint_path || '').toLowerCase().includes(searchQuery.toLowerCase())
+        )
       );
 
       return (
@@ -644,8 +694,11 @@ export default function ReportsPage() {
     if (currentReport.id === 'daily_sales') {
       if (isLoadingSales) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
       
+      const hasCustomRange = Boolean(startDate || endDate);
       const todayStr = new Date().toDateString();
-      const todaySales = sales.filter((s: any) => new Date(s.created_at).toDateString() === todayStr);
+      const todaySales = hasCustomRange
+        ? sales.filter((s: any) => matchesDateRange(s.created_at))
+        : sales.filter((s: any) => new Date(s.created_at).toDateString() === todayStr);
       const totalRevenue = todaySales.reduce((acc: number, s: any) => acc + s.total, 0);
       const filtered = todaySales.filter((s: any) => 
         (s.customer?.name || 'Consumidor Final').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -712,7 +765,10 @@ export default function ReportsPage() {
       if (isLoadingSales) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
       
       const filteredSales = sales.filter((s: any) => 
-        (s.customer?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+        matchesDateRange(s.created_at) && (
+          (s.customer?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (s.fiscal_invoice_number || '').toLowerCase().includes(searchQuery.toLowerCase())
+        )
       );
 
       return (
@@ -754,11 +810,12 @@ export default function ReportsPage() {
     if (currentReport.id === 'z_report') {
       if (isLoadingSales) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
       
-      const cashSales = sales.filter((s: any) => s.payment_method === 'cash');
-      const cardSales = sales.filter((s: any) => s.payment_method === 'card');
-      const usdSales = sales.filter((s: any) => s.currency === 'USD');
+      const rangeSales = sales.filter((s: any) => matchesDateRange(s.created_at));
+      const cashSales = rangeSales.filter((s: any) => s.payment_method === 'cash');
+      const cardSales = rangeSales.filter((s: any) => s.payment_method === 'card');
+      const usdSales = rangeSales.filter((s: any) => s.currency === 'USD');
       
-      const totalSalesVal = sales.reduce((acc: number, s: any) => acc + s.total, 0);
+      const totalSalesVal = rangeSales.reduce((acc: number, s: any) => acc + s.total, 0);
       const totalCashVal = cashSales.reduce((acc: number, s: any) => acc + s.total, 0);
       const totalCardVal = cardSales.reduce((acc: number, s: any) => acc + s.total, 0);
       const totalUsdVal = usdSales.reduce((acc: number, s: any) => acc + s.total, 0);
@@ -981,8 +1038,9 @@ export default function ReportsPage() {
     if (currentReport.id === 'tax_report') {
       if (isLoadingSales) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
       
-      const taxableBase = sales.reduce((acc: number, s: any) => acc + s.subtotal, 0);
-      const vatDebits = sales.reduce((acc: number, s: any) => acc + s.tax_total, 0);
+      const rangeSales = sales.filter((s: any) => matchesDateRange(s.created_at));
+      const taxableBase = rangeSales.reduce((acc: number, s: any) => acc + s.subtotal, 0);
+      const vatDebits = rangeSales.reduce((acc: number, s: any) => acc + s.tax_total, 0);
       
       return (
         <Box>
@@ -1014,8 +1072,10 @@ export default function ReportsPage() {
       if (isLoadingPurchases) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>;
       
       const filtered = purchases.filter((p: any) => 
-        (p.supplier?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.reference || '').toLowerCase().includes(searchQuery.toLowerCase())
+        matchesDateRange(p.created_at) && (
+          (p.supplier?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.reference || '').toLowerCase().includes(searchQuery.toLowerCase())
+        )
       );
 
       return (
@@ -1279,25 +1339,77 @@ export default function ReportsPage() {
         </DialogTitle>
         <Divider />
         <DialogContent sx={{ minHeight: 400 }}>
-          {/* Search bar inside dialog */}
-          {currentReport?.id !== 'inventory_valuation' && (
-            <TextField
-              placeholder="Buscar registros..."
-              fullWidth
-              size="small"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon color="action" />
-                    </InputAdornment>
-                  )
-                }
+          {/* Barra de Parámetros: Búsqueda + Rango de Fechas (Desde / Hasta) */}
+          {currentReport?.id !== 'seniat_sales_book' &&
+           currentReport?.id !== 'seniat_purchase_book' &&
+           currentReport?.id !== 'seniat_txt_withholding' && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 3,
+                borderRadius: '14px',
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8fafc',
               }}
-              sx={{ mb: 4, '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-            />
+            >
+              <Grid container spacing={1.5} alignItems="center">
+                <Grid size={{ xs: 12, md: 5 }}>
+                  <TextField
+                    placeholder="Buscar por nombre, factura, usuario, IP, SKU..."
+                    fullWidth
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon color="action" />
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'background.paper' } }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 4, md: 2.5 }}>
+                  <TextField
+                    label="Desde"
+                    type="date"
+                    size="small"
+                    fullWidth
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'background.paper' } }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 4, md: 2.5 }}>
+                  <TextField
+                    label="Hasta"
+                    type="date"
+                    size="small"
+                    fullWidth
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'background.paper' } }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 4, md: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+                    <Chip label="Hoy" size="small" onClick={() => applyQuickDatePreset('today')} sx={{ fontWeight: 700, cursor: 'pointer' }} />
+                    <Chip label="7d" size="small" onClick={() => applyQuickDatePreset('week')} sx={{ fontWeight: 700, cursor: 'pointer' }} />
+                    <Chip label="Mes" size="small" onClick={() => applyQuickDatePreset('month')} sx={{ fontWeight: 700, cursor: 'pointer' }} />
+                    {(startDate || endDate || searchQuery) && (
+                      <Chip label="Limpiar" size="small" color="error" variant="outlined" onClick={() => { applyQuickDatePreset('clear'); setSearchQuery(''); }} sx={{ fontWeight: 700, cursor: 'pointer' }} />
+                    )}
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
           )}
 
           {renderReportContent()}
