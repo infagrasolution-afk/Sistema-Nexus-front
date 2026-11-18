@@ -15,13 +15,14 @@ import {
   ExpandLessRounded as ExpandLessIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import api from '../../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
-import { ApexLogo } from '../../components/ApexLogo';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, tenant } = useAppStore();
   const [livePeriod, setLivePeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [logoError, setLogoError] = useState(false);
@@ -80,7 +81,7 @@ export default function DashboardPage() {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
-            {tenant?.logo_url && !logoError ? (
+            {tenant?.logo_url && !logoError && (
               <Box
                 component="img"
                 src={tenant.logo_url}
@@ -98,8 +99,6 @@ export default function DashboardPage() {
                   flexShrink: 0,
                 }}
               />
-            ) : (
-              <ApexLogo size={46} primaryColor={brandColor} />
             )}
 
             <Box>
@@ -111,7 +110,7 @@ export default function DashboardPage() {
                   lineHeight: 1.2,
                 }}
               >
-                ¡Hola, {user?.username || 'Usuario'}! Bienvenido a{' '}
+                ¡{t('Hello')}, {user?.username || 'Usuario'}! {t('Welcome to')}{' '}
                 <Box component="span" sx={{ color: brandColor }}>
                   APEX
                 </Box>
@@ -124,7 +123,7 @@ export default function DashboardPage() {
 
           <Chip
             icon={<Bolt sx={{ fontSize: 14 }} />}
-            label={isDemo ? 'Empresa Demo Activa' : isMaster ? 'Panel Maestro SaaS' : 'Empresa Activa'}
+            label={isDemo ? t('Demo Company Active') : isMaster ? t('SaaS Master Panel') : t('Active Company')}
             size="small"
             sx={{
               fontWeight: 800,
@@ -165,10 +164,10 @@ export default function DashboardPage() {
               />
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.15 }}>
-                  Monitor Ejecutivo en Vivo
+                  {t('Live Executive Monitor')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                  Resumen operativo en tiempo real — {tenant?.name || 'Mi Empresa'}
+                  {t('Real-time operational summary')} — {tenant?.name || 'Mi Empresa'}
                 </Typography>
               </Box>
             </Box>
@@ -180,10 +179,10 @@ export default function DashboardPage() {
                 value={livePeriod}
                 onChange={(_, val) => val && setLivePeriod(val)}
               >
-                <ToggleButton value="today" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>Hoy</ToggleButton>
-                <ToggleButton value="week" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>7 Días</ToggleButton>
-                <ToggleButton value="month" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>Mes</ToggleButton>
-                <ToggleButton value="all" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>Histórico</ToggleButton>
+                <ToggleButton value="today" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>{t('Today')}</ToggleButton>
+                <ToggleButton value="week" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>{t('7 Days')}</ToggleButton>
+                <ToggleButton value="month" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>{t('Month')}</ToggleButton>
+                <ToggleButton value="all" sx={{ fontWeight: 700, fontSize: '0.73rem', px: { xs: 1.1, sm: 1.5 } }}>{t('All Time')}</ToggleButton>
               </ToggleButtonGroup>
 
               <Button
@@ -193,7 +192,7 @@ export default function DashboardPage() {
                 startIcon={<Assessment fontSize="small" />}
                 sx={{ borderRadius: '10px', fontWeight: 800, textTransform: 'none' }}
               >
-                Ver Reportes
+                {t('View Reports')}
               </Button>
             </Box>
           </Box>
@@ -207,7 +206,7 @@ export default function DashboardPage() {
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 800, color: '#059669', textTransform: 'uppercase', display: 'block' }}>
-                    Ventas ({summary?.total_orders || 0} Fact.)
+                    {t('Sales (Invoices)')} ({summary?.total_orders || 0})
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 900, color: '#047857', mt: 0.1 }}>
                     ${Number(summary?.total_sales || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -222,7 +221,7 @@ export default function DashboardPage() {
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', display: 'block' }}>
-                    Cuentas por Cobrar
+                    {t('Accounts Receivable')}
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 900, color: '#1d4ed8', mt: 0.1 }}>
                     ${Number(summary?.ar_open || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -237,7 +236,7 @@ export default function DashboardPage() {
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 800, color: '#d97706', textTransform: 'uppercase', display: 'block' }}>
-                    Cuentas por Pagar
+                    {t('Accounts Payable')}
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 900, color: '#b45309', mt: 0.1 }}>
                     ${Number(summary?.ap_open || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -252,7 +251,7 @@ export default function DashboardPage() {
                 </Box>
                 <Box>
                   <Typography variant="caption" sx={{ fontWeight: 800, color: '#7c3aed', textTransform: 'uppercase', display: 'block' }}>
-                    Catálogo / Compras
+                    {t('Catalog / Purchases')}
                   </Typography>
                   <Typography variant="h5" sx={{ fontWeight: 900, color: '#6d28d9', mt: 0.1 }}>
                     {summary?.active_products || 0} Ítems | ${Number(summary?.total_purchases || 0).toFixed(2)}
@@ -265,7 +264,7 @@ export default function DashboardPage() {
           {/* Feed de Movimientos en Vivo (Resumido a 4 filas y Plegable) */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <TrendingUp fontSize="small" color="primary" /> Actividad Reciente en Tiempo Real
+              <TrendingUp fontSize="small" color="primary" /> {t('Recent Live Activity')}
             </Typography>
             <Button
               size="small"
@@ -274,7 +273,7 @@ export default function DashboardPage() {
               endIcon={showLiveFeed ? <ExpandLessIcon /> : <ExpandMoreIcon />}
               sx={{ fontWeight: 700, fontSize: '0.76rem' }}
             >
-              {showLiveFeed ? 'Ocultar' : 'Mostrar'}
+              {showLiveFeed ? t('Hide') : t('Show')}
             </Button>
           </Box>
 

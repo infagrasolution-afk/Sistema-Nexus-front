@@ -20,6 +20,7 @@ import {
   NotificationsActiveRounded as AlarmIcon,
   MenuRounded as MenuIcon,
   ChevronLeftRounded as CollapseIcon,
+  TranslateRounded as TranslateIcon,
 } from '@mui/icons-material';
 import { useNavigate, Outlet, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -65,7 +66,13 @@ function Clock() {
 
 export default function Layout() {
   const { user, setUser, setTenant, themeMode, setThemeMode, hasModule } = useAppStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const currentLang = i18n.language?.startsWith('en') ? 'en' : 'es';
+  const toggleLanguage = () => {
+    const next = currentLang === 'es' ? 'en' : 'es';
+    i18n.changeLanguage(next);
+    localStorage.setItem('i18nextLng', next);
+  };
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -290,60 +297,12 @@ export default function Layout() {
         flexDirection: 'column',
         height: '100%',
         p: expanded ? 1.5 : 1,
+        pt: expanded ? 1.5 : 1.5,
         overflowY: 'auto',
         overflowX: 'hidden',
+        '&::-webkit-scrollbar': { width: '4px' },
       }}
     >
-      {/* Client Identity Card inside Sidebar */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: expanded ? 1.5 : 0.8,
-          mb: 1.5,
-          borderRadius: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: expanded ? 'flex-start' : 'center',
-          gap: 1.5,
-          bgcolor: (theme) =>
-            theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(37, 99, 235, 0.04)',
-          border: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        {tenantData?.logo_url && !logoError ? (
-          <Box
-            component="img"
-            src={tenantData.logo_url}
-            alt={tenantData?.name || 'Logo Empresa'}
-            onError={() => setLogoError(true)}
-            sx={{
-              height: expanded ? 38 : 34,
-              maxWidth: expanded ? 68 : 42,
-              objectFit: 'contain',
-              borderRadius: '10px',
-              bgcolor: '#fff',
-              p: 0.4,
-              border: '1px solid',
-              borderColor: 'divider',
-              flexShrink: 0,
-            }}
-          />
-        ) : (
-          <ApexLogo size={36} primaryColor={tenantData?.primary_color || '#2563eb'} />
-        )}
-        {expanded && (
-          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-            <Typography variant="subtitle2" noWrap sx={{ fontWeight: 900, lineHeight: 1.2 }}>
-              {tenantData?.name || 'APEX ERP'}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" noWrap sx={{ fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
-              {tenantData?.tax_id || 'Gestión Empresarial'}
-            </Typography>
-          </Box>
-        )}
-      </Paper>
-
       {/* Monitor Ejecutivo Shortcut Card */}
       <Tooltip title={expanded ? '' : 'Monitor Ejecutivo en Vivo'} placement="right" arrow>
         <Paper
@@ -383,10 +342,10 @@ export default function Layout() {
           >
             <DashboardIcon fontSize="small" />
           </Box>
-          {expanded && (
+            {expanded && (
             <Box>
               <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
-                Monitor Ejecutivo
+                {t('Executive Monitor')}
               </Typography>
               <Typography
                 variant="caption"
@@ -396,7 +355,7 @@ export default function Layout() {
                   fontWeight: 600,
                 }}
               >
-                KPIs y Movimientos en Vivo
+                {t('Live KPIs & Movements')}
               </Typography>
             </Box>
           )}
@@ -408,7 +367,7 @@ export default function Layout() {
           variant="overline"
           sx={{ px: 1, mb: 0.8, fontWeight: 900, color: 'text.disabled', fontSize: '0.68rem', letterSpacing: '1px' }}
         >
-          Módulos del Sistema
+          {t('System Modules')}
         </Typography>
       )}
 
@@ -747,7 +706,7 @@ export default function Layout() {
                     ? `Offline (${pendingOfflineCount})`
                     : pendingOfflineCount > 0
                       ? `Sync (${pendingOfflineCount})`
-                      : 'En Línea'
+                      : t('Online')
               }
               color={!isOnline || pendingOfflineCount > 0 ? 'warning' : 'success'}
               onClick={pendingOfflineCount > 0 ? triggerGlobalOfflineSync : undefined}
@@ -891,7 +850,28 @@ export default function Layout() {
                   py: 0.6,
                 }}
               >
-                Inducción (Audio)
+                {t('Induction (Audio)')}
+              </Button>
+            </Tooltip>
+
+            <Tooltip title={currentLang === 'es' ? 'Cambiar idioma a Inglés (EN)' : 'Switch language to Spanish (ES)'} arrow>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={toggleLanguage}
+                startIcon={<TranslateIcon sx={{ fontSize: 16 }} />}
+                sx={{
+                  minWidth: 'auto',
+                  px: 1.1,
+                  py: 0.55,
+                  borderRadius: '10px',
+                  borderColor: 'divider',
+                  color: 'text.primary',
+                  fontWeight: 800,
+                  fontSize: '0.74rem',
+                }}
+              >
+                {currentLang.toUpperCase()}
               </Button>
             </Tooltip>
 

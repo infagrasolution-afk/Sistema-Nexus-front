@@ -110,7 +110,35 @@ const resources = {
       "Recommended size: 512x512px. PNG or JPG.": "Recommended size: 512x512px. PNG or JPG.",
       "Create Company": "Create Company",
       "Orders": "Orders",
-      "Products": "Products"
+      "Products": "Products",
+
+      // Executive Monitor & Sidebar
+      "Welcome to": "Welcome to",
+      "Hello": "Hello",
+      "Live Executive Monitor": "Live Executive Monitor",
+      "Real-time operational summary": "Real-time operational summary",
+      "Executive Monitor": "Executive Monitor",
+      "Live KPIs & Movements": "Live KPIs & Movements",
+      "System Modules": "System Modules",
+      "Today": "Today",
+      "7 Days": "7 Days",
+      "Month": "Month",
+      "All Time": "All Time",
+      "View Reports": "View Reports",
+      "Sales (Invoices)": "Sales",
+      "Accounts Receivable": "Accounts Receivable",
+      "Accounts Payable": "Accounts Payable",
+      "Catalog / Purchases": "Catalog / Purchases",
+      "Recent Live Activity": "Recent Live Activity",
+      "Hide": "Hide",
+      "Show": "Show",
+      "Online": "Online",
+      "Induction (Audio)": "Induction (Audio)",
+      "Demo Company Active": "Demo Company Active",
+      "SaaS Master Panel": "SaaS Master Panel",
+      "Active Company": "Active Company",
+      "options": "options",
+      "SaaS Panel": "SaaS Panel"
     }
   },
   es: {
@@ -220,23 +248,54 @@ const resources = {
       "Recommended size: 512x512px. PNG or JPG.": "Tamaño recomendado: 512x512px. PNG o JPG.",
       "Create Company": "Crear Empresa",
       "Orders": "Pedidos",
-      "Products": "Productos"
+      "Products": "Productos",
+
+      // Monitor Ejecutivo y Sidebar
+      "Welcome to": "Bienvenido a",
+      "Hello": "Hola",
+      "Live Executive Monitor": "Monitor Ejecutivo en Vivo",
+      "Real-time operational summary": "Resumen operativo en tiempo real",
+      "Executive Monitor": "Monitor Ejecutivo",
+      "Live KPIs & Movements": "KPIs y Movimientos en Vivo",
+      "System Modules": "Módulos del Sistema",
+      "Today": "Hoy",
+      "7 Days": "7 Días",
+      "Month": "Mes",
+      "All Time": "Histórico",
+      "View Reports": "Ver Reportes",
+      "Sales (Invoices)": "Ventas",
+      "Accounts Receivable": "Cuentas por Cobrar",
+      "Accounts Payable": "Cuentas por Pagar",
+      "Catalog / Purchases": "Catálogo / Compras",
+      "Recent Live Activity": "Actividad Reciente en Tiempo Real",
+      "Hide": "Ocultar",
+      "Show": "Mostrar",
+      "Online": "En Línea",
+      "Induction (Audio)": "Inducción (Audio)",
+      "Demo Company Active": "Empresa Demo Activa",
+      "SaaS Master Panel": "Panel Maestro SaaS",
+      "Active Company": "Empresa Activa",
+      "options": "opciones",
+      "SaaS Panel": "Panel SaaS"
     }
   }
 };
+
+const savedLang = typeof window !== 'undefined' ? localStorage.getItem('i18nextLng') : null;
+const initialLang = savedLang === 'en' ? 'en' : 'es';
 
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
-    lng: "es", // Forced default language
-    fallbackLng: "es", // Forced fallback
+    lng: initialLang,
+    fallbackLng: 'es',
     interpolation: {
       escapeValue: false
     },
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       caches: ['localStorage']
     }
   });
