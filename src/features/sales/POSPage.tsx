@@ -59,6 +59,7 @@ import { RegisterOpenDialog, RegisterCloseDialog } from './RegisterDialogs';
 
 export default function POSPage() {
   const { t } = useTranslation();
+  const tenant = useAppStore((state: any) => state.tenant);
   const [cart, setCart] = useState<{
     id: number;
     sku?: string;
@@ -73,7 +74,16 @@ export default function POSPage() {
     discount: number;
   }[]>([]);
   const [defaultPriceTier, setDefaultPriceTier] = useState<PriceTier>(1);
-  const [emissionMode, setEmissionMode] = useState<EmissionMode>('ambos');
+  const [emissionMode, setEmissionMode] = useState<EmissionMode>(
+    (tenant?.settings?.default_emission_mode as EmissionMode) || 'digital'
+  );
+
+  useEffect(() => {
+    const mode = tenant?.settings?.default_emission_mode as EmissionMode | undefined;
+    if (mode === 'digital' || mode === 'termica' || mode === 'ambos') {
+      setEmissionMode(mode);
+    }
+  }, [tenant?.settings?.default_emission_mode]);
   const [thermalWidth, setThermalWidth] = useState<80 | 58>(80);
   const [customInvoiceNumber, setCustomInvoiceNumber] = useState('');
   const [customControlNumber, setCustomControlNumber] = useState('');

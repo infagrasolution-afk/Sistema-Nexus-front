@@ -442,6 +442,28 @@ export default function SettingsPage() {
             </Typography>
 
             <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>
+              <InputLabel id="default-emission-mode-label">Modo de Emisión de Factura por Defecto</InputLabel>
+              <Select
+                labelId="default-emission-mode-label"
+                label="Modo de Emisión de Factura por Defecto"
+                value={formData.settings?.default_emission_mode || 'digital'}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    settings: {
+                      ...formData.settings,
+                      default_emission_mode: e.target.value,
+                    },
+                  });
+                }}
+              >
+                <MenuItem value="digital">📄 Factura Digital SENIAT (Por Defecto)</MenuItem>
+                <MenuItem value="termica">🖨️ Solo Impresora Térmica (Ticket 80mm / 58mm)</MenuItem>
+                <MenuItem value="ambos">⚡ Ambas en Paralelo (Térmica + Digital)</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small" sx={{ mb: 2.5 }}>
               <InputLabel id="printer-brand-label">Marca de la Impresora</InputLabel>
               <Select
                 labelId="printer-brand-label"

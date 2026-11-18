@@ -45,7 +45,16 @@ export default function ManualBillingPage() {
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [exchangeRate, setExchangeRate] = useState(36.5);
   const [defaultPriceTier, setDefaultPriceTier] = useState<PriceTier>(1);
-  const [emissionMode, setEmissionMode] = useState<EmissionMode>('ambos');
+  const [emissionMode, setEmissionMode] = useState<EmissionMode>(
+    (tenant?.settings?.default_emission_mode as EmissionMode) || 'digital'
+  );
+
+  useEffect(() => {
+    const mode = tenant?.settings?.default_emission_mode as EmissionMode | undefined;
+    if (mode === 'digital' || mode === 'termica' || mode === 'ambos') {
+      setEmissionMode(mode);
+    }
+  }, [tenant?.settings?.default_emission_mode]);
   const [thermalWidth, setThermalWidth] = useState<80 | 58>(80);
   const [customInvoiceNumber, setCustomInvoiceNumber] = useState('');
   const [customControlNumber, setCustomControlNumber] = useState('');

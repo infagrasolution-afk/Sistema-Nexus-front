@@ -1354,7 +1354,7 @@ export default function ReportsPage() {
                 bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8fafc',
               }}
             >
-              <Grid container spacing={1.5} alignItems="center">
+              <Grid container spacing={1.5} sx={{ alignItems: 'center' }}>
                 <Grid size={{ xs: 12, md: 5 }}>
                   <TextField
                     placeholder="Buscar por nombre, factura, usuario, IP, SKU..."
