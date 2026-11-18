@@ -32,6 +32,7 @@ import { ALL_ERP_MODULES, SUPERADMIN_MODULE, type NavModuleGroup } from '../conf
 import { getTotalPendingOfflineCount, syncOfflineSales } from '../utils/offlineQueue';
 
 const SIDEBAR_WIDTH = 285;
+const SIDEBAR_COLLAPSED_WIDTH = 72;
 
 function Clock() {
   const [time, setTime] = useState(new Date());
@@ -63,7 +64,7 @@ function Clock() {
 }
 
 export default function Layout() {
-  const { user, setUser, themeMode, setThemeMode, hasModule } = useAppStore();
+  const { user, setUser, setTenant, themeMode, setThemeMode, hasModule } = useAppStore();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,7 +73,9 @@ export default function Layout() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [alarmAnchorEl, setAlarmAnchorEl] = useState<null | HTMLElement>(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const desktopSidebarExpanded = sidebarPinned || sidebarHovered;
   const [logoError, setLogoError] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>('sales_group');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -145,6 +148,8 @@ export default function Layout() {
     sessionStorage.removeItem('session_active');
     sessionStorage.removeItem('apex_wizard_prompted');
     setUser(null);
+    setTenant(null);
+    queryClient.clear();
 
     window.location.href = '/login';
   };
@@ -165,8 +170,10 @@ export default function Layout() {
     retry: false,
   });
 
+  const activeTenantId = localStorage.getItem('active_tenant_id') || 'main';
+
   const { data: tenantData } = useQuery({
-    queryKey: ['my-tenant'],
+    queryKey: ['my-tenant', user?.id, user?.tenant_id, activeTenantId],
     queryFn: async () => {
       const response = await api.get('/tenants/me');
       const data = response.data;
@@ -251,7 +258,6 @@ export default function Layout() {
     window.location.reload();
   };
 
-  const activeTenantId = localStorage.getItem('active_tenant_id') || 'main';
   const isDashboard = location.pathname === '/dashboard';
   const isPOS = location.pathname === '/sales';
 
@@ -277,25 +283,27 @@ export default function Layout() {
     navigate(path);
   };
 
-  const sidebarContent = (
+  const renderSidebarContent = (expanded: boolean) => (
     <Box
       sx={{
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        p: 1.5,
+        p: expanded ? 1.5 : 1,
         overflowY: 'auto',
+        overflowX: 'hidden',
       }}
     >
       {/* Client Identity Card inside Sidebar */}
       <Paper
         elevation={0}
         sx={{
-          p: 1.5,
+          p: expanded ? 1.5 : 0.8,
           mb: 1.5,
           borderRadius: '16px',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: expanded ? 'flex-start' : 'center',
           gap: 1.5,
           bgcolor: (theme) =>
             theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(37, 99, 235, 0.04)',
@@ -310,8 +318,8 @@ export default function Layout() {
             alt={tenantData?.name || 'Logo Empresa'}
             onError={() => setLogoError(true)}
             sx={{
-              height: 38,
-              maxWidth: 68,
+              height: expanded ? 38 : 34,
+              maxWidth: expanded ? 68 : 42,
               objectFit: 'contain',
               borderRadius: '10px',
               bgcolor: '#fff',
@@ -324,217 +332,231 @@ export default function Layout() {
         ) : (
           <ApexLogo size={36} primaryColor={tenantData?.primary_color || '#2563eb'} />
         )}
-        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-          <Typography variant="subtitle2" noWrap sx={{ fontWeight: 900, lineHeight: 1.2 }}>
-            {tenantData?.name || 'APEX ERP'}
-          </Typography>
-          <Typography variant="caption" color="text.secondary" noWrap sx={{ fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
-            {tenantData?.tax_id || 'Gestión Empresarial'}
-          </Typography>
-        </Box>
+        {expanded && (
+          <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Typography variant="subtitle2" noWrap sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+              {tenantData?.name || 'APEX ERP'}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap sx={{ fontWeight: 600, display: 'block', fontSize: '0.7rem' }}>
+              {tenantData?.tax_id || 'Gestión Empresarial'}
+            </Typography>
+          </Box>
+        )}
       </Paper>
 
       {/* Monitor Ejecutivo Shortcut Card */}
-      <Paper
-        elevation={0}
-        onClick={() => handleNavigateFromSidebar('/dashboard')}
-        sx={{
-          p: 1.4,
-          mb: 1.8,
-          borderRadius: '14px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.4,
-          background: isDashboard
-            ? `linear-gradient(135deg, ${tenantData?.primary_color || '#2563eb'} 0%, #1e40af 100%)`
-            : 'transparent',
-          color: isDashboard ? '#fff' : 'text.primary',
-          border: '1px solid',
-          borderColor: isDashboard ? 'transparent' : 'divider',
-          boxShadow: isDashboard ? `0 8px 20px -6px ${tenantData?.primary_color || '#2563eb'}66` : 'none',
-          transition: 'all 0.25s ease',
-          '&:hover': {
-            transform: 'translateX(3px)',
-            borderColor: 'primary.main',
-          },
-        }}
-      >
-        <Box
+      <Tooltip title={expanded ? '' : 'Monitor Ejecutivo en Vivo'} placement="right" arrow>
+        <Paper
+          elevation={0}
+          onClick={() => handleNavigateFromSidebar('/dashboard')}
           sx={{
-            p: 0.8,
-            borderRadius: '10px',
-            bgcolor: isDashboard ? 'rgba(255,255,255,0.18)' : 'rgba(37, 99, 235, 0.1)',
-            color: isDashboard ? '#fff' : 'primary.main',
+            p: expanded ? 1.4 : 1,
+            mb: 1.8,
+            borderRadius: '14px',
+            cursor: 'pointer',
             display: 'flex',
+            alignItems: 'center',
+            justifyContent: expanded ? 'flex-start' : 'center',
+            gap: 1.4,
+            background: isDashboard
+              ? `linear-gradient(135deg, ${tenantData?.primary_color || '#2563eb'} 0%, #1e40af 100%)`
+              : 'transparent',
+            color: isDashboard ? '#fff' : 'text.primary',
+            border: '1px solid',
+            borderColor: isDashboard ? 'transparent' : 'divider',
+            boxShadow: isDashboard ? `0 8px 20px -6px ${tenantData?.primary_color || '#2563eb'}66` : 'none',
+            transition: 'all 0.25s ease',
+            '&:hover': {
+              transform: 'translateX(2px)',
+              borderColor: 'primary.main',
+            },
           }}
         >
-          <DashboardIcon fontSize="small" />
-        </Box>
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
-            Monitor Ejecutivo
-          </Typography>
-          <Typography
-            variant="caption"
+          <Box
             sx={{
-              fontSize: '0.68rem',
-              opacity: isDashboard ? 0.85 : 0.7,
-              fontWeight: 600,
+              p: 0.8,
+              borderRadius: '10px',
+              bgcolor: isDashboard ? 'rgba(255,255,255,0.18)' : 'rgba(37, 99, 235, 0.1)',
+              color: isDashboard ? '#fff' : 'primary.main',
+              display: 'flex',
             }}
           >
-            KPIs y Movimientos en Vivo
-          </Typography>
-        </Box>
-      </Paper>
+            <DashboardIcon fontSize="small" />
+          </Box>
+          {expanded && (
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
+                Monitor Ejecutivo
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.68rem',
+                  opacity: isDashboard ? 0.85 : 0.7,
+                  fontWeight: 600,
+                }}
+              >
+                KPIs y Movimientos en Vivo
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      </Tooltip>
 
-      <Typography
-        variant="overline"
-        sx={{ px: 1, mb: 0.8, fontWeight: 900, color: 'text.disabled', fontSize: '0.68rem', letterSpacing: '1px' }}
-      >
-        Módulos del Sistema
-      </Typography>
+      {expanded && (
+        <Typography
+          variant="overline"
+          sx={{ px: 1, mb: 0.8, fontWeight: 900, color: 'text.disabled', fontSize: '0.68rem', letterSpacing: '1px' }}
+        >
+          Módulos del Sistema
+        </Typography>
+      )}
 
       {/* Tarjeticas Ordenadas de Módulos */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.1 }}>
         {allowedModules.map((mod) => {
           const IconComp = mod.icon;
           const isGrouped = Boolean(mod.subModules && mod.subModules.length > 0);
-          const isExpanded = expandedGroup === mod.id;
+          const isExpanded = expanded && expandedGroup === mod.id;
           const hasActiveSub = mod.subModules?.some((s) => location.pathname === s.path) || location.pathname === mod.path;
 
           return (
-            <Paper
-              key={mod.id}
-              elevation={0}
-              sx={{
-                borderRadius: '16px',
-                overflow: 'hidden',
-                border: '1px solid',
-                borderColor: hasActiveSub ? `${mod.color}66` : 'divider',
-                position: 'relative',
-                transition: 'all 0.25s ease',
-                '&:before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  width: '4px',
-                  background: mod.gradient,
-                },
-              }}
-            >
-              <Box
-                onClick={() => {
-                  if (isGrouped) {
-                    setExpandedGroup(isExpanded ? null : mod.id);
-                  } else if (mod.path) {
-                    handleNavigateFromSidebar(mod.path);
-                  }
-                }}
+            <Tooltip key={mod.id} title={expanded ? '' : mod.title} placement="right" arrow>
+              <Paper
+                elevation={0}
                 sx={{
-                  p: 1.25,
-                  pl: 1.8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  bgcolor: hasActiveSub ? `${mod.color}0a` : 'transparent',
-                  '&:hover': { bgcolor: `${mod.color}0d` },
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  border: '1px solid',
+                  borderColor: hasActiveSub ? `${mod.color}66` : 'divider',
+                  position: 'relative',
+                  transition: 'all 0.25s ease',
+                  '&:before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: '4px',
+                    background: mod.gradient,
+                  },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0 }}>
-                  <Box
-                    sx={{
-                      p: 0.75,
-                      borderRadius: '10px',
-                      bgcolor: `${mod.color}16`,
-                      color: mod.color,
-                      display: 'flex',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <IconComp sx={{ fontSize: 19 }} />
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" noWrap sx={{ fontWeight: 800, fontSize: '0.82rem', lineHeight: 1.2 }}>
-                      {mod.title}
-                    </Typography>
-                    {isGrouped && (
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.66rem', fontWeight: 600 }}>
-                        {mod.subModules!.length} opciones
-                      </Typography>
+                <Box
+                  onClick={() => {
+                    if (isGrouped) {
+                      setExpandedGroup(isExpanded ? null : mod.id);
+                    } else if (mod.path) {
+                      handleNavigateFromSidebar(mod.path);
+                    }
+                  }}
+                  sx={{
+                    p: expanded ? 1.25 : 1,
+                    pl: expanded ? 1.8 : 1.2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: expanded ? 'space-between' : 'center',
+                    cursor: 'pointer',
+                    bgcolor: hasActiveSub ? `${mod.color}0a` : 'transparent',
+                    '&:hover': { bgcolor: `${mod.color}0d` },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0 }}>
+                    <Box
+                      sx={{
+                        p: 0.75,
+                        borderRadius: '10px',
+                        bgcolor: `${mod.color}16`,
+                        color: mod.color,
+                        display: 'flex',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <IconComp sx={{ fontSize: 19 }} />
+                    </Box>
+                    {expanded && (
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" noWrap sx={{ fontWeight: 800, fontSize: '0.82rem', lineHeight: 1.2 }}>
+                          {mod.title}
+                        </Typography>
+                        {isGrouped && (
+                          <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.66rem', fontWeight: 600 }}>
+                            {mod.subModules!.length} opciones
+                          </Typography>
+                        )}
+                      </Box>
                     )}
                   </Box>
+                  {expanded && isGrouped && (
+                    <Box sx={{ color: 'text.disabled', display: 'flex' }}>
+                      {isExpanded ? <ArrowDownIcon fontSize="small" /> : <ArrowRightIcon fontSize="small" />}
+                    </Box>
+                  )}
                 </Box>
-                {isGrouped && (
-                  <Box sx={{ color: 'text.disabled', display: 'flex' }}>
-                    {isExpanded ? <ArrowDownIcon fontSize="small" /> : <ArrowRightIcon fontSize="small" />}
-                  </Box>
-                )}
-              </Box>
 
-              {isGrouped && (
-                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                  <Box sx={{ px: 1.2, pb: 1.2, pt: 0.4, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {mod.subModules!.map((sub) => {
-                      const SubIcon = sub.icon;
-                      const active = location.pathname === sub.path;
-                      return (
-                        <Button
-                          key={sub.id + sub.title}
-                          fullWidth
-                          size="small"
-                          onClick={() => handleNavigateFromSidebar(sub.path)}
-                          startIcon={<SubIcon sx={{ fontSize: 16, color: active ? '#fff' : mod.color }} />}
-                          sx={{
-                            justifyContent: 'flex-start',
-                            textAlign: 'left',
-                            borderRadius: '10px',
-                            px: 1.2,
-                            py: 0.7,
-                            fontSize: '0.76rem',
-                            fontWeight: active ? 800 : 600,
-                            color: active ? '#fff' : 'text.primary',
-                            bgcolor: active ? mod.color : 'transparent',
-                            backgroundImage: active ? mod.gradient : 'none',
-                            '&:hover': {
-                              bgcolor: active ? mod.color : `${mod.color}14`,
-                              transform: 'translateX(2px)',
-                            },
-                          }}
-                        >
-                          {sub.title}
-                        </Button>
-                      );
-                    })}
-                  </Box>
-                </Collapse>
-              )}
-            </Paper>
+                {isGrouped && expanded && (
+                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                    <Box sx={{ px: 1.2, pb: 1.2, pt: 0.4, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {mod.subModules!.map((sub) => {
+                        const SubIcon = sub.icon;
+                        const active = location.pathname === sub.path;
+                        return (
+                          <Button
+                            key={sub.id + sub.title}
+                            fullWidth
+                            size="small"
+                            onClick={() => handleNavigateFromSidebar(sub.path)}
+                            startIcon={<SubIcon sx={{ fontSize: 16, color: active ? '#fff' : mod.color }} />}
+                            sx={{
+                              justifyContent: 'flex-start',
+                              textAlign: 'left',
+                              borderRadius: '10px',
+                              px: 1.2,
+                              py: 0.7,
+                              fontSize: '0.76rem',
+                              fontWeight: active ? 800 : 600,
+                              color: active ? '#fff' : 'text.primary',
+                              bgcolor: active ? mod.color : 'transparent',
+                              backgroundImage: active ? mod.gradient : 'none',
+                              '&:hover': {
+                                bgcolor: active ? mod.color : `${mod.color}14`,
+                                transform: 'translateX(2px)',
+                              },
+                            }}
+                          >
+                            {sub.title}
+                          </Button>
+                        );
+                      })}
+                    </Box>
+                  </Collapse>
+                )}
+              </Paper>
+            </Tooltip>
           );
         })}
       </Box>
 
       {/* Mobile extras */}
-      <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 2 }}>
-        <Button
-          fullWidth
-          variant="outlined"
-          color="primary"
-          startIcon={<VoiceAgentIcon />}
-          onClick={() => {
-            setMobileDrawerOpen(false);
-            window.dispatchEvent(new CustomEvent('open-apex-induction-agent'));
-          }}
-          sx={{ borderRadius: '12px', fontWeight: 800, mb: 1.2 }}
-        >
-          Inducción Virtual (Audio)
-        </Button>
-      </Box>
+      {expanded && (
+        <Box sx={{ display: { xs: 'block', sm: 'none' }, mt: 2 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            color="primary"
+            startIcon={<VoiceAgentIcon />}
+            onClick={() => {
+              setMobileDrawerOpen(false);
+              window.dispatchEvent(new CustomEvent('open-apex-induction-agent'));
+            }}
+            sx={{ borderRadius: '12px', fontWeight: 800, mb: 1.2 }}
+          >
+            Inducción Virtual (Audio)
+          </Button>
+        </Box>
+      )}
 
-      {branches.length > 0 && (
+      {expanded && branches.length > 0 && (
         <Box sx={{ mt: 2, px: 0.5 }}>
           <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
             Sucursal Activa
@@ -614,20 +636,21 @@ export default function Layout() {
             <MenuIcon fontSize="small" />
           </IconButton>
 
-          {/* Desktop Sidebar Toggle */}
-          <Tooltip title={desktopSidebarOpen ? 'Ocultar barra lateral' : 'Mostrar barra lateral'} arrow>
+          {/* Desktop Sidebar Pin Toggle */}
+          <Tooltip title={sidebarPinned ? 'Modo auto-ocultar al quitar el puntero' : 'Fijar barra lateral'} arrow>
             <IconButton
-              onClick={() => setDesktopSidebarOpen((prev) => !prev)}
+              onClick={() => setSidebarPinned((prev) => !prev)}
               size="small"
               sx={{
                 display: { xs: 'none', md: 'inline-flex' },
                 p: 0.9,
                 borderRadius: '10px',
                 border: '1px solid',
-                borderColor: 'divider',
+                borderColor: sidebarPinned ? 'primary.main' : 'divider',
+                color: sidebarPinned ? 'primary.main' : 'inherit',
               }}
             >
-              {desktopSidebarOpen ? <CollapseIcon fontSize="small" /> : <MenuIcon fontSize="small" />}
+              {sidebarPinned ? <CollapseIcon fontSize="small" /> : <MenuIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
 
@@ -987,29 +1010,34 @@ export default function Layout() {
         </Toolbar>
       </AppBar>
 
-      {/* Desktop Permanent Collapsible Sidebar */}
+      {/* Desktop Auto-Hide Hover Sidebar */}
       <Drawer
-        variant="persistent"
-        open={desktopSidebarOpen}
+        variant="permanent"
+        onMouseEnter={() => setSidebarHovered(true)}
+        onMouseLeave={() => setSidebarHovered(false)}
         sx={{
           display: { xs: 'none', md: 'block' },
-          width: desktopSidebarOpen ? SIDEBAR_WIDTH : 0,
+          width: sidebarPinned ? SIDEBAR_WIDTH : SIDEBAR_COLLAPSED_WIDTH,
           flexShrink: 0,
-          transition: 'width 0.25s ease',
+          transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           '& .MuiDrawer-paper': {
-            width: SIDEBAR_WIDTH,
+            width: desktopSidebarExpanded ? SIDEBAR_WIDTH : SIDEBAR_COLLAPSED_WIDTH,
             boxSizing: 'border-box',
             mt: warning ? '98px' : '66px',
             height: warning ? 'calc(100% - 98px)' : 'calc(100% - 66px)',
             borderRight: '1px solid',
             borderColor: 'divider',
+            overflowX: 'hidden',
+            transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease',
+            boxShadow: !sidebarPinned && sidebarHovered ? '16px 0 40px rgba(15, 23, 42, 0.14)' : 'none',
             bgcolor: (theme) =>
-              theme.palette.mode === 'dark' ? 'rgba(11, 15, 25, 0.96)' : 'rgba(255, 255, 255, 0.92)',
+              theme.palette.mode === 'dark' ? 'rgba(11, 15, 25, 0.96)' : 'rgba(255, 255, 255, 0.96)',
             backdropFilter: 'blur(20px)',
+            zIndex: (theme) => theme.zIndex.drawer,
           },
         }}
       >
-        {sidebarContent}
+        {renderSidebarContent(desktopSidebarExpanded)}
       </Drawer>
 
       {/* Mobile Temporary Sidebar Drawer */}
@@ -1028,7 +1056,7 @@ export default function Layout() {
           },
         }}
       >
-        {sidebarContent}
+        {renderSidebarContent(true)}
       </Drawer>
 
       {/* Main Content Area */}
@@ -1040,7 +1068,10 @@ export default function Layout() {
           mt: { xs: '58px', sm: '66px' },
           px: { xs: 1.5, sm: 3, md: 4 },
           pb: isPOS ? 0 : 8,
-          width: { xs: '100%', md: desktopSidebarOpen ? `calc(100% - ${SIDEBAR_WIDTH}px)` : '100%' },
+          width: {
+            xs: '100%',
+            md: `calc(100% - ${sidebarPinned ? SIDEBAR_WIDTH : SIDEBAR_COLLAPSED_WIDTH}px)`,
+          },
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',

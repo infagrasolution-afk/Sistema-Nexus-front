@@ -149,8 +149,21 @@ export default function DashboardPage() {
               >
                 ¡Hola, {user?.username || 'Usuario'}! Bienvenido a{' '}
                 <Box component="span" sx={{ color: brandColor }}>
-                  {tenant?.name || 'APEX ERP'}
+                  APEX
                 </Box>
+                {tenant?.name ? (
+                  <Typography
+                    component="span"
+                    sx={{
+                      fontSize: { xs: '0.95rem', sm: '1.05rem' },
+                      fontWeight: 800,
+                      color: 'text.secondary',
+                      ml: 1,
+                    }}
+                  >
+                    — {tenant.name}
+                  </Typography>
+                ) : null}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.4, fontSize: '0.84rem' }}>
                 {personalizedSubtitle}
