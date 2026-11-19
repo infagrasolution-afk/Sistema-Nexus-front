@@ -19,6 +19,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import api from '../../api/axiosConfig';
+import { downloadExcelFile, parseSpreadsheetFile } from '../../utils/excelHelper';
 
 const supplierSchema = z.object({
   name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres'),
@@ -134,92 +135,58 @@ export default function SuppliersPage() {
     const headers = ['ID', 'Nombre de Empresa', 'Contacto', 'RIF', 'Correo', 'Telefono', 'Direccion'];
     const rows = suppliers.map((s: any) => [
       s.id,
-      `"${s.name.replace(/"/g, '""')}"`,
-      `"${(s.contact_name || '').replace(/"/g, '""')}"`,
-      `"${s.tax_id.replace(/"/g, '""')}"`,
-      `"${(s.email || '').replace(/"/g, '""')}"`,
-      `"${(s.phone || '').replace(/"/g, '""')}"`,
-      `"${(s.address || '').replace(/"/g, '""')}"`
+      s.name,
+      s.contact_name || '',
+      s.tax_id,
+      s.email || '',
+      s.phone || '',
+      s.address || ''
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
-      + [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'proveedores_export.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadExcelFile(headers, rows, 'proveedores_export.xlsx', 'Proveedores');
   };
 
   // Template Download
   const handleDownloadTemplate = () => {
     const headers = ['nombre', 'contacto', 'rif', 'correo', 'telefono', 'direccion'];
     const example = ['Proveedor Ejemplo C.A.', 'Juan Perez', 'J-12345678-0', 'contacto@proveedor.com', '0212-5555555', 'Zona Industrial II'];
-    
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
-      + [headers.join(','), example.join(',')].join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'plantilla_proveedores.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadExcelFile(headers, [example], 'plantilla_proveedores.xlsx', 'Plantilla Proveedores');
   };
 
-  // CSV Import Parse
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Excel / CSV Import Parse
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-        if (lines.length <= 1) {
-          showToast('El archivo está vacío o solo contiene encabezados.', 'error');
-          return;
-        }
-
-        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const parsedData = [];
-
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-          if (values.length < headers.length) continue;
-
-          const rowObj: any = {};
-          headers.forEach((header, index) => {
-            rowObj[header] = values[index] || '';
-          });
-
-          parsedData.push({
-            name: rowObj.name || rowObj['nombre'] || '',
-            contact_name: rowObj.contact_name || rowObj['contacto'] || '',
-            tax_id: rowObj.tax_id || rowObj['rif'] || '',
-            email: rowObj.email || rowObj['correo'] || '',
-            phone: rowObj.phone || rowObj['telefono'] || rowObj['teléfono'] || '',
-            address: rowObj.address || rowObj['direccion'] || rowObj['dirección'] || ''
-          });
-        }
-
-        if (parsedData.length === 0) {
-          showToast('No se pudieron procesar filas válidas.', 'error');
-          return;
-        }
-
-        importMutation.mutate(parsedData);
-      } catch (err) {
-        showToast('Error al procesar el archivo CSV.', 'error');
+    try {
+      const rows = await parseSpreadsheetFile(file);
+      if (rows.length === 0) {
+        showToast('El archivo está vacío o solo contiene encabezados.', 'error');
+        return;
       }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+
+      const parsedData = rows
+        .map((rowObj: any) => ({
+          name: String(rowObj.name || rowObj['nombre'] || '').trim(),
+          contact_name: String(rowObj.contact_name || rowObj['contacto'] || ''),
+          tax_id: String(rowObj.tax_id || rowObj['rif'] || '').trim(),
+          email: String(rowObj.email || rowObj['correo'] || ''),
+          phone: String(rowObj.phone || rowObj['telefono'] || rowObj['teléfono'] || ''),
+          address: String(rowObj.address || rowObj['direccion'] || rowObj['dirección'] || '')
+        }))
+        .filter((item) => item.name !== '' || item.tax_id !== '');
+
+      if (parsedData.length === 0) {
+        showToast('No se pudieron procesar filas válidas.', 'error');
+        return;
+      }
+
+      importMutation.mutate(parsedData);
+    } catch (err) {
+      showToast('Error al procesar el archivo Excel.', 'error');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const columns: GridColDef[] = [
@@ -265,7 +232,7 @@ export default function SuppliersPage() {
             onClick={handleDownloadTemplate}
             sx={{ borderRadius: '12px', textTransform: 'none', fontWeight: 600 }}
           >
-            Plantilla CSV
+            Plantilla Excel
           </Button>
 
           <Button 
@@ -414,7 +381,7 @@ export default function SuppliersPage() {
         <DialogTitle sx={{ fontWeight: 800 }}>Importar Proveedores Masivamente</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500 }}>
-            Carga un archivo CSV que siga la estructura de nuestra plantilla oficial. Si el RIF ya existe para algún proveedor, sus datos serán actualizados automáticamente.
+            Carga un archivo Excel (.xlsx) o CSV que siga la estructura de nuestra plantilla oficial. Si el RIF ya existe para algún proveedor, sus datos serán actualizados automáticamente.
           </Typography>
           <Button
             variant="outlined"
@@ -423,11 +390,11 @@ export default function SuppliersPage() {
             startIcon={<UploadIcon />}
             sx={{ borderRadius: '12px', height: '48px', textTransform: 'none', fontWeight: 600 }}
           >
-            Seleccionar archivo CSV
+            Seleccionar archivo Excel (.xlsx)
             <input
               type="file"
               hidden
-              accept=".csv"
+              accept=".xlsx,.xls,.csv"
               onChange={handleImportFile}
             />
           </Button>

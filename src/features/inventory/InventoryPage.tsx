@@ -14,6 +14,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
+import { downloadExcelFile, parseSpreadsheetFile } from '../../utils/excelHelper';
 
 const defaultFormData = {
   name: '',
@@ -193,68 +194,43 @@ export default function InventoryPage() {
 
   const handleDownloadTemplate = () => {
     const headers = ['sku', 'nombre', 'costo', 'precio', 'cantidad', 'almacen_id'];
-    const example = ['SKU-001', 'Producto de Ejemplo', '10.50', '15.00', '100', '1'];
-    
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
-      + [headers.join(','), example.join(',')].join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'plantilla_cargo_inicial.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const example = ['SKU-001', 'Producto de Ejemplo', 10.50, 15.00, 100, 1];
+    downloadExcelFile(headers, [example], 'plantilla_cargo_inicial.xlsx', 'Cargo Inicial');
   };
 
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-        if (lines.length <= 1) {
-          showToast('El archivo está vacío o solo contiene encabezados.', 'error');
-          return;
-        }
-
-        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const parsedData = [];
-
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-          if (values.length < headers.length) continue;
-
-          const rowObj: any = {};
-          headers.forEach((header, index) => {
-            rowObj[header] = values[index] || '';
-          });
-
-          parsedData.push({
-            sku: rowObj.sku || '',
-            name: rowObj.name || rowObj['nombre'] || '',
-            cost: parseFloat(rowObj.cost || rowObj['costo'] || '0'),
-            price: parseFloat(rowObj.price || rowObj['precio'] || '0'),
-            quantity: parseFloat(rowObj.quantity || rowObj['cantidad'] || '0'),
-            warehouse_id: parseInt(rowObj.warehouse_id || rowObj['almacen'] || '1', 10)
-          });
-        }
-
-        if (parsedData.length === 0) {
-          showToast('No se pudieron procesar filas válidas.', 'error');
-          return;
-        }
-
-        importMutation.mutate(parsedData);
-      } catch (err) {
-        showToast('Error al procesar el archivo CSV.', 'error');
+    try {
+      const rows = await parseSpreadsheetFile(file);
+      if (rows.length === 0) {
+        showToast('El archivo está vacío o solo contiene encabezados.', 'error');
+        return;
       }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+
+      const parsedData = rows
+        .map((rowObj: any) => ({
+          sku: String(rowObj.sku || '').trim(),
+          name: String(rowObj.name || rowObj['nombre'] || '').trim(),
+          cost: parseFloat(rowObj.cost || rowObj['costo'] || '0'),
+          price: parseFloat(rowObj.price || rowObj['precio'] || '0'),
+          quantity: parseFloat(rowObj.quantity || rowObj['cantidad'] || '0'),
+          warehouse_id: parseInt(rowObj.warehouse_id || rowObj['almacen_id'] || rowObj['almacen'] || '1', 10)
+        }))
+        .filter((item) => item.sku !== '' || item.name !== '');
+
+      if (parsedData.length === 0) {
+        showToast('No se pudieron procesar filas válidas.', 'error');
+        return;
+      }
+
+      importMutation.mutate(parsedData);
+    } catch (err) {
+      showToast('Error al procesar el archivo Excel.', 'error');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -814,7 +790,7 @@ export default function InventoryPage() {
                 onClick={handleDownloadTemplate}
                 sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
               >
-                Descargar Plantilla
+                Descargar Plantilla Excel
               </Button>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -826,11 +802,11 @@ export default function InventoryPage() {
                 disabled={importMutation.isPending}
                 sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
               >
-                {importMutation.isPending ? 'Procesando...' : 'Subir Archivo CSV'}
+                {importMutation.isPending ? 'Procesando...' : 'Subir Archivo Excel'}
                 <input
                   type="file"
                   hidden
-                  accept=".csv"
+                  accept=".xlsx,.xls,.csv"
                   onChange={handleImportFile}
                 />
               </Button>

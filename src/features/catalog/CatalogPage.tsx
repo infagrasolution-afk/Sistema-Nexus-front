@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
+import { downloadExcelFile, parseSpreadsheetFile } from '../../utils/excelHelper';
 
 const defaultFormData = {
   name: '',
@@ -251,99 +252,65 @@ export default function CatalogPage() {
     }
     const headers = ['SKU', 'Nombre', 'Descripcion', 'Costo', 'Precio', 'Min Stock', 'Max Stock', 'Unidad de Medida'];
     const rows = filteredProducts.map((p: any) => [
-      `"${p.sku.replace(/"/g, '""')}"`,
-      `"${p.name.replace(/"/g, '""')}"`,
-      `"${(p.description || '').replace(/"/g, '""')}"`,
+      p.sku,
+      p.name,
+      p.description || '',
       p.cost,
       p.price,
       p.min_stock,
       p.max_stock,
-      `"${p.unit_of_measure}"`
+      p.unit_of_measure
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
-      + [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'catalogo_productos.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadExcelFile(headers, rows, 'catalogo_productos.xlsx', 'Productos');
   };
 
   // Template Download
   const handleDownloadTemplate = () => {
     const headers = ['sku', 'nombre', 'descripcion', 'costo', 'precio', 'stock_minimo', 'stock_maximo', 'unidad_medida'];
-    const example = ['PROD-001', 'Galletas de Chocolate', 'Caja de galletas de choco 12 und', '2.50', '3.50', '10', '100', 'cja'];
-    
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
-      + [headers.join(','), example.join(',')].join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'plantilla_productos.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const example = ['PROD-001', 'Galletas de Chocolate', 'Caja de galletas de choco 12 und', 2.50, 3.50, 10, 100, 'cja'];
+    downloadExcelFile(headers, [example], 'plantilla_productos.xlsx', 'Plantilla Productos');
   };
 
-  // CSV Import Parse
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Excel / CSV Import Parse
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-        if (lines.length <= 1) {
-          showToast('El archivo está vacío o solo contiene encabezados.', 'error');
-          return;
-        }
-
-        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const parsedData = [];
-
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-          if (values.length < headers.length) continue;
-
-          const rowObj: any = {};
-          headers.forEach((header, index) => {
-            rowObj[header] = values[index] || '';
-          });
-
-          parsedData.push({
-            sku: rowObj.sku || '',
-            name: rowObj.name || rowObj['nombre'] || '',
-            description: rowObj.description || rowObj['descripcion'] || rowObj['descripción'] || '',
-            cost: Number(rowObj.cost || rowObj['costo'] || 0),
-            price: Number(rowObj.price || rowObj['precio'] || rowObj['precio de venta'] || 0),
-            min_stock: Number(rowObj.min_stock || rowObj['stock minimo'] || rowObj['stock mínimo'] || 0),
-            max_stock: Number(rowObj.max_stock || rowObj['stock maximo'] || rowObj['stock máximo'] || 0),
-            unit_of_measure: rowObj.unit_of_measure || rowObj['unidad'] || 'unid',
-            track_batches: false,
-            track_expiry: false,
-            image_url: null
-          });
-        }
-
-        if (parsedData.length === 0) {
-          showToast('No se pudieron procesar filas válidas.', 'error');
-          return;
-        }
-
-        importMutation.mutate(parsedData);
-      } catch (err) {
-        showToast('Error al procesar el archivo CSV.', 'error');
+    try {
+      const rows = await parseSpreadsheetFile(file);
+      if (rows.length === 0) {
+        showToast('El archivo está vacío o solo contiene encabezados.', 'error');
+        return;
       }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+
+      const parsedData = rows
+        .map((rowObj: any) => ({
+          sku: String(rowObj.sku || '').trim(),
+          name: String(rowObj.name || rowObj['nombre'] || '').trim(),
+          description: String(rowObj.description || rowObj['descripcion'] || rowObj['descripción'] || ''),
+          cost: Number(rowObj.cost || rowObj['costo'] || 0),
+          price: Number(rowObj.price || rowObj['precio'] || rowObj['precio de venta'] || 0),
+          min_stock: Number(rowObj.min_stock || rowObj['stock_minimo'] || rowObj['stock minimo'] || rowObj['stock mínimo'] || 0),
+          max_stock: Number(rowObj.max_stock || rowObj['stock_maximo'] || rowObj['stock maximo'] || rowObj['stock máximo'] || 0),
+          unit_of_measure: String(rowObj.unit_of_measure || rowObj['unidad_medida'] || rowObj['unidad'] || 'unid'),
+          track_batches: false,
+          track_expiry: false,
+          image_url: null
+        }))
+        .filter((item) => item.sku !== '' || item.name !== '');
+
+      if (parsedData.length === 0) {
+        showToast('No se pudieron procesar filas válidas.', 'error');
+        return;
+      }
+
+      importMutation.mutate(parsedData);
+    } catch (err) {
+      showToast('Error al procesar el archivo Excel.', 'error');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const filteredProducts = products.filter((product: any) => 
@@ -383,7 +350,7 @@ export default function CatalogPage() {
             onClick={handleDownloadTemplate}
             sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 600, height: '40px' }}
           >
-            Plantilla CSV
+            Plantilla Excel
           </Button>
 
           <Button 
@@ -784,7 +751,7 @@ export default function CatalogPage() {
         <DialogTitle sx={{ fontWeight: 800 }}>Importar Catálogo Masivamente</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500 }}>
-            Carga un archivo CSV que siga la estructura de nuestra plantilla oficial. Si el SKU ya existe, los datos del producto se actualizarán automáticamente con la información del archivo.
+            Carga un archivo Excel (.xlsx) o CSV que siga la estructura de nuestra plantilla oficial. Si el SKU ya existe, los datos del producto se actualizarán automáticamente con la información del archivo.
           </Typography>
           <Button
             variant="outlined"
@@ -793,11 +760,11 @@ export default function CatalogPage() {
             startIcon={<UploadIcon />}
             sx={{ borderRadius: '12px', height: '48px', textTransform: 'none', fontWeight: 600 }}
           >
-            Seleccionar archivo CSV
+            Seleccionar archivo Excel (.xlsx)
             <input
               type="file"
               hidden
-              accept=".csv"
+              accept=".xlsx,.xls,.csv"
               onChange={handleImportFile}
             />
           </Button>

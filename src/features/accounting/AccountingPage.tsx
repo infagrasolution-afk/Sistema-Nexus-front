@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
+import { downloadExcelFile, parseSpreadsheetFile } from '../../utils/excelHelper';
 import { 
   Add as AddIcon, ReceiptLong as ReceiptIcon, AccountBalanceWallet as AccountIcon,
   Delete as DeleteIcon, LibraryAdd as LibraryAddIcon, CheckCircleOutlined as CheckedIcon,
@@ -229,68 +230,43 @@ export default function AccountingPage() {
     const example1 = ['1.01.01.01', 'Caja Fuerte Principal', 'Activo'];
     const example2 = ['1.01.01.02', 'Banco Mercantil', 'Activo'];
     const example3 = ['5.01.01.01', 'Gastos de Nómina', 'Gasto'];
-    
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' 
-      + [headers.join(','), example1.join(','), example2.join(','), example3.join(',')].join('\n');
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'plantilla_plan_cuentas.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadExcelFile(headers, [example1, example2, example3], 'plantilla_plan_cuentas.xlsx', 'Plan de Cuentas');
   };
 
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-        if (lines.length <= 1) {
-          showToast('El archivo está vacío o solo contiene encabezados.', 'error');
-          return;
-        }
-
-        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const parsedData = [];
-
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-          if (values.length < headers.length) continue;
-
-          const rowObj: any = {};
-          headers.forEach((header, index) => {
-            rowObj[header] = values[index] || '';
-          });
-
-          // Capitalize first letter of type
-          const rawType = (rowObj.type || rowObj.tipo || 'Activo').toLowerCase();
-          const type = rawType.charAt(0).toUpperCase() + rawType.slice(1);
-
-          parsedData.push({
-            code: rowObj.code || rowObj.codigo || '',
-            name: rowObj.name || rowObj.nombre || '',
-            type: ['Activo', 'Pasivo', 'Capital', 'Ingreso', 'Gasto'].includes(type) ? type : 'Activo'
-          });
-        }
-
-        if (parsedData.length === 0) {
-          showToast('No se pudieron procesar filas válidas.', 'error');
-          return;
-        }
-
-        importMutation.mutate(parsedData);
-      } catch (err) {
-        showToast('Error al procesar el archivo CSV.', 'error');
+    try {
+      const rows = await parseSpreadsheetFile(file);
+      if (rows.length === 0) {
+        showToast('El archivo está vacío o solo contiene encabezados.', 'error');
+        return;
       }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+
+      const parsedData = rows
+        .map((rowObj: any) => {
+          const rawType = String(rowObj.type || rowObj.tipo || 'Activo').toLowerCase().trim();
+          const type = rawType.charAt(0).toUpperCase() + rawType.slice(1);
+          return {
+            code: String(rowObj.code || rowObj.codigo || rowObj['código'] || '').trim(),
+            name: String(rowObj.name || rowObj.nombre || '').trim(),
+            type: ['Activo', 'Pasivo', 'Capital', 'Ingreso', 'Gasto'].includes(type) ? type : 'Activo'
+          };
+        })
+        .filter((item) => item.code !== '' && item.name !== '');
+
+      if (parsedData.length === 0) {
+        showToast('No se pudieron procesar filas válidas.', 'error');
+        return;
+      }
+
+      importMutation.mutate(parsedData);
+    } catch (err) {
+      showToast('Error al procesar el archivo Excel.', 'error');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   // Journal form handlers
@@ -1148,7 +1124,7 @@ export default function AccountingPage() {
                 onClick={handleDownloadTemplate}
                 sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
               >
-                Descargar Plantilla
+                Descargar Plantilla Excel
               </Button>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
@@ -1160,11 +1136,11 @@ export default function AccountingPage() {
                 disabled={importMutation.isPending}
                 sx={{ borderRadius: '12px', height: '56px', textTransform: 'none', fontWeight: 600 }}
               >
-                {importMutation.isPending ? 'Procesando...' : 'Subir CSV'}
+                {importMutation.isPending ? 'Procesando...' : 'Subir Excel'}
                 <input
                   type="file"
                   hidden
-                  accept=".csv"
+                  accept=".xlsx,.xls,.csv"
                   onChange={handleImportFile}
                 />
               </Button>
