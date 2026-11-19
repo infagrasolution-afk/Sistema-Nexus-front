@@ -134,7 +134,6 @@ export const ALL_ERP_MODULES: NavModuleGroup[] = [
     subModules: [
       { id: 'purchases', title: 'Órdenes de Compra', path: '/purchases', icon: ShoppingCart },
       { id: 'suppliers', title: 'Directorio de Proveedores', path: '/suppliers', icon: Business },
-      { id: 'ap_purchases', title: 'Cuentas por Pagar (CxP)', path: '/ap', icon: PaidIcon },
     ],
   },
   {

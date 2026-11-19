@@ -250,16 +250,26 @@ export default function CatalogPage() {
       showToast('No hay datos para exportar.', 'error');
       return;
     }
-    const headers = ['SKU', 'Nombre', 'Descripcion', 'Costo', 'Precio', 'Min Stock', 'Max Stock', 'Unidad de Medida'];
+    const headers = [
+      'SKU', 'Nombre', 'Descripcion', 'Costo',
+      'Precio 1', 'Precio 2', 'Precio 3',
+      'Min Stock', 'Max Stock', 'Unidad de Medida',
+      'Exento IVA', 'Control Lotes', 'Control Vencimiento'
+    ];
     const rows = filteredProducts.map((p: any) => [
       p.sku,
       p.name,
       p.description || '',
       p.cost,
       p.price,
+      p.price_2 ?? 0,
+      p.price_3 ?? 0,
       p.min_stock,
       p.max_stock,
-      p.unit_of_measure
+      p.unit_of_measure,
+      p.tax_exempt ? 'SI' : 'NO',
+      p.track_batches ? 'SI' : 'NO',
+      p.track_expiry ? 'SI' : 'NO'
     ]);
 
     downloadExcelFile(headers, rows, 'catalogo_productos.xlsx', 'Productos');
@@ -267,9 +277,25 @@ export default function CatalogPage() {
 
   // Template Download
   const handleDownloadTemplate = () => {
-    const headers = ['sku', 'nombre', 'descripcion', 'costo', 'precio', 'stock_minimo', 'stock_maximo', 'unidad_medida'];
-    const example = ['PROD-001', 'Galletas de Chocolate', 'Caja de galletas de choco 12 und', 2.50, 3.50, 10, 100, 'cja'];
+    const headers = [
+      'sku', 'nombre', 'descripcion', 'costo',
+      'precio_1', 'precio_2', 'precio_3',
+      'stock_minimo', 'stock_maximo', 'unidad_medida',
+      'exento_iva', 'control_lotes', 'control_vencimiento'
+    ];
+    const example = [
+      'PROD-001', 'Galletas de Chocolate', 'Caja de galletas de choco 12 und', 2.50,
+      3.50, 3.20, 3.00,
+      10, 100, 'cja',
+      'NO', 'NO', 'NO'
+    ];
     downloadExcelFile(headers, [example], 'plantilla_productos.xlsx', 'Plantilla Productos');
+  };
+
+  const parseBoolCell = (val: any) => {
+    if (typeof val === 'boolean') return val;
+    const s = String(val ?? '').trim().toLowerCase();
+    return ['si', 'sí', 'yes', 'true', '1', 'x'].includes(s);
   };
 
   // Excel / CSV Import Parse
@@ -290,12 +316,15 @@ export default function CatalogPage() {
           name: String(rowObj.name || rowObj['nombre'] || '').trim(),
           description: String(rowObj.description || rowObj['descripcion'] || rowObj['descripción'] || ''),
           cost: Number(rowObj.cost || rowObj['costo'] || 0),
-          price: Number(rowObj.price || rowObj['precio'] || rowObj['precio de venta'] || 0),
-          min_stock: Number(rowObj.min_stock || rowObj['stock_minimo'] || rowObj['stock minimo'] || rowObj['stock mínimo'] || 0),
-          max_stock: Number(rowObj.max_stock || rowObj['stock_maximo'] || rowObj['stock maximo'] || rowObj['stock máximo'] || 0),
-          unit_of_measure: String(rowObj.unit_of_measure || rowObj['unidad_medida'] || rowObj['unidad'] || 'unid'),
-          track_batches: false,
-          track_expiry: false,
+          price: Number(rowObj.price || rowObj['precio_1'] || rowObj['precio 1'] || rowObj['precio'] || rowObj['precio de venta'] || 0),
+          price_2: Number(rowObj.price_2 || rowObj['precio_2'] || rowObj['precio 2'] || 0),
+          price_3: Number(rowObj.price_3 || rowObj['precio_3'] || rowObj['precio 3'] || 0),
+          min_stock: Number(rowObj.min_stock || rowObj['stock_minimo'] || rowObj['min stock'] || rowObj['stock minimo'] || rowObj['stock mínimo'] || 0),
+          max_stock: Number(rowObj.max_stock || rowObj['stock_maximo'] || rowObj['max stock'] || rowObj['stock maximo'] || rowObj['stock máximo'] || 0),
+          unit_of_measure: String(rowObj.unit_of_measure || rowObj['unidad_medida'] || rowObj['unidad de medida'] || rowObj['unidad'] || 'unid'),
+          tax_exempt: parseBoolCell(rowObj.tax_exempt ?? rowObj['exento_iva'] ?? rowObj['exento iva']),
+          track_batches: parseBoolCell(rowObj.track_batches ?? rowObj['control_lotes'] ?? rowObj['control lotes']),
+          track_expiry: parseBoolCell(rowObj.track_expiry ?? rowObj['control_vencimiento'] ?? rowObj['control vencimiento']),
           image_url: null
         }))
         .filter((item) => item.sku !== '' || item.name !== '');
