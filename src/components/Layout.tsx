@@ -31,6 +31,7 @@ import SystemWizard from './SystemWizard';
 import { ApexLogo } from './ApexLogo';
 import { ALL_ERP_MODULES, SUPERADMIN_MODULE, type NavModuleGroup } from '../config/navigationModules';
 import { getTotalPendingOfflineCount, syncOfflineSales } from '../utils/offlineQueue';
+import { applyGlobalLanguageDOM } from '../utils/autoTranslateDOM';
 
 const SIDEBAR_WIDTH = 285;
 const SIDEBAR_COLLAPSED_WIDTH = 72;
@@ -72,7 +73,12 @@ export default function Layout() {
     const next = currentLang === 'es' ? 'en' : 'es';
     i18n.changeLanguage(next);
     localStorage.setItem('i18nextLng', next);
+    applyGlobalLanguageDOM(next);
   };
+
+  useEffect(() => {
+    applyGlobalLanguageDOM(currentLang);
+  }, [currentLang]);
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
