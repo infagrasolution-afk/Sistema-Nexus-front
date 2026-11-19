@@ -249,14 +249,54 @@ export default function SettingsPage() {
               {!formData.logo_url && <BusinessIcon sx={{ fontSize: 60, color: 'text.disabled' }} />}
             </Avatar>
             
+            <Button
+              component="label"
+              variant="outlined"
+              fullWidth
+              startIcon={<CloudApiIcon />}
+              sx={{ mb: 2, borderRadius: '12px', fontWeight: 800, textTransform: 'none' }}
+            >
+              Subir Imagen de Logo (PNG / JPG / SVG)
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) {
+                    alert('La imagen supera 2 MB. Por favor elige una imagen más liviana.');
+                    return;
+                  }
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    const dataUrl = reader.result as string;
+                    setFormData((prev) => ({ ...prev, logo_url: dataUrl }));
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </Button>
+
             <TextField
-              label="URL del Logo"
+              label="URL del Logo (o imagen cargada)"
               fullWidth
               size="small"
               value={formData.logo_url}
               onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-              sx={{ mb: 3 }}
+              sx={{ mb: 2.5 }}
             />
+
+            <Button
+              variant="contained"
+              fullWidth
+              startIcon={<SaveIcon />}
+              onClick={() => updateMutation.mutate(formData)}
+              disabled={updateMutation.isPending}
+              sx={{ mb: 2.5, borderRadius: '12px', fontWeight: 800, textTransform: 'none' }}
+            >
+              Guardar Logo y Apariencia
+            </Button>
 
             <Grid container spacing={2} sx={{ mb: 2 }}>
               <Grid size={{ xs: 6 }}>
