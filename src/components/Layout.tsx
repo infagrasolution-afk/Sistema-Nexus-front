@@ -619,39 +619,53 @@ export default function Layout() {
             </IconButton>
           </Tooltip>
 
-          {/* Brand: APEX Logo + Client Logo & Name */}
+          {/* Brand: Client Logo (or APEX Logo fallback) & Company Name */}
           <Box
             onClick={() => navigate('/dashboard')}
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: { xs: 1, sm: 1.4 },
+              gap: { xs: 1, sm: 1.5 },
               cursor: 'pointer',
               minWidth: 0,
               '&:hover': { opacity: 0.9 },
             }}
           >
-            <ApexLogo size={36} primaryColor={tenantData?.primary_color || '#2563eb'} />
-
-            {tenantData?.logo_url && !logoError && (
+            {tenantData?.logo_url && !logoError ? (
               <Box
-                component="img"
-                src={tenantData.logo_url}
-                alt={tenantData?.name || 'Logo'}
-                onError={() => setLogoError(true)}
                 sx={{
-                  height: { xs: 28, sm: 34 },
-                  maxWidth: { xs: 70, sm: 110 },
-                  objectFit: 'contain',
-                  borderRadius: '8px',
+                  height: { xs: 36, sm: 42 },
+                  maxWidth: { xs: 110, sm: 150 },
+                  minWidth: { xs: 36, sm: 42 },
+                  borderRadius: '10px',
                   bgcolor: '#fff',
-                  px: 0.6,
-                  py: 0.2,
+                  px: 1,
+                  py: 0.4,
                   border: '1px solid',
                   borderColor: 'divider',
-                  display: { xs: 'none', sm: 'block' },
+                  boxShadow: '0 2px 6px rgba(15, 23, 42, 0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                <Box
+                  component="img"
+                  src={tenantData.logo_url}
+                  alt={tenantData?.name || 'Logo'}
+                  onError={() => setLogoError(true)}
+                  sx={{
+                    maxHeight: '100%',
+                    maxWidth: '100%',
+                    objectFit: 'contain',
+                    display: 'block',
+                  }}
+                />
+              </Box>
+            ) : (
+              <ApexLogo size={36} primaryColor={tenantData?.primary_color || '#2563eb'} />
             )}
 
             <Box sx={{ minWidth: 0 }}>
