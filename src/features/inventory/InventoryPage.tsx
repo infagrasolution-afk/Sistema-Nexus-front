@@ -193,9 +193,25 @@ export default function InventoryPage() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['sku', 'nombre', 'costo', 'precio', 'cantidad', 'almacen_id'];
-    const example = ['SKU-001', 'Producto de Ejemplo', 10.50, 15.00, 100, 1];
+    const headers = [
+      'sku', 'nombre', 'descripcion', 'costo',
+      'precio_1', 'precio_2', 'precio_3',
+      'stock_minimo', 'stock_maximo', 'unidad_medida', 'exento_iva',
+      'cantidad', 'almacen_id'
+    ];
+    const example = [
+      'SKU-001', 'Producto de Ejemplo', 'Descripción opcional', 10.50,
+      15.00, 14.00, 13.00,
+      10, 100, 'unid', 'NO',
+      100, 1
+    ];
     downloadExcelFile(headers, [example], 'plantilla_cargo_inicial.xlsx', 'Cargo Inicial');
+  };
+
+  const parseBoolCell = (val: any) => {
+    if (typeof val === 'boolean') return val;
+    const s = String(val ?? '').trim().toLowerCase();
+    return ['si', 'sí', 'yes', 'true', '1', 'x'].includes(s);
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,8 +229,15 @@ export default function InventoryPage() {
         .map((rowObj: any) => ({
           sku: String(rowObj.sku || '').trim(),
           name: String(rowObj.name || rowObj['nombre'] || '').trim(),
+          description: String(rowObj.description || rowObj['descripcion'] || rowObj['descripción'] || ''),
           cost: parseFloat(rowObj.cost || rowObj['costo'] || '0'),
-          price: parseFloat(rowObj.price || rowObj['precio'] || '0'),
+          price: parseFloat(rowObj.price || rowObj['precio_1'] || rowObj['precio 1'] || rowObj['precio'] || '0'),
+          price_2: parseFloat(rowObj.price_2 || rowObj['precio_2'] || rowObj['precio 2'] || '0'),
+          price_3: parseFloat(rowObj.price_3 || rowObj['precio_3'] || rowObj['precio 3'] || '0'),
+          min_stock: parseFloat(rowObj.min_stock || rowObj['stock_minimo'] || rowObj['stock minimo'] || rowObj['stock mínimo'] || '0'),
+          max_stock: parseFloat(rowObj.max_stock || rowObj['stock_maximo'] || rowObj['stock maximo'] || rowObj['stock máximo'] || '0'),
+          unit_of_measure: String(rowObj.unit_of_measure || rowObj['unidad_medida'] || rowObj['unidad'] || 'unid'),
+          tax_exempt: parseBoolCell(rowObj.tax_exempt ?? rowObj['exento_iva'] ?? rowObj['exento iva']),
           quantity: parseFloat(rowObj.quantity || rowObj['cantidad'] || '0'),
           warehouse_id: parseInt(rowObj.warehouse_id || rowObj['almacen_id'] || rowObj['almacen'] || '1', 10)
         }))
