@@ -36,6 +36,8 @@ export default function AdminPage() {
   const [auditSearch, setAuditSearch] = useState('');
   const [modulesModalTenant, setModulesModalTenant] = useState<any>(null);
   const [editingModules, setEditingModules] = useState<string[]>(['admin', 'inventory']);
+  const [editingLicenseDate, setEditingLicenseDate] = useState<string>('');
+  const [editingIsActive, setEditingIsActive] = useState<boolean>(true);
   const [adminToast, setAdminToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -172,13 +174,13 @@ export default function AdminPage() {
   });
 
   const updateModulesMutation = useMutation({
-    mutationFn: ({ tenantId, modulesJson }: { tenantId: number; modulesJson: Record<string, any> }) =>
-      api.put(`/admin/tenants/${tenantId}`, { modules: modulesJson }),
+    mutationFn: ({ tenantId, payload }: { tenantId: number; payload: Record<string, any> }) =>
+      api.put(`/admin/tenants/${tenantId}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenants'] });
       queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
       setModulesModalTenant(null);
-      setAdminToast({ open: true, message: 'Módulos actualizados correctamente para el cliente.', severity: 'success' });
+      setAdminToast({ open: true, message: 'Módulos y licencia actualizados correctamente.', severity: 'success' });
     },
     onError: (err: any) => {
       setAdminToast({
@@ -209,6 +211,12 @@ export default function AdminPage() {
   const handleOpenModulesModal = (tenant: any) => {
     setModulesModalTenant(tenant);
     setEditingModules(parseTenantModulesList(tenant.modules));
+    setEditingIsActive(tenant.is_active !== false);
+    if (tenant.subscription_end) {
+      setEditingLicenseDate(new Date(tenant.subscription_end).toISOString().slice(0, 10));
+    } else {
+      setEditingLicenseDate('');
+    }
   };
 
   const handleToggleModuleSwitch = (modId: string) => {
@@ -220,16 +228,24 @@ export default function AdminPage() {
 
   const handleSaveTenantModules = () => {
     if (!modulesModalTenant) return;
-    const exp = modulesModalTenant.subscription_end || new Date(Date.now() + 365 * 86400000).toISOString();
+    const exp = editingLicenseDate
+      ? `${editingLicenseDate}T23:59:59`
+      : modulesModalTenant.subscription_end || new Date(Date.now() + 365 * 86400000).toISOString();
     const modulesJson: Record<string, any> = {};
     editingModules.forEach((modId) => {
-      const prevMeta = typeof modulesModalTenant.modules === 'object' ? modulesModalTenant.modules?.[modId] : null;
       modulesJson[modId] = {
         is_active: true,
-        expires_at: prevMeta?.expires_at || exp,
+        expires_at: exp,
       };
     });
-    updateModulesMutation.mutate({ tenantId: modulesModalTenant.id, modulesJson });
+    const payload: Record<string, any> = {
+      modules: modulesJson,
+      is_active: editingIsActive,
+    };
+    if (editingLicenseDate) {
+      payload.subscription_end = `${editingLicenseDate}T23:59:59`;
+    }
+    updateModulesMutation.mutate({ tenantId: modulesModalTenant.id, payload });
   };
 
   const handleDeleteLog = (id: number) => {
@@ -488,7 +504,7 @@ export default function AdminPage() {
                                 onClick={() => handleOpenModulesModal(tenant)}
                                 sx={{ borderRadius: '10px', fontWeight: 700, fontSize: '0.78rem' }}
                               >
-                                Módulos
+                                Módulos / Licencia
                               </Button>
                               <Button 
                                 startIcon={<LoginIcon />} 
@@ -938,11 +954,38 @@ export default function AdminPage() {
         slotProps={{ paper: { sx: { borderRadius: '16px' } } }}
       >
         <DialogTitle sx={{ fontWeight: 800 }}>
-          Módulos Habilitados — {modulesModalTenant?.name}
+          Módulos y Licencia — {modulesModalTenant?.name}
         </DialogTitle>
         <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Activa o desactiva los módulos contratados por este cliente. Los cambios se aplicarán al instante.
+          <Box sx={{ mb: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <TextField
+              label="Fecha de Vencimiento de Licencia"
+              type="date"
+              fullWidth
+              size="small"
+              slotProps={{ inputLabel: { shrink: true } }}
+              value={editingLicenseDate}
+              onChange={(e) => setEditingLicenseDate(e.target.value)}
+              helperText="Deja vacío para mantener la fecha actual o elige una nueva fecha límite."
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={editingIsActive}
+                  onChange={(e) => setEditingIsActive(e.target.checked)}
+                  color="success"
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  {editingIsActive ? 'Empresa Activa' : 'Empresa Suspendida'}
+                </Typography>
+              }
+            />
+          </Box>
+          <Divider sx={{ mb: 2 }} />
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Activa o desactiva los módulos contratados por este cliente:
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {AVAILABLE_MODULES.map((mod) => {
