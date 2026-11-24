@@ -9,7 +9,6 @@ import {
   InsightsRounded as Assessment,
   AccountBalanceWalletRounded as AccountBalanceWallet,
   TrendingUpRounded as TrendingUp,
-  BoltRounded as Bolt,
   PaidRounded as PaidIcon,
   ExpandMoreRounded as ExpandMoreIcon,
   ExpandLessRounded as ExpandLessIcon,
@@ -39,7 +38,6 @@ export default function DashboardPage() {
   const { t, i18n } = useTranslation();
   const { user, tenant } = useAppStore();
   const [livePeriod, setLivePeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
-  const [logoError, setLogoError] = useState(false);
   const [showLiveFeed, setShowLiveFeed] = useState(true);
   const [rightChartTab, setRightChartTab] = useState<'products' | 'treasury'>('products');
 
@@ -57,8 +55,6 @@ export default function DashboardPage() {
     refetchInterval: 10000,
   });
 
-  const isDemo = (tenant?.name || '').toLowerCase().includes('demo');
-  const isMaster = tenant?.id === 1;
   const brandColor = tenant?.primary_color || '#2563eb';
 
   return (
@@ -67,91 +63,12 @@ export default function DashboardPage() {
         width: '100%',
         maxWidth: 1360,
         mx: 'auto',
-        mt: { xs: 1, sm: 1.5 },
+        mt: { xs: 0.5, sm: 1 },
         px: { xs: 0.5, sm: 1.5 },
-        py: { xs: 1, sm: 2 },
+        py: { xs: 0.5, sm: 1.5 },
         position: 'relative',
       }}
     >
-      {/* Cabecera de Bienvenida Compacta y Limpia */}
-      <Fade in timeout={450}>
-        <Paper
-          elevation={0}
-          sx={{
-            px: { xs: 2, sm: 3 },
-            py: { xs: 1.8, sm: 2.2 },
-            mb: 2.5,
-            borderRadius: '20px',
-            border: '1px solid',
-            borderColor: 'divider',
-            background: (theme) =>
-              theme.palette.mode === 'dark'
-                ? `linear-gradient(135deg, rgba(17, 24, 39, 0.9) 0%, ${brandColor}1f 100%)`
-                : `linear-gradient(135deg, #ffffff 0%, ${brandColor}0a 100%)`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: 1.5,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
-            {tenant?.logo_url && !logoError && (
-              <Box
-                component="img"
-                src={tenant.logo_url}
-                alt={tenant?.name || 'Logo Empresa'}
-                onError={() => setLogoError(true)}
-                sx={{
-                  height: { xs: 44, sm: 50 },
-                  maxWidth: { xs: 80, sm: 115 },
-                  objectFit: 'contain',
-                  borderRadius: '12px',
-                  bgcolor: '#fff',
-                  p: 0.5,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  flexShrink: 0,
-                }}
-              />
-            )}
-
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: { xs: '1.15rem', sm: '1.45rem' },
-                  fontWeight: 900,
-                  letterSpacing: '-0.4px',
-                  lineHeight: 1.2,
-                }}
-              >
-                ¡{t('Hello')}, {user?.username || 'Usuario'}! {t('Welcome to')}{' '}
-                <Box component="span" sx={{ color: brandColor }}>
-                  APEX
-                </Box>
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mt: 0.2 }}>
-                {tenant?.name || 'Mi Empresa'}{tenant?.tax_id ? ` • RIF: ${tenant.tax_id}` : ''}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Chip
-            icon={<Bolt sx={{ fontSize: 14 }} />}
-            label={isDemo ? t('Demo Company Active') : isMaster ? t('SaaS Master Panel') : t('Active Company')}
-            size="small"
-            sx={{
-              fontWeight: 800,
-              fontSize: '0.7rem',
-              height: 24,
-              bgcolor: `${brandColor}14`,
-              color: brandColor,
-              borderRadius: '8px',
-            }}
-          />
-        </Paper>
-      </Fade>
-
       {/* ── MONITOR EJECUTIVO EN VIVO ── */}
       <Fade in timeout={600}>
         <Paper
