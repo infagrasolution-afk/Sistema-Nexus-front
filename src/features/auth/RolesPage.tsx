@@ -9,7 +9,9 @@ import {
   Security as SecurityIcon, 
   Add as AddIcon, 
   Edit as EditIcon, 
-  Delete as DeleteIcon 
+  Delete as DeleteIcon,
+  CheckCircleOutlined as SuccessIcon,
+  ErrorOutlined as ErrorIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -18,6 +20,12 @@ export default function RolesPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<any>(null);
+  const [centerModal, setCenterModal] = useState<{ open: boolean; title: string; message: string; type: 'success' | 'error' }>({
+    open: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
   
   const [formData, setFormData] = useState({
     name: '',
@@ -54,7 +62,21 @@ export default function RolesPage() {
     mutationFn: () => api.post('/roles/seed-defaults'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
-      alert('Roles predeterminados generados con éxito');
+      setCenterModal({
+        open: true,
+        title: 'Roles Generados',
+        message: 'Roles predeterminados generados con éxito para esta empresa.',
+        type: 'success',
+      });
+    },
+    onError: (err: any) => {
+      const detail = err.response?.data?.detail || 'No se pudieron generar los roles predeterminados.';
+      setCenterModal({
+        open: true,
+        title: 'Error',
+        message: typeof detail === 'string' ? detail : JSON.stringify(detail),
+        type: 'error',
+      });
     }
   });
 
@@ -69,10 +91,21 @@ export default function RolesPage() {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
       setOpen(false);
       resetForm();
+      setCenterModal({
+        open: true,
+        title: editingRole ? 'Rol Actualizado' : 'Rol Creado',
+        message: 'El rol y sus permisos fueron guardados correctamente.',
+        type: 'success',
+      });
     },
     onError: (err: any) => {
-      const detail = err.response?.data?.detail || 'Error al guardar el rol';
-      alert(typeof detail === 'string' ? detail : JSON.stringify(detail));
+      const detail = err.response?.data?.detail || err.response?.data?.message || 'Error al guardar el rol';
+      setCenterModal({
+        open: true,
+        title: 'Error al Guardar Rol',
+        message: typeof detail === 'string' ? detail : JSON.stringify(detail),
+        type: 'error',
+      });
     }
   });
 
@@ -80,10 +113,21 @@ export default function RolesPage() {
     mutationFn: (id: number) => api.delete(`/roles/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roles'] });
+      setCenterModal({
+        open: true,
+        title: 'Rol Eliminado',
+        message: 'El rol fue eliminado correctamente.',
+        type: 'success',
+      });
     },
     onError: (err: any) => {
       const detail = err.response?.data?.detail || 'Error al eliminar';
-      alert(typeof detail === 'string' ? detail : JSON.stringify(detail));
+      setCenterModal({
+        open: true,
+        title: 'Error al Eliminar Rol',
+        message: typeof detail === 'string' ? detail : JSON.stringify(detail),
+        type: 'error',
+      });
     }
   });
 
@@ -281,6 +325,49 @@ export default function RolesPage() {
           <Button onClick={() => setOpen(false)} color="inherit" sx={{ fontWeight: 700 }}>Cancelar</Button>
           <Button type="submit" form="role-form" variant="contained" disabled={saveMutation.isPending} sx={{ fontWeight: 700, borderRadius: 2 }}>
             Guardar Rol
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={centerModal.open}
+        onClose={() => setCenterModal((p) => ({ ...p, open: false }))}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '18px', p: 1 } } }}
+      >
+        <DialogContent sx={{ textAlign: 'center', pt: 3, pb: 2 }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              mx: 'auto',
+              mb: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: centerModal.type === 'success' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+              color: centerModal.type === 'success' ? '#10b981' : '#ef4444',
+            }}
+          >
+            {centerModal.type === 'success' ? <SuccessIcon sx={{ fontSize: 32 }} /> : <ErrorIcon sx={{ fontSize: 32 }} />}
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
+            {centerModal.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+            {centerModal.message}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2.5 }}>
+          <Button
+            variant="contained"
+            color={centerModal.type === 'success' ? 'success' : 'primary'}
+            onClick={() => setCenterModal((p) => ({ ...p, open: false }))}
+            sx={{ borderRadius: '10px', px: 4, fontWeight: 700, textTransform: 'none' }}
+          >
+            Aceptar
           </Button>
         </DialogActions>
       </Dialog>
