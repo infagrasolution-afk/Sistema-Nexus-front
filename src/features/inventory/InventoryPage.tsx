@@ -452,17 +452,19 @@ export default function InventoryPage() {
               </TableHead>
               <TableBody>
                 {filteredProducts.map((row: any) => {
-                  const profit = row.price - row.cost;
-                  const margin = row.price > 0 ? (profit / row.price) * 100 : 0;
+                  const numPrice = Number(row.price || 0);
+                  const numCost = Number(row.cost || 0);
+                  const profit = numPrice - numCost;
+                  const margin = numPrice > 0 ? (profit / numPrice) * 100 : 0;
                   
                   // Compute real status based on inventory stock summary
                   let stockStatus = 'En Stock';
                   let chipColor: 'success' | 'warning' | 'error' = 'success';
                   
-                  if (row.stock <= 0) {
+                  if (Number(row.stock || 0) <= 0) {
                     stockStatus = 'Sin Stock';
                     chipColor = 'error';
-                  } else if (row.stock <= row.min_stock) {
+                  } else if (Number(row.stock || 0) <= Number(row.min_stock || 0)) {
                     stockStatus = 'Stock Bajo';
                     chipColor = 'warning';
                   }
@@ -471,7 +473,7 @@ export default function InventoryPage() {
                     <TableRow key={row.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                       <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>{row.sku}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{row.name}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>${row.cost.toFixed(2)}</TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>${numCost.toFixed(2)}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>
                         <Box>P1: <strong>${Number(row.price || 0).toFixed(2)}</strong></Box>
                         {(Number(row.price_2) > 0 || Number(row.price_3) > 0) && (

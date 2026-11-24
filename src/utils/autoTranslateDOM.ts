@@ -124,7 +124,7 @@ const ES_TO_EN_EXACT: Record<string, string> = {
   'Aún no hay movimientos recientes. Las ventas, compras y ajustes aparecerán aquí en vivo.': 'No recent movements yet. Sales, purchases, and adjustments will appear here live.',
 };
 
-const originalTextMap = new WeakMap<Text, string>();
+const translatedNodes = new WeakMap<Text, { original: string; translated: string }>();
 let activeObserver: MutationObserver | null = null;
 let currentTargetLang: 'es' | 'en' = 'es';
 
@@ -132,43 +132,45 @@ function translateTextNode(node: Text, lang: 'es' | 'en') {
   const raw = node.nodeValue;
   if (!raw || !raw.trim()) return;
 
-  if (!originalTextMap.has(node)) {
-    originalTextMap.set(node, raw);
-  }
-  const original = originalTextMap.get(node) || raw;
-
   if (lang === 'es') {
-    if (node.nodeValue !== original) {
-      node.nodeValue = original;
+    const entry = translatedNodes.get(node);
+    if (entry && node.nodeValue === entry.translated) {
+      node.nodeValue = entry.original;
     }
     return;
   }
 
-  const trimmed = original.trim();
-  // Match exact phrase
-  const exact = ES_TO_EN_EXACT[trimmed];
-  if (exact) {
-    const leading = original.match(/^\s*/)?.[0] || '';
-    const trailing = original.match(/\s*$/)?.[0] || '';
-    const nextVal = `${leading}${exact}${trailing}`;
+  const existing = translatedNodes.get(node);
+  const sourceText = existing && raw === existing.translated ? existing.original : raw;
+  const trimmed = sourceText.trim();
+
+  let translated: string | null = ES_TO_EN_EXACT[trimmed] || null;
+
+  if (!translated) {
+    const optMatch = trimmed.match(/^(\d+)\s+opciones$/i);
+    if (optMatch) translated = `${optMatch[1]} options`;
+  }
+  if (!translated) {
+    const repMatch = trimmed.match(/^(\d+)\s+reportes disponibles$/i);
+    if (repMatch) translated = `${repMatch[1]} available reports`;
+  }
+  if (!translated) {
+    const itemsMatch = trimmed.match(/^(\d+)\s+Ítems$/i);
+    if (itemsMatch) translated = `${itemsMatch[1]} Items`;
+  }
+  if (!translated) {
+    const lowMatch = trimmed.match(/^(.*?)(\d+)\s+por agotarse$/i);
+    if (lowMatch) translated = `${lowMatch[1]}${lowMatch[2]} low stock`;
+  }
+
+  if (translated) {
+    const leading = sourceText.match(/^\s*/)?.[0] || '';
+    const trailing = sourceText.match(/\s*$/)?.[0] || '';
+    const nextVal = `${leading}${translated}${trailing}`;
+    translatedNodes.set(node, { original: sourceText, translated: nextVal });
     if (node.nodeValue !== nextVal) {
       node.nodeValue = nextVal;
     }
-    return;
-  }
-
-  // Match patterns with numbers like "7 opciones" -> "7 options"
-  const optMatch = trimmed.match(/^(\d+)\s+opciones$/i);
-  if (optMatch) {
-    const nextVal = `${optMatch[1]} options`;
-    if (node.nodeValue !== nextVal) node.nodeValue = nextVal;
-    return;
-  }
-
-  const repMatch = trimmed.match(/^(\d+)\s+reportes disponibles$/i);
-  if (repMatch) {
-    const nextVal = `${repMatch[1]} available reports`;
-    if (node.nodeValue !== nextVal) node.nodeValue = nextVal;
   }
 }
 
