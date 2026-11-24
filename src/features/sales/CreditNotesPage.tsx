@@ -10,7 +10,9 @@ import {
   Receipt as ReceiptIcon,
   Visibility as ViewIcon,
   Refresh as RefreshIcon,
-  Print as PrintIcon
+  Print as PrintIcon,
+  CheckCircleOutlined as SuccessIcon,
+  ErrorOutlined as ErrorIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
@@ -50,6 +52,12 @@ export default function CreditNotesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState<CreditNote | null>(null);
+  const [centerModal, setCenterModal] = useState<{ open: boolean; title: string; message: string; type: 'success' | 'error' }>({
+    open: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
 
   const [formData, setFormData] = useState({
     sale_id: '',
@@ -101,14 +109,25 @@ export default function CreditNotesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['credit-notes'] });
-      queryClient.invalidateQueries({ queryKey: ['ar-list'] });
-      alert('Nota de Crédito fiscal emitida exitosamente');
+      queryClient.invalidateQueries({ queryKey: ['ar'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       setCreateOpen(false);
       resetForm();
+      setCenterModal({
+        open: true,
+        title: 'Nota de Crédito Emitida',
+        message: 'La Nota de Crédito fiscal se emitió exitosamente y el inventario fue actualizado.',
+        type: 'success',
+      });
     },
     onError: (error: any) => {
-      const detail = error.response?.data?.detail || 'Error al emitir Nota de Crédito';
-      alert(typeof detail === 'string' ? detail : JSON.stringify(detail));
+      const detail = error.response?.data?.detail || error.response?.data?.message || 'No se pudo emitir la Nota de Crédito.';
+      setCenterModal({
+        open: true,
+        title: 'Error al Emitir Nota de Crédito',
+        message: typeof detail === 'string' ? detail : JSON.stringify(detail),
+        type: 'error',
+      });
     }
   });
 
@@ -164,7 +183,12 @@ export default function CreditNotesPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.sale_id || !formData.customer_id || !formData.reason || formData.total <= 0) {
-      alert('Por favor complete todos los datos obligatorios y la factura de referencia.');
+      setCenterModal({
+        open: true,
+        title: 'Campos Incompletos',
+        message: 'Por favor complete todos los datos obligatorios y seleccione la factura de referencia.',
+        type: 'error',
+      });
       return;
     }
 
@@ -486,6 +510,50 @@ export default function CreditNotesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailOpen(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal Moderno Centrado para Mensajes (Éxito / Error) */}
+      <Dialog
+        open={centerModal.open}
+        onClose={() => setCenterModal((p) => ({ ...p, open: false }))}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '18px', p: 1 } } }}
+      >
+        <DialogContent sx={{ textAlign: 'center', pt: 3, pb: 2 }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              mx: 'auto',
+              mb: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: centerModal.type === 'success' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+              color: centerModal.type === 'success' ? '#10b981' : '#ef4444',
+            }}
+          >
+            {centerModal.type === 'success' ? <SuccessIcon sx={{ fontSize: 32 }} /> : <ErrorIcon sx={{ fontSize: 32 }} />}
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
+            {centerModal.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+            {centerModal.message}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2.5 }}>
+          <Button
+            variant="contained"
+            color={centerModal.type === 'success' ? 'success' : 'primary'}
+            onClick={() => setCenterModal((p) => ({ ...p, open: false }))}
+            sx={{ borderRadius: '10px', px: 4, fontWeight: 700, textTransform: 'none' }}
+          >
+            Aceptar
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
