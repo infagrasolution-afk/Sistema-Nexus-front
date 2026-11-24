@@ -4,7 +4,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Chip, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, FormControl, InputLabel, Select, MenuItem, OutlinedInput, Checkbox, ListItemText, Divider,
-  Tabs, Tab, IconButton, Tooltip
+  Tabs, Tab, IconButton, Tooltip, Switch, FormControlLabel, Snackbar, Alert
 } from '@mui/material';
 import { 
   Business as BusinessIcon, 
@@ -19,7 +19,8 @@ import {
   Delete as DeleteIcon,
   Calculate as CalculateIcon,
   Security as SecurityIcon,
-  Storage as StorageIcon
+  Storage as StorageIcon,
+  Extension as ModulesIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +34,13 @@ export default function AdminPage() {
   const [selectedError, setSelectedError] = useState<any>(null);
   const [tenantSearch, setTenantSearch] = useState('');
   const [auditSearch, setAuditSearch] = useState('');
+  const [modulesModalTenant, setModulesModalTenant] = useState<any>(null);
+  const [editingModules, setEditingModules] = useState<string[]>(['admin', 'inventory']);
+  const [adminToast, setAdminToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
   const [dbMode, setDbMode] = useState<'shared' | 'dedicated'>('shared');
 
   const AVAILABLE_MODULES = [
@@ -162,6 +170,67 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ['error-logs'] });
     }
   });
+
+  const updateModulesMutation = useMutation({
+    mutationFn: ({ tenantId, modulesJson }: { tenantId: number; modulesJson: Record<string, any> }) =>
+      api.put(`/admin/tenants/${tenantId}`, { modules: modulesJson }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
+      setModulesModalTenant(null);
+      setAdminToast({ open: true, message: 'Módulos actualizados correctamente para el cliente.', severity: 'success' });
+    },
+    onError: (err: any) => {
+      setAdminToast({
+        open: true,
+        message: err?.response?.data?.detail || 'Error al actualizar módulos.',
+        severity: 'error',
+      });
+    },
+  });
+
+  const parseTenantModulesList = (mods: any): string[] => {
+    const base = new Set<string>(['admin', 'inventory']);
+    if (!mods) return Array.from(base);
+    if (Array.isArray(mods)) {
+      mods.forEach((m) => base.add(String(m)));
+    } else if (typeof mods === 'string') {
+      mods.split(',').map((s) => s.trim()).filter(Boolean).forEach((m) => base.add(m));
+    } else if (typeof mods === 'object') {
+      Object.entries(mods).forEach(([k, v]: [string, any]) => {
+        if (v === true || (typeof v === 'object' && v?.is_active !== false)) {
+          base.add(k);
+        }
+      });
+    }
+    return Array.from(base);
+  };
+
+  const handleOpenModulesModal = (tenant: any) => {
+    setModulesModalTenant(tenant);
+    setEditingModules(parseTenantModulesList(tenant.modules));
+  };
+
+  const handleToggleModuleSwitch = (modId: string) => {
+    if (modId === 'admin' || modId === 'inventory') return; // Base obligatoria
+    setEditingModules((prev) =>
+      prev.includes(modId) ? prev.filter((m) => m !== modId) : [...prev, modId]
+    );
+  };
+
+  const handleSaveTenantModules = () => {
+    if (!modulesModalTenant) return;
+    const exp = modulesModalTenant.subscription_end || new Date(Date.now() + 365 * 86400000).toISOString();
+    const modulesJson: Record<string, any> = {};
+    editingModules.forEach((modId) => {
+      const prevMeta = typeof modulesModalTenant.modules === 'object' ? modulesModalTenant.modules?.[modId] : null;
+      modulesJson[modId] = {
+        is_active: true,
+        expires_at: prevMeta?.expires_at || exp,
+      };
+    });
+    updateModulesMutation.mutate({ tenantId: modulesModalTenant.id, modulesJson });
+  };
 
   const handleDeleteLog = (id: number) => {
     if (confirm('¿Está seguro de eliminar este registro de incidente?')) {
@@ -411,6 +480,16 @@ export default function AdminPage() {
                           </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <Button 
+                                startIcon={<ModulesIcon />} 
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                onClick={() => handleOpenModulesModal(tenant)}
+                                sx={{ borderRadius: '10px', fontWeight: 700, fontSize: '0.78rem' }}
+                              >
+                                Módulos
+                              </Button>
                               <Button 
                                 startIcon={<LoginIcon />} 
                                 size="small"
@@ -849,6 +928,78 @@ export default function AdminPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit Tenant Modules Modal */}
+      <Dialog
+        open={Boolean(modulesModalTenant)}
+        onClose={() => setModulesModalTenant(null)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '16px' } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>
+          Módulos Habilitados — {modulesModalTenant?.name}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Activa o desactiva los módulos contratados por este cliente. Los cambios se aplicarán al instante.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {AVAILABLE_MODULES.map((mod) => {
+              const isBase = mod.id === 'admin' || mod.id === 'inventory';
+              const checked = editingModules.includes(mod.id);
+              return (
+                <Paper
+                  key={mod.id}
+                  variant="outlined"
+                  sx={{ px: 1.5, py: 0.6, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={checked}
+                        disabled={isBase}
+                        onChange={() => handleToggleModuleSwitch(mod.id)}
+                        color="primary"
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {mod.label}
+                      </Typography>
+                    }
+                    sx={{ width: '100%', m: 0 }}
+                  />
+                </Paper>
+              );
+            })}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button onClick={() => setModulesModalTenant(null)} color="inherit" disabled={updateModulesMutation.isPending}>
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveTenantModules}
+            disabled={updateModulesMutation.isPending}
+            sx={{ borderRadius: '10px', fontWeight: 700 }}
+          >
+            {updateModulesMutation.isPending ? 'Guardando...' : 'Guardar Módulos'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={adminToast.open}
+        autoHideDuration={4000}
+        onClose={() => setAdminToast((p) => ({ ...p, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert severity={adminToast.severity} variant="filled" onClose={() => setAdminToast((p) => ({ ...p, open: false }))}>
+          {adminToast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
