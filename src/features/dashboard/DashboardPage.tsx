@@ -13,7 +13,20 @@ import {
   PaidRounded as PaidIcon,
   ExpandMoreRounded as ExpandMoreIcon,
   ExpandLessRounded as ExpandLessIcon,
+  ShowChartRounded as ChartIcon,
 } from '@mui/icons-material';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  Cell,
+} from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import api from '../../api/axiosConfig';
@@ -28,6 +41,7 @@ export default function DashboardPage() {
   const [livePeriod, setLivePeriod] = useState<'today' | 'week' | 'month' | 'all'>('month');
   const [logoError, setLogoError] = useState(false);
   const [showLiveFeed, setShowLiveFeed] = useState(true);
+  const [rightChartTab, setRightChartTab] = useState<'products' | 'treasury'>('products');
 
   const { data: summary } = useQuery({
     queryKey: ['dashboard-live-summary', livePeriod],
@@ -257,6 +271,167 @@ export default function DashboardPage() {
                   <Typography variant="h5" sx={{ fontWeight: 900, color: '#6d28d9', mt: 0.1 }}>
                     {summary?.active_products || 0} Ítems | ${Number(summary?.total_purchases || 0).toFixed(2)}
                   </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Gráficos Ejecutivos en Vivo (Diseño limpio, 2 tarjetas equilibradas) */}
+          <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+            <Grid size={{ xs: 12, lg: 7 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.2,
+                  borderRadius: '18px',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  height: 290,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ChartIcon fontSize="small" sx={{ color: brandColor }} />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                      Ventas en Vivo (Últimos 7 Días)
+                    </Typography>
+                  </Box>
+                  <Chip
+                    label="Actualización en vivo"
+                    size="small"
+                    sx={{ fontSize: '0.68rem', fontWeight: 700, height: 22, bgcolor: 'rgba(16,185,129,0.1)', color: '#059669' }}
+                  />
+                </Box>
+
+                <Box sx={{ flex: 1, minHeight: 0 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={summary?.sales_chart || []} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="salesAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={brandColor} stopOpacity={0.32} />
+                          <stop offset="95%" stopColor={brandColor} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.18} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        tickFormatter={(v) => `$${v}`}
+                      />
+                      <RechartsTooltip
+                        formatter={(value: any) => [`$${Number(value || 0).toFixed(2)}`, 'Ventas']}
+                        contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="ventas"
+                        stroke={brandColor}
+                        strokeWidth={2.5}
+                        fill="url(#salesAreaGrad)"
+                        activeDot={{ r: 5 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+            </Grid>
+
+            <Grid size={{ xs: 12, lg: 5 }}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.2,
+                  borderRadius: '18px',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  height: 290,
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                    {rightChartTab === 'products' ? 'Top Productos Vendidos' : 'Balance Financiero'}
+                  </Typography>
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={rightChartTab}
+                    onChange={(_, v) => v && setRightChartTab(v)}
+                  >
+                    <ToggleButton value="products" sx={{ fontSize: '0.68rem', fontWeight: 700, py: 0.3, px: 1, textTransform: 'none' }}>
+                      Productos
+                    </ToggleButton>
+                    <ToggleButton value="treasury" sx={{ fontSize: '0.68rem', fontWeight: 700, py: 0.3, px: 1, textTransform: 'none' }}>
+                      Finanzas
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+
+                <Box sx={{ flex: 1, minHeight: 0 }}>
+                  {rightChartTab === 'products' ? (
+                    (summary?.top_products || []).length === 0 ? (
+                      <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Aún no hay ventas registradas en este período.
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={(summary?.top_products || []).map((p: any) => ({
+                            name: String(p.name || p.sku).slice(0, 16),
+                            cantidad: Number(p.total_vendido || 0),
+                          }))}
+                          layout="vertical"
+                          margin={{ top: 4, right: 16, left: 4, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.18} />
+                          <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                          <YAxis type="category" dataKey="name" width={105} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#475569' }} />
+                          <RechartsTooltip
+                            formatter={(v: any) => [`${v} und`, 'Vendido']}
+                            contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+                          />
+                          <Bar dataKey="cantidad" fill={brandColor} radius={[0, 8, 8, 0]} barSize={18} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          { name: 'Ventas', monto: Number(summary?.total_sales || 0), color: '#10b981' },
+                          { name: 'Compras', monto: Number(summary?.total_purchases || 0), color: '#8b5cf6' },
+                          { name: 'Por Cobrar', monto: Number(summary?.ar_open || 0), color: '#2563eb' },
+                          { name: 'Por Pagar', monto: Number(summary?.ap_open || 0), color: '#f59e0b' },
+                        ]}
+                        margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.18} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={(v) => `$${v}`} />
+                        <RechartsTooltip
+                          formatter={(v: any) => [`$${Number(v || 0).toFixed(2)}`, 'Monto']}
+                          contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+                        />
+                        <Bar dataKey="monto" radius={[8, 8, 0, 0]} barSize={32}>
+                          {[
+                            '#10b981',
+                            '#8b5cf6',
+                            '#2563eb',
+                            '#f59e0b',
+                          ].map((c, idx) => (
+                            <Cell key={idx} fill={c} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </Box>
               </Paper>
             </Grid>
