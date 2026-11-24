@@ -130,7 +130,14 @@ export default function InventoryPage() {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['wms-alerts'] });
-      showToast(`Carga Inicial Exitosa: ${res.imported} productos procesados.`, 'success');
+      const count = res?.imported ?? 0;
+      const errCount = res?.errors?.length ?? 0;
+      showToast(
+        errCount > 0
+          ? `Cargo inicial: ${count} cargados, ${errCount} omitidos (${res.errors[0]}).`
+          : `Carga Inicial Exitosa: ${count} productos procesados.`,
+        errCount > 0 ? 'error' : 'success'
+      );
       setImportOpen(false);
     },
     onError: (error: any) => {

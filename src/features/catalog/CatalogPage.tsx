@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { 
   Box, Typography, Grid, Card, CardMedia, CardContent, CardActions, 
   Button, Chip, TextField, InputAdornment, Skeleton, Dialog, 
-  DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Divider, MenuItem
+  DialogTitle, DialogContent, DialogActions, Snackbar, Alert, Divider, MenuItem,
+  LinearProgress
 } from '@mui/material';
 import { 
   Search as SearchIcon, 
@@ -132,7 +133,14 @@ export default function CatalogPage() {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      showToast(`Importación exitosa. ${res.data.imported} productos procesados.`, 'success');
+      const count = res?.imported ?? res?.data?.imported ?? 0;
+      const errCount = res?.errors?.length ?? 0;
+      showToast(
+        errCount > 0
+          ? `Se procesaron ${count} productos (${errCount} filas con observaciones).`
+          : `Importación exitosa. ${count} productos cargados/actualizados.`,
+        errCount > 0 ? 'warning' : 'success'
+      );
       setImportOpen(false);
     },
     onError: (error: any) => {
@@ -786,10 +794,11 @@ export default function CatalogPage() {
             variant="outlined"
             component="label"
             fullWidth
+            disabled={importMutation.isPending}
             startIcon={<UploadIcon />}
             sx={{ borderRadius: '12px', height: '48px', textTransform: 'none', fontWeight: 600 }}
           >
-            Seleccionar archivo Excel (.xlsx)
+            {importMutation.isPending ? 'Cargando y procesando productos...' : 'Seleccionar archivo Excel (.xlsx)'}
             <input
               type="file"
               hidden
@@ -797,6 +806,14 @@ export default function CatalogPage() {
               onChange={handleImportFile}
             />
           </Button>
+          {importMutation.isPending && (
+            <Box sx={{ mt: 2 }}>
+              <LinearProgress sx={{ borderRadius: 2 }} />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8, textAlign: 'center' }}>
+                Guardando productos en el servidor, por favor espera...
+              </Typography>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
           <Button onClick={() => setImportOpen(false)} color="inherit" sx={{ fontWeight: 600 }}>Cancelar</Button>
