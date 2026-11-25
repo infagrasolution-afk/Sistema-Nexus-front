@@ -4,7 +4,12 @@ import {
   TableHead, TableRow, Button, Chip, Dialog, DialogTitle, DialogContent, 
   DialogActions, Grid, TextField, MenuItem, CircularProgress
 } from '@mui/material';
-import { Add as AddIcon, Print as PrintIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Print as PrintIcon,
+  CheckCircleOutlined as SuccessIcon,
+  ErrorOutlined as ErrorIcon
+} from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axiosConfig';
 import { useAppStore } from '../../store/useAppStore';
@@ -12,6 +17,12 @@ import { useAppStore } from '../../store/useAppStore';
 export default function DebitNotesPage() {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [centerModal, setCenterModal] = useState<{ open: boolean; title: string; message: string; type: 'success' | 'error' }>({
+    open: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
   const [formData, setFormData] = useState({
     type: 'Débito',
     customer_id: '',
@@ -44,20 +55,35 @@ export default function DebitNotesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['commercial-notes'] });
-      alert('Nota creada exitosamente');
       setCreateOpen(false);
       setFormData({ type: 'Débito', customer_id: '', amount: '', reason: '' });
+      setCenterModal({
+        open: true,
+        title: 'Nota Emitida',
+        message: 'La nota comercial fue registrada exitosamente.',
+        type: 'success',
+      });
     },
     onError: (error: any) => {
       const detail = error.response?.data?.detail || 'Error al crear la nota';
-      alert(typeof detail === 'string' ? detail : JSON.stringify(detail));
+      setCenterModal({
+        open: true,
+        title: 'Error al Crear Nota',
+        message: typeof detail === 'string' ? detail : JSON.stringify(detail),
+        type: 'error',
+      });
     }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customer_id || !formData.amount || !formData.reason) {
-      alert('Por favor, complete todos los campos obligatorios');
+      setCenterModal({
+        open: true,
+        title: 'Campos Incompletos',
+        message: 'Por favor, complete todos los campos obligatorios.',
+        type: 'error',
+      });
       return;
     }
     createMutation.mutate({
@@ -285,6 +311,49 @@ export default function DebitNotesPage() {
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+
+      <Dialog
+        open={centerModal.open}
+        onClose={() => setCenterModal((p) => ({ ...p, open: false }))}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '18px', p: 1 } } }}
+      >
+        <DialogContent sx={{ textAlign: 'center', pt: 3, pb: 2 }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              mx: 'auto',
+              mb: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: centerModal.type === 'success' ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+              color: centerModal.type === 'success' ? '#10b981' : '#ef4444',
+            }}
+          >
+            {centerModal.type === 'success' ? <SuccessIcon sx={{ fontSize: 32 }} /> : <ErrorIcon sx={{ fontSize: 32 }} />}
+          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 800, mb: 1 }}>
+            {centerModal.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+            {centerModal.message}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2.5 }}>
+          <Button
+            variant="contained"
+            color={centerModal.type === 'success' ? 'success' : 'primary'}
+            onClick={() => setCenterModal((p) => ({ ...p, open: false }))}
+            sx={{ borderRadius: '10px', px: 4, fontWeight: 700, textTransform: 'none' }}
+          >
+            Aceptar
+          </Button>
+        </DialogActions>
       </Dialog>
     </Box>
   );
