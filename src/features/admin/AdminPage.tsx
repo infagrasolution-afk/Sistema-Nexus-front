@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [editingLicenseDate, setEditingLicenseDate] = useState<string>('');
   const [editingIsActive, setEditingIsActive] = useState<boolean>(true);
   const [downloadingBackup, setDownloadingBackup] = useState<boolean>(false);
+  const [downloadingTenantId, setDownloadingTenantId] = useState<number | null>(null);
   const [adminToast, setAdminToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -250,20 +251,35 @@ export default function AdminPage() {
     updateModulesMutation.mutate({ tenantId: modulesModalTenant.id, payload });
   };
 
-  const handleDownloadBackup = async () => {
-    setDownloadingBackup(true);
+  const handleDownloadBackup = async (tenantId?: number, tenantName?: string) => {
+    if (tenantId) {
+      setDownloadingTenantId(tenantId);
+    } else {
+      setDownloadingBackup(true);
+    }
     try {
-      await api.post('/admin/backup/run');
-      const res = await api.get('/admin/backup/download', { responseType: 'blob' });
+      const endpoint = tenantId ? `/admin/backup/download?tenant_id=${tenantId}` : '/admin/backup/download';
+      if (!tenantId) {
+        await api.post('/admin/backup/run');
+      }
+      const res = await api.get(endpoint, { responseType: 'blob' });
+      const slug = tenantName ? tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') : '';
+      const outName = tenantId ? `respaldo_${slug || `empresa_${tenantId}`}.json.gz` : 'apex_backup_latest.json.gz';
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'apex_backup_latest.json.gz');
+      link.setAttribute('download', outName);
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setAdminToast({ open: true, message: 'Respaldo actualizado y descargado (apex_backup_latest.json.gz).', severity: 'success' });
+      setAdminToast({
+        open: true,
+        message: tenantId
+          ? `Respaldo de ${tenantName || `empresa #${tenantId}`} descargado (${outName}).`
+          : 'Respaldo completo actualizado y descargado (apex_backup_latest.json.gz).',
+        severity: 'success',
+      });
     } catch (err: any) {
       setAdminToast({
         open: true,
@@ -272,6 +288,7 @@ export default function AdminPage() {
       });
     } finally {
       setDownloadingBackup(false);
+      setDownloadingTenantId(null);
     }
   };
 
@@ -336,11 +353,11 @@ export default function AdminPage() {
                 variant="outlined"
                 color="secondary"
                 startIcon={<BackupIcon />}
-                onClick={handleDownloadBackup}
+                onClick={() => handleDownloadBackup()}
                 disabled={downloadingBackup}
                 sx={{ borderRadius: '12px', px: 2.5, fontWeight: 700, textTransform: 'none' }}
               >
-                {downloadingBackup ? 'Respaldando...' : 'Respaldar y Descargar BD'}
+                {downloadingBackup ? 'Respaldando...' : 'Respaldar Todo'}
               </Button>
             </Tooltip>
             <Button 
@@ -537,6 +554,19 @@ export default function AdminPage() {
                           </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                              <Tooltip title="Descargar respaldo individual de esta empresa (.json.gz)">
+                                <Button
+                                  startIcon={<BackupIcon />}
+                                  size="small"
+                                  color="secondary"
+                                  variant="outlined"
+                                  disabled={downloadingTenantId === tenant.id}
+                                  onClick={() => handleDownloadBackup(tenant.id, tenant.name)}
+                                  sx={{ borderRadius: '10px', fontWeight: 700, fontSize: '0.78rem' }}
+                                >
+                                  {downloadingTenantId === tenant.id ? 'Generando...' : 'Respaldo'}
+                                </Button>
+                              </Tooltip>
                               <Button 
                                 startIcon={<ModulesIcon />} 
                                 size="small"
