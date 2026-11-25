@@ -41,7 +41,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Comprobantes post-venta y Cierre de Caja (Arqueo)',
     ],
     fileSlug: '01_modulo_ventas_punto_de_venta_pos.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/aduy5_NE1x8?si=V7m50toQj7TL-rXA',
   },
   {
     id: '02-facturacion-presupuestos',
@@ -58,7 +58,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Emisión de Notas de Entrega para despacho',
     ],
     fileSlug: '02_modulo_ventas_facturacion_presupuestos_entregas.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/-a3xBVc6nm4?si=LX5nlMLSqDuYjizi',
   },
   {
     id: '03-clientes-notas',
@@ -75,7 +75,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Emisión de Notas de Crédito y devoluciones',
     ],
     fileSlug: '03_modulo_ventas_clientes_notas_ajuste.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/8mmwO8v6CvE?si=WUJkEMh-Jc96dBza',
   },
   {
     id: '04-catalogo-almacenes-kardex',
@@ -91,7 +91,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Kardex de movimientos y carga inicial de inventario',
     ],
     fileSlug: '04_modulo_inventario_catalogo_almacenes_kardex.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/csjLNY3fd-o?si=pHVInpU-vvGUUq0z',
   },
   {
     id: '05-operaciones-wms',
@@ -107,7 +107,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Transferencias entre almacenes y Notas de Despacho',
     ],
     fileSlug: '05_modulo_inventario_operaciones_wms.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/pM08hW6oexw?si=hetZVz3qcSK0XoH_',
   },
   {
     id: '06-contabilidad',
@@ -123,7 +123,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Conciliación Bancaria contra estados de cuenta',
     ],
     fileSlug: '06_modulo_contabilidad_ven_nif.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/vtvxzdrGRc0?si=nCbglORbTSeTaFFE',
   },
   {
     id: '07-tesoreria',
@@ -139,7 +139,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Supervisión de Caja y Arqueo Diario',
     ],
     fileSlug: '07_modulo_tesoreria_finanzas.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/Nh2vW1gUbX0?si=Ody-rGqtrJ-Jdodk',
   },
   {
     id: '08-nomina',
@@ -154,7 +154,7 @@ export const TUTORIAL_VIDEOS: TutorialVideoItem[] = [
       'Apertura y cálculo de períodos de nómina',
     ],
     fileSlug: '08_modulo_nomina_lottt.mp4',
-    youtubeUrl: '',
+    youtubeUrl: 'https://youtu.be/cOSwLqmyy8Y?si=3iizJFGvHH1kTcUm',
   },
   {
     id: '09-compras',
