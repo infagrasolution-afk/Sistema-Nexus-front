@@ -27,6 +27,7 @@ import {
   PostAddRounded as DebitNoteIcon,
   CalculateRounded as PayrollCalcIcon,
   HelpCenterRounded as HelpIcon,
+  OndemandVideoRounded as VideoTutorialIcon,
   PaidRounded as PaidIcon,
 } from '@mui/icons-material';
 
@@ -149,6 +150,7 @@ export const ALL_ERP_MODULES: NavModuleGroup[] = [
       { id: 'roles', title: 'Roles y Permisos', path: '/roles', icon: Security },
       { id: 'settings', title: 'Configuración de Empresa', path: '/settings', icon: Settings },
       { id: 'manual', title: 'Manual SENIAT y Ayuda', path: '/manual', icon: HelpIcon },
+      { id: 'tutorials', title: 'Videotutoriales', path: '/tutorials', icon: VideoTutorialIcon },
     ],
   },
 ];

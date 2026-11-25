@@ -37,6 +37,7 @@ import CreditNotesPage from './features/sales/CreditNotesPage';
 import ChargesPage from './features/inventory/ChargesPage';
 import DischargesPage from './features/inventory/DischargesPage';
 import ManualPage from './features/dashboard/ManualPage';
+import VideoTutorialsPage from './features/help/VideoTutorialsPage';
 import PayrollPage from './features/payroll/PayrollPage';
 
 const queryClient = new QueryClient();
@@ -98,6 +99,7 @@ function App() {
               <Route path="/ap" element={<AccountsPayablePage />} />
               <Route path="/payroll" element={<PayrollPage />} />
               <Route path="/manual" element={<ManualPage />} />
+              <Route path="/tutorials" element={<VideoTutorialsPage />} />
             </Route>
 
             

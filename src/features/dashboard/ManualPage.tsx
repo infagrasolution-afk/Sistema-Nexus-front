@@ -1,5 +1,5 @@
 import { Box, Paper, Typography, Button, CircularProgress, Alert, Divider } from '@mui/material';
-import { Download as DownloadIcon, ArrowBack as ArrowBackIcon, ContactSupport as ContactSupportIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, ArrowBack as ArrowBackIcon, ContactSupport as ContactSupportIcon, OndemandVideoRounded as VideoIcon } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 
 import { useNavigate } from 'react-router-dom';
@@ -72,7 +72,16 @@ export default function ManualPage() {
           Volver al Tablero
         </Button>
         
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<VideoIcon />}
+            onClick={() => navigate('/tutorials')}
+            sx={{ borderRadius: 3, fontWeight: 700 }}
+          >
+            Ver Videotutoriales
+          </Button>
           <Button 
             variant="outlined" 
             color="success"
