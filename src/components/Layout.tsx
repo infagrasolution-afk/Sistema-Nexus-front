@@ -274,12 +274,106 @@ export default function Layout() {
   const isDashboard = location.pathname === '/dashboard';
   const isPOS = location.pathname === '/sales';
 
+  const isPrivilegedAdmin = Boolean(user?.is_superuser || (user as any)?.is_tenant_admin);
+  const rolePermCodes = new Set<string>(
+    (((user as any)?.role?.permissions) || []).map((p: any) => String(p.code || ''))
+  );
+
+  const canAccessSubModule = (subId: string): boolean => {
+    if (isPrivilegedAdmin) return true;
+    const hasAny = (...codes: string[]) => codes.some((c) => rolePermCodes.has(c));
+
+    switch (subId) {
+      // Ventas
+      case 'pos':
+      case 'manual_billing':
+      case 'budgets':
+      case 'delivery_notes':
+        return hasAny('sales:read', 'sales:write');
+      case 'customers':
+        return hasAny('sales:customers', 'sales:read', 'sales:write');
+      case 'debit_notes':
+      case 'credit_notes':
+        return hasAny('sales:void', 'sales:write');
+
+      // Inventario
+      case 'catalog':
+      case 'warehouses':
+      case 'movements':
+      case 'audits':
+        return hasAny('inventory:read', 'inventory:write');
+      case 'adjustments':
+        return hasAny('inventory:adjust');
+      case 'charges':
+        return hasAny('inventory:charge');
+      case 'discharges':
+        return hasAny('inventory:discharge');
+      case 'transfers':
+        return hasAny('inventory:transfer');
+      case 'dispatch_notes':
+        return hasAny('inventory:dispatch');
+
+      // Contabilidad
+      case 'accounts':
+      case 'journal':
+      case 'reconciliation':
+        return hasAny('accounting:read', 'accounting:write');
+
+      // Tesorería y Caja
+      case 'cxc':
+      case 'cxp':
+      case 'bank_accounts':
+        return hasAny('treasury:read', 'treasury:write');
+      case 'cash':
+        return hasAny('cash:read', 'cash:write');
+
+      // Nómina
+      case 'employees':
+      case 'payroll_periods':
+        return hasAny('payroll:read', 'payroll:write');
+
+      // Compras
+      case 'purchases':
+        return hasAny('purchases:read', 'purchases:write');
+      case 'suppliers':
+        return hasAny('purchases:suppliers', 'purchases:read', 'purchases:write');
+
+      // Administración
+      case 'reports':
+        return hasAny('reports:read', 'fiscal:read');
+      case 'users':
+        return hasAny('users:read', 'users:write');
+      case 'roles':
+        return hasAny('settings:write', 'users:write');
+      case 'settings':
+        return hasAny('settings:read', 'settings:write');
+      case 'manual':
+        return true;
+
+      default:
+        return false;
+    }
+  };
+
   const allowedModules: NavModuleGroup[] = user?.is_superuser
     ? [...ALL_ERP_MODULES, SUPERADMIN_MODULE]
-    : ALL_ERP_MODULES.filter((m) => {
+    : ALL_ERP_MODULES.reduce<NavModuleGroup[]>((acc, m) => {
         const licenseKey = m.reqId === 'users' ? 'admin' : m.reqId === 'payroll' ? 'hr' : m.reqId;
-        return hasModule(licenseKey as any);
-      });
+        if (!hasModule(licenseKey as any)) return acc;
+
+        if (isPrivilegedAdmin) {
+          acc.push(m);
+          return acc;
+        }
+
+        if (m.subModules && m.subModules.length > 0) {
+          const visibleSubs = m.subModules.filter((sub) => canAccessSubModule(sub.id));
+          if (visibleSubs.length > 0) {
+            acc.push({ ...m, subModules: visibleSubs });
+          }
+        }
+        return acc;
+      }, []);
 
   // Auto-expand the group matching the active route
   useEffect(() => {
