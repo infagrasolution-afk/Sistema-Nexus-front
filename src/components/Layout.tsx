@@ -294,7 +294,7 @@ export default function Layout() {
         return hasAny('sales:customers', 'sales:read', 'sales:write');
       case 'debit_notes':
       case 'credit_notes':
-        return hasAny('sales:void', 'sales:write');
+        return hasAny('sales:void');
 
       // Inventario
       case 'catalog':
