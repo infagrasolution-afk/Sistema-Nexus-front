@@ -20,7 +20,8 @@ import {
   Calculate as CalculateIcon,
   Security as SecurityIcon,
   Storage as StorageIcon,
-  Extension as ModulesIcon
+  Extension as ModulesIcon,
+  CloudDownload as BackupIcon
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +39,7 @@ export default function AdminPage() {
   const [editingModules, setEditingModules] = useState<string[]>(['admin', 'inventory']);
   const [editingLicenseDate, setEditingLicenseDate] = useState<string>('');
   const [editingIsActive, setEditingIsActive] = useState<boolean>(true);
+  const [downloadingBackup, setDownloadingBackup] = useState<boolean>(false);
   const [adminToast, setAdminToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -248,6 +250,31 @@ export default function AdminPage() {
     updateModulesMutation.mutate({ tenantId: modulesModalTenant.id, payload });
   };
 
+  const handleDownloadBackup = async () => {
+    setDownloadingBackup(true);
+    try {
+      await api.post('/admin/backup/run');
+      const res = await api.get('/admin/backup/download', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'apex_backup_latest.json.gz');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setAdminToast({ open: true, message: 'Respaldo actualizado y descargado (apex_backup_latest.json.gz).', severity: 'success' });
+    } catch (err: any) {
+      setAdminToast({
+        open: true,
+        message: err?.response?.data?.detail || 'No se pudo generar o descargar el respaldo.',
+        severity: 'error',
+      });
+    } finally {
+      setDownloadingBackup(false);
+    }
+  };
+
   const handleDeleteLog = (id: number) => {
     if (confirm('¿Está seguro de eliminar este registro de incidente?')) {
       deleteLogMutation.mutate(id);
@@ -303,14 +330,28 @@ export default function AdminPage() {
           <Typography variant="body2" color="text.secondary">{t('Global oversight of all companies')}</Typography>
         </Box>
         {tabValue === 0 ? (
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={() => setOpen(true)}
-            sx={{ borderRadius: '12px', px: 3, fontWeight: 700 }}
-          >
-            {t('New Client')}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+            <Tooltip title="Respaldo automático programado: 8:00 AM, 1:00 PM y 7:00 PM (VET)">
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<BackupIcon />}
+                onClick={handleDownloadBackup}
+                disabled={downloadingBackup}
+                sx={{ borderRadius: '12px', px: 2.5, fontWeight: 700, textTransform: 'none' }}
+              >
+                {downloadingBackup ? 'Respaldando...' : 'Respaldar y Descargar BD'}
+              </Button>
+            </Tooltip>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />} 
+              onClick={() => setOpen(true)}
+              sx={{ borderRadius: '12px', px: 3, fontWeight: 700 }}
+            >
+              {t('New Client')}
+            </Button>
+          </Box>
         ) : (
           <Button 
             variant="outlined" 
